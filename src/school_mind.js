@@ -255,7 +255,9 @@ export function updateSchool(m, ctx, im) {
     // the reef and the seabed: steer around coral heads, keep clear of the floor and the surface
     const cr = nearestCoral(f.x, f.z, len * 2.2 + 0.5);
     if (cr) { const push = (len * 2.2 + 0.5 - cr.d) * 2.5; ax -= cr.dx / (cr.d + 1e-3) * push; az -= cr.dz / (cr.d + 1e-3) * push; }
-    const gh = getHeight(f.x, f.z), floorY = gh + 0.5 + len * 1.5, topY = -0.6 - len;
+    const gh = getHeight(f.x, f.z), topY = -0.6 - len;
+    // the floor clearance never lifts a fish out of the water: in shallows it stops just under the surface
+    const floorY = Math.min(gh + 0.5 + len * 1.5, topY - 0.15);
     if (f.y < floorY) ay += (floorY - f.y) * 6;
     if (f.y > topY) ay -= (f.y - topY) * 6;
     // a slow, smooth wander: each fish's path curves gently, with no jitter
