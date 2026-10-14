@@ -10,6 +10,9 @@ export const NEW_MONKEY = new URLSearchParams(location.search).get('monkey') !==
 
 const BASE = 'assets/monkey/';
 const URLS = { hero: BASE + 'Monkey.glb', lite: BASE + 'Monkey_lite.glb', lod1: BASE + 'Monkey_lod1.glb', coconut: BASE + 'coconut.glb', clips: BASE + 'monkey_clips.json' };
+// the monkey's size: the asset is a real capuchin (about 0.37 m standing). The castaway is 1.85 m and a human about 1.75 m, so a real
+// capuchin (about 0.4 m) is 0.4 x 1.85 / 1.75 = 0.42 m, and 1.5x for visibility: 0.64 m, a rig scale of about 1.7.
+export const MONKEY_SCALE = 1.7;
 const loader = new GLTFLoader();
 const store = { ready: false, tier: null, scenes: {}, lod1: null, coconut: null, clips: [], meta: null, loading: null };
 
@@ -61,6 +64,7 @@ const ONE_SHOT_END = 0.02;
 export class MonkeyRig {
   constructor() {
     this.group = new THREE.Group();
+    this.group.scale.setScalar(MONKEY_SCALE);
     this.near = null; this.far = null; this.isFar = false;
     this.current = ''; this.next = null; this.loop = true; this.timeScale = 1; this.clipLen = 1;
     this.usesCoconut = false;

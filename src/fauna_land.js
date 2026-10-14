@@ -93,11 +93,14 @@ class Monkey {
   }
   /** a palm's trunk radius at t: the same profile makePalm (flora.js) builds, scaled by the palm */
   trunkR(t) { return (lerp(0.4, 0.23, t) + 0.3 * Math.exp(-12 * t)) * this.tree.sc; }
+  /** the monkey's size in the world: its group scale (variety) times the rig scale (the castaway-relative size) */
+  worldScale() { return this.group.scale.x * (this.rig ? this.rig.group.scale.x : 1); }
   /** in reach of a coconut: stand 0.56 m from it, facing it, for the reach, grab and lift */
   grabAt(p) {
     const h = Math.atan2(p.x - this.x, p.z - this.z);
     this.heading = h;
-    this.x = p.x - Math.sin(h) * 0.56; this.z = p.z - Math.cos(h) * 0.56;
+    const k = this.worldScale();   // the reach is 0.56 m of the monkey at its clip scale
+    this.x = p.x - Math.sin(h) * 0.56 * k; this.z = p.z - Math.cos(h) * 0.56 * k;
     this.grabT = 3.0;
   }
   /** the monkey on the trunk, its front to the bark. Climb start and dismount move the body between ground and bark over the clip. */
@@ -880,9 +883,6 @@ export function buildLandFauna(ctx) {
   const mk = [];
   let mi = 0;
   [[0, 4], [1, 3], [2, 2]].forEach(([h, n]) => { for (let i = 0; i < n; i++) mk.push(new Monkey(homes[h], mi++, ctx)); });
-  // test populations only: ?monkeys=N adds N monkeys (created after everything else, so nothing else moves)
-  const extraMonkeys = Math.min(40, Number(new URLSearchParams(location.search).get('monkeys')) || 0);
-  for (let i = 0; i < extraMonkeys; i++) mk.push(new Monkey(homes[i % 3], mi++, ctx));
   const boars = spawnBoars(ctx);
   // The capybaras that lived here are gone. Their code drew 128 numbers from the world's random stream; spending them keeps every later placement where it was.
   burn(128);
@@ -911,6 +911,9 @@ export function buildLandFauna(ctx) {
   const rats = spawnRats(ctx, falls.camp);
   const owls = spawnOwls(ctx);
   const boas = spawnBoas();
+  // the troop: 48 monkeys in all (?monkeys=N sets the count, for tests). Created after the rest of the island, so nothing else moves.
+  const troop = Math.max(0, (Number(new URLSearchParams(location.search).get('monkeys')) || 48) - mk.length);
+  for (let i = 0; i < troop; i++) mk.push(new Monkey(homes[i % 3], mi++, ctx));
   const all = [...mk, ...boars, ...crabs, flams, ...rats, ...owls, ...boas];
   updaters.push((dt, t) => {
     const d = Math.min(dt, 0.05);

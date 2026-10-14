@@ -122,8 +122,9 @@ function step(k, dt) {
   } else if (k.phase === 'tug') {
     const fx = Math.sin(h.heading), fz = Math.cos(h.heading);
     k.placeT = Math.min(1, k.placeT + dt / 0.5);
-    c.x = lerp(k.placeFrom.x, h.x + fx * 1.08, smooth(k.placeT));
-    c.z = lerp(k.placeFrom.z, h.z + fz * 1.08, smooth(k.placeT));
+    const reach = 1.08 * h.worldScale();   // the tug is 1.08 m at the clip's scale
+    c.x = lerp(k.placeFrom.x, h.x + fx * reach, smooth(k.placeT));
+    c.z = lerp(k.placeFrom.z, h.z + fz * reach, smooth(k.placeT));
     c.heading = h.heading + Math.PI; c.speed = 0; h.speed = 0;
     k.hClip = 'coconut_tug_holder'; k.cClip = 'coconut_tug_challenger';
     if (k.placeT >= 1 && !k.tugStarted) k.tugStarted = true;
