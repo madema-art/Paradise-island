@@ -961,6 +961,11 @@ export function fishSpecimen(hue) {
 }
 function buildFish() {
   const geo = fishGeometry();
+  // wildlife size (docs/WILDLIFE_SCALE_RESEARCH.md): the schools are sized from the fish's own geometry (its length along Z, measured here)
+  geo.computeBoundingBox();
+  const fishLen = geo.boundingBox.max.z - geo.boundingBox.min.z;
+  // researched adult total lengths x 1.5 (standard length for the silver mullet). The generic 'Reef fish school' has no identified species: the chromis reference is used (flagged)
+  const SCHOOL_TARGET = { 'Blue chromis school': 0.15, 'Silver mullet school': 0.75, 'Pink fusilier school': 0.225, 'Parrotfish school': 0.45, 'Yellowfin tuna school': 2.25, 'Reef fish school': 0.15, 'Yellow tang school': 0.30 };
   fishGeoRef = geo;
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.2, side: THREE.DoubleSide, emissive: 0x112233, emissiveIntensity: 0.4 });
   fishMatRef = mat;
@@ -974,7 +979,10 @@ function buildFish() {
   };
   const schools = [];
   const addSchool = (cx, cz, rx, rz, depth, n, hue, scale, name, spread = 3.2) => {
-    schools.push({ cx, cz, rx, rz, depth, n, hue, scale, name, spread, a: rr(0.03, 0.07), b: rr(0.04, 0.08), p: rnd() * 6, q: rnd() * 6, fish: [] });
+    // the school's fish are scaled to the target length; its swimming speed and its spread scale with them (body lengths per second and per school stay the same)
+    const target = SCHOOL_TARGET[name];
+    const k = target ? (target / fishLen) / scale : 1;
+    schools.push({ cx, cz, rx, rz, depth, n, hue, scale: target ? target / fishLen : scale, spread: spread * k, name, a: rr(0.03, 0.07), b: rr(0.04, 0.08), p: rnd() * 6, q: rnd() * 6, fish: [] });
   };
   // lagoon
   // the yellow tang school is individually rigged (buildYellowTangSchool); the instanced school below is the fallback if the model fails
@@ -1001,7 +1009,7 @@ function buildFish() {
     for (let i = 0; i < s.n; i++) {
       const c = base.clone().multiplyScalar(rr(0.85, 1.12));
       im.setColorAt(idx, c);
-      s.fish.push({ i: idx++, x: s.cx + rr(-6, 6), y: s.depth, z: s.cz + rr(-6, 6), vx: 0, vy: 0, vz: 1, o1: rnd() * TAU, o2: rnd() * TAU, w1: rr(0.15, 0.5) * (rnd() < 0.5 ? -1 : 1), w2: rr(0.2, 0.6), r: rr(0.3, 1) * s.spread, sc: s.scale * rr(0.8, 1.25) });
+      s.fish.push({ i: idx++, x: s.cx + rr(-6, 6), y: s.depth, z: s.cz + rr(-6, 6), vx: 0, vy: 0, vz: 1, o1: rnd() * TAU, o2: rnd() * TAU, w1: rr(0.15, 0.5) * (rnd() < 0.5 ? -1 : 1), w2: rr(0.2, 0.6), r: rr(0.3, 1) * s.spread, sc: s.scale * rr(0.92, 1.08) });   // individual variation: +-8%, a school of similar fish
     }
     register({ id: 'school' + s.cx + s.cz, name: s.name, cat: 'Sea life', group: s.dummy, specimen: () => fishSpecimen(s.hue), viewDist: 8, desc: 'A shimmering school moving as one body through the water, bending around the coral heads.', pickR: Math.max(4, s.spread * 1.8), pickY: 0 });
     fauna.add(s.dummy);
@@ -1065,6 +1073,11 @@ function anthiasGeometry() {
 }
 function buildAnthiasSchool() {
   const geo = anthiasGeometry();
+  // wildlife size: the orange anthias (Pseudanthias squamipinnis) is 0.15 m total length (FishBase maximum), x 1.5 = 0.225 m. The shoal's
+  // distances and speeds were tuned for the old fish (about 1.2 m long), so they scale by the same factor kA (body lengths stay the same).
+  geo.computeBoundingBox();
+  const anthiasLen = geo.boundingBox.max.z - geo.boundingBox.min.z;
+  const kA = 0.225 / (anthiasLen * 1.1);     // the old fish were drawn at sc x 1.1; the new ones at (0.225 / anthiasLen) per unit of sc
   const n = 34, cx0 = COVE.x + 18, cz0 = COVE.z + 34;
   const im = new THREE.InstancedMesh(geo, fishMatRef, n);
   im.frustumCulled = false; im.castShadow = false;
@@ -1073,7 +1086,7 @@ function buildAnthiasSchool() {
   const base = new THREE.Color('#ff8a2e'), pink = new THREE.Color('#ff6f8f');
   for (let i = 0; i < n; i++) {
     im.setColorAt(i, base.clone().lerp(pink, rnd() * 0.5).multiplyScalar(rr(0.9, 1.08)));
-    sim.fish.push({ i, x: cx0 + rr(-6, 6), y: -1.6 + rr(-0.4, 0.4), z: cz0 + rr(-6, 6), vx: 0, vy: 0, vz: 0, sc: rr(0.95, 1.12), ph: rnd() * TAU, speedK: rr(0.85, 1.15) });
+    sim.fish.push({ i, x: cx0 + rr(-6, 6), y: -1.6 + rr(-0.4, 0.4), z: cz0 + rr(-6, 6), vx: 0, vy: 0, vz: 0, sc: rr(0.95, 1.12) * kA, ph: rnd() * TAU, speedK: rr(0.85, 1.15) });
   }
   im.instanceColor.needsUpdate = true;
   scene.add(im);
@@ -1106,20 +1119,20 @@ function buildAnthiasSchool() {
     sim.c.x += (COVE.x + 18 + Math.cos(pathT) * 10 - sim.c.x) * Math.min(1, dt * 1.2);
     sim.c.z += (COVE.z + 34 + Math.sin(pathT * 0.8) * 7 - sim.c.z) * Math.min(1, dt * 1.2);
     sim.c.y = damp(sim.c.y, feedingNow ? -1.0 : -2.1, 0.8, dt);
-    const cruise = sim.panic > 0 ? 4.0 : feedingNow ? 0.8 : 1.5;
+    const cruise = (sim.panic > 0 ? 4.0 : feedingNow ? 0.8 : 1.5) * kA;
     for (const f of sim.fish) {
       let alx = 0, aly = 0, alz = 0, sepX = 0, sepY = 0, sepZ = 0, nb = 0;
       for (const o of sim.fish) {
         if (o === f) continue;
         const dx = o.x - f.x, dy = o.y - f.y, dz = o.z - f.z, d2 = dx * dx + dy * dy + dz * dz;
-        if (d2 < 16) { alx += o.vx; aly += o.vy; alz += o.vz; nb++; }
-        if (d2 < 1.3 && d2 > 1e-4) { sepX -= dx / d2; sepY -= dy / d2; sepZ -= dz / d2; }
+        if (d2 < 16 * kA * kA) { alx += o.vx; aly += o.vy; alz += o.vz; nb++; }
+        if (d2 < 1.3 * kA * kA && d2 > 1e-4) { sepX -= dx / d2; sepY -= dy / d2; sepZ -= dz / d2; }
       }
       let ax = 0, ay = 0, az = 0;
       if (nb) { ax += (alx / nb - f.vx) * 0.7; ay += (aly / nb - f.vy) * 0.7; az += (alz / nb - f.vz) * 0.7; }
       // stay with the shoal's centre, more loosely while startled
       const dx = sim.c.x - f.x, dy = sim.c.y - f.y, dz = sim.c.z - f.z, dist = Math.hypot(dx, dy, dz) + 1e-3;
-      const pull = clamp((dist - 2.5) * (sim.panic > 0 ? 0.04 : 0.22), -0.3, 1.0);
+      const pull = clamp((dist - 2.5 * kA) * (sim.panic > 0 ? 0.04 : 0.22), -0.3, 1.0);
       ax += dx / dist * pull; ay += dy / dist * pull * 0.6; az += dz / dist * pull;
       ax += sepX * 1.1; ay += sepY * 1.4; az += sepZ * 1.1;
       if (sim.panic > 0 && sim.threat) {
