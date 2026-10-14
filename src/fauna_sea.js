@@ -19,6 +19,10 @@ import { makeGullModel, gullModelsReady } from './gull_model.js';
 import { rnd, rr, pick, clamp, lerp, damp, angDiff, smoothstep, burn, mulberry32, TAU } from './util.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeYellowTangModel, yellowTangReady } from './yellow_tang_model.js';
+import { createSchool, updateSchool } from './school_mind.js';
+
+// the shared school intelligence (school_mind.js) drives the procedural schools. false returns to the earlier per-fish loop below
+export const SCHOOLS_NEW = true;
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const _q = new THREE.Quaternion(), _e = new THREE.Euler(), _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _s = new THREE.Vector3();
@@ -1016,7 +1020,16 @@ function buildFish() {
   }
   im.instanceColor.needsUpdate = true;
   scene.add(im);
+  for (const s of schools) s.mind = createSchool(s.name, s.fish, { cx: s.cx, cz: s.cz, rx: s.rx, rz: s.rz, depth: s.depth });
   updaters.push((dt, t) => {
+    if (SCHOOLS_NEW) {
+      const cas = creatures.find((c) => c.id === 'castaway');
+      const dist = [{ x: camera.position.x, y: camera.position.y, z: camera.position.z, r: 0 }];
+      if (cas && cas.group) dist.push({ x: cas.group.position.x, y: cas.group.position.y, z: cas.group.position.z, r: 0 });
+      for (const s of schools) { updateSchool(s.mind, { dt, t, disturbers: dist }, im); s.dummy.position.set(s.mind.cx, s.mind.cy, s.mind.cz); }
+      im.instanceMatrix.needsUpdate = true;
+      return;
+    }
     for (const s of schools) {
       const cx = s.cx + Math.sin(t * s.a + s.p) * s.rx, cz = s.cz + Math.cos(t * s.b + s.q) * s.rz, cy = s.depth + Math.sin(t * 0.2 + s.p) * 0.5;
       s.dummy.position.set(cx, cy, cz);
@@ -1195,8 +1208,25 @@ function buildYellowTangSchool() {
     specimen: () => { const m = makeYellowTangModel(); if (!m) return fishSpecimen('#ffd23a'); const g = new THREE.Group(); g.add(m.root); return g; },
     viewDist: 10, desc: 'A shoal of yellow tangs travels the reef edge, grazing in short turns and bunching close to coral shelter at dusk.', pickR: 10, pickY: -1 });
   const center = new THREE.Vector3(cx, -1.3, cz);
+  // the shared school intelligence drives the tangs too (school_mind.js); their holders are placed in the school's frame
+  const mind = createSchool('Yellow tang school', fish.map((f, i) => Object.assign(f, { i, sc: 1, vy: 0, vx: f.vx || 0, vz: f.vz || 0 })), { cx, cz, rx: 12, rz: 9, depth: -1.45 });
+  const tangWrite = (f, p, q) => { f.holder.position.set(p.x - mind.cx, p.y - mind.cy, p.z - mind.cz); f.holder.quaternion.copy(q); };
   let grazing = false, grazeT = rr(18,32), grazeX = cx, grazeZ = cz;
   updaters.push((dt, t) => {
+    if (SCHOOLS_NEW) {
+      const cas = creatures.find((c) => c.id === 'castaway');
+      const dist = [{ x: camera.position.x, y: camera.position.y, z: camera.position.z, r: 0 }];
+      if (cas && cas.group) dist.push({ x: cas.group.position.x, y: cas.group.position.y, z: cas.group.position.z, r: 0 });
+      updateSchool(mind, { dt, t, disturbers: dist }, tangWrite);
+      group.position.set(mind.cx, mind.cy, mind.cz);
+      const grazing = mind.state === 'hover';
+      for (const f of fish) {
+        const clip = grazing ? 'Tang_Graze' : 'Tang_Cruise_Swim';
+        for (const [name, action] of f.actions) { if (name === clip) { if (!action.isRunning()) action.reset().play(); } else action.stop(); }
+        f.mixer.update(dt);
+      }
+      return;
+    }
     const night = env.night;
     grazeT -= dt;
     if (!grazing && grazeT <= 0 && env.day > .35) {

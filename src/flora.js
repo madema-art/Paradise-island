@@ -336,6 +336,9 @@ function bladeGeometry() {
 }
 
 /* ============================================================ coral */
+/** every coral head placed on the reef, as {x, z, y} (filled by buildFlora; the fish schools steer around them) */
+export const coralSpots = [];
+
 export function coralGeo(kind) {
   const mb = new MB();
   const white = C('#ffffff');
@@ -550,7 +553,7 @@ export function buildFlora() {
   const cMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, flatShading: true, side: THREE.DoubleSide, emissive: 0x111111 });
   windify(cMat);
   const coralG = [coralGeo(0), coralGeo(1), coralGeo(2)];
-  const cSpots = [];
+  const cSpots = coralSpots;   // the coral heads (kept for the fish schools to avoid)
   for (let t = 0; t < 70000 && cSpots.length < 900; t++) {
     const x = rr(-210, 210), z = rr(-190, 215), h = getHeight(x, z);
     if (h > -0.9 || h < -10) continue;
