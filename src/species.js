@@ -491,7 +491,9 @@ const BOA_STATE = { rest: 'Coiled up, resting', wake: 'Uncoiling at dusk', searc
 const CRAB_STATE = { idle: 'Resting', run: 'Scuttling across the sand' };
 const LORIKEET_STATE = { perch: 'Resting and scanning', feed: 'Harvesting nectar', takeoff: 'Leaving with its flock', fly: 'Travelling over the canopy', approach: 'Braking toward a perch', landing: 'Gripping its landing perch' };
 
-const ANTHIAS_STATE = { feed: 'Feeding up in the water above the reef', cruise: 'Drifting along the reef as one shoal', startled: 'Scattered, startled by something close' };
+// the school mind's states (school_mind.js) and how a school holds its shape, as the Field Guide describes them
+const SCHOOL_STATE = { cruise: 'Travelling as one shoal', hover: 'Feeding over the reef', flee: 'Scattered, startled by something close' };
+const SCHOOL_SHAPE = { ribbon: 'Strung out in a long ribbon', cloud: 'A loose, rounded cloud', loose: 'A wide, loose shoal' };
 /** the live facts this creature's simulation exposes, as [label, value] pairs. Only what the game tracks is reported. */
 export function liveFacts(c, speed, pos) {
   const s = c.sim || {}, out = [];
@@ -553,9 +555,12 @@ export function liveFacts(c, speed, pos) {
     sub('Age class', s.age);
     sub('Flock', String((s.flock?.id ?? 0) + 1));
     sub('Doing', LORIKEET_STATE[s.state] || 'Active');
-  } else if (c.name === 'Orange anthias school') {
-    sub('Doing', ANTHIAS_STATE[s.state] || 'Shoaling');
-    sub('Shoal size', String(s.count || 0));
+  } else if (Array.isArray(s.fish) && s.spec) {
+    // a school (the shared school mind, school_mind.js): what it is doing, its size and the shape it holds
+    sub('Doing', SCHOOL_STATE[s.state] || 'Travelling as one shoal');
+    sub('Shoal size', String(s.fish.length));
+    sub('Formation', SCHOOL_SHAPE[s.spec.shape] || '');
+    sub('Shoal radius', s.spread.toFixed(1) + ' m');
   } else if (c.name === 'Green sea turtle') {
     sub('Doing', TURTLE_MODE[s.mode] || 'Swimming');
     sub('Breaths taken', String(s.breaths || 0));

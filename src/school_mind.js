@@ -1,25 +1,29 @@
-// Shared school intelligence. A school is one persistent entity (its centre, destination, movement state, formation and
+// Shared school intelligence. A school is one persistent entity (its home, centre, destination, movement state, formation and
 // environmental awareness) that its fish follow. The fish keep their own movement: each has a slot in the school that drifts
 // over time, its own reaction delay and speed, and it steers by its neighbours (alignment, separation, cohesion), by the reef
 // (coral heads), and by the seabed and surface. Turns therefore travel through the school as a wave instead of snapping.
 // Every species uses this one system; the differences are its profile below (speeds, spread, shape, habits).
+//
+// A fish can leave a school and rejoin it (detachFish / attachFish), for example when it is taken on a line. The rest of the
+// school never reads the fish that has left, so nothing else changes. The detached fish belongs to its caller until it is put back.
 import * as THREE from 'three';
 import { getHeight } from './world.js';
 import { coralSpots } from './flora.js';
-import { rnd, rr, clamp, lerp, TAU } from './util.js';
+import { rnd, clamp, lerp, TAU } from './util.js';
 
 // per species (keyed by the school's name): len = body length used for spacing (m); cruise and burst in m/s (cruise is about
 // 1-3 body lengths per second, bursts about 4-7); spread = the school's radius (m) when relaxed; shape: 'ribbon' | 'cloud' | 'loose';
 // feeds: 'coral' = the school hovers and feeds above coral heads; hover = share of destinations that are hover spots;
 // gap = the fish's spacing in body lengths (default 2.2): a smaller gap packs the school tighter.
 export const SCHOOL_PROFILE = {
-  'Blue chromis school': { len: 0.15, cruise: 0.45, burst: 1.1, spread: 2.2, shape: 'cloud', feeds: 'coral', hover: 0.6 },
+  'Blue chromis school': { len: 0.15, cruise: 0.35, burst: 1.1, spread: 2.2, shape: 'cloud', feeds: 'coral', hover: 0.6 },
   'Silver mullet school': { len: 0.75, cruise: 1.0, burst: 2.6, spread: 4.5, shape: 'ribbon', feeds: null, hover: 0 },
-  'Pink fusilier school': { len: 0.225, cruise: 0.7, burst: 1.8, spread: 3.5, shape: 'ribbon', feeds: 'coral', hover: 0.25 },
+  'Pink fusilier school': { len: 0.225, cruise: 0.5, burst: 1.8, spread: 3.5, shape: 'ribbon', feeds: 'coral', hover: 0.25 },
   'Parrotfish school': { len: 0.45, cruise: 0.55, burst: 1.6, spread: 4.5, shape: 'loose', feeds: 'coral', hover: 0.5 },
-  'Yellowfin tuna school': { len: 2.25, cruise: 2.0, burst: 5.0, spread: 7.0, shape: 'loose', feeds: null, hover: 0 },
-  'Reef fish school': { len: 0.15, cruise: 0.5, burst: 1.3, spread: 3.0, shape: 'cloud', feeds: 'coral', hover: 0.5 },
+  'Yellowfin tuna school': { len: 2.25, cruise: 2.0, burst: 5.0, spread: 7.0, gap: 1.5, shape: 'loose', feeds: null, hover: 0 },
+  'Reef fish school': { len: 0.15, cruise: 0.3, burst: 1.0, spread: 3.0, shape: 'cloud', feeds: 'coral', hover: 0.5 },
   'Yellow tang school': { len: 0.30, cruise: 0.30, burst: 0.8, spread: 1.0, gap: 1.0, shape: 'cloud', feeds: 'coral', hover: 0.5 },
+  'Orange anthias school': { len: 0.225, cruise: 0.5, burst: 1.5, spread: 2.2, gap: 1.6, shape: 'cloud', feeds: 'coral', hover: 0.5 },
 };
 
 // ---- coral avoidance: a grid of the coral heads, so a fish checks a few cells, not every head
@@ -55,63 +59,95 @@ function nearestCoral(x, z, r) {
 const smooth = (u) => { const k = clamp(u, 0, 1); return k * k * (3 - 2 * k); };
 const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _m = new THREE.Matrix4();
 
-/** a school: fish is the school's list of {i, sc, x, y, z, vx, vy, vz}; roam is {cx, cz, rx, rz, depth} from the builder */
-export function createSchool(name, fish, roam) {
+/** give a fish its place in the school: a slot that drifts, its own reaction delay and speed, and a starting point in the formation */
+function seatFish(m, f) {
+  const g = m.rng;
+  f.slot = { x: 0, y: 0, z: 0 }; f.slotT = m.rr(4, 12); f.react = f.react ?? m.rr(1.6, 3.8); f.speedK = f.speedK ?? m.rr(0.9, 1.1);
+  f.tx = 0; f.ty = 0; f.tz = 0; f.wob = f.wob ?? g() * TAU;
+  const a = g() * TAU, r = Math.sqrt(g());
+  f.slot.x = Math.cos(a) * r; f.slot.y = (g() - 0.5) * 0.7; f.slot.z = Math.sin(a) * r;
+  f.school = m;
+}
+
+/**
+ * a school: fish is the school's list of {i, sc, x, y, z, vx, vy, vz}; roam is {cx, cz, rx, rz, depth} from the builder.
+ * rng (optional) is the school's own generator; the default is the world's shared stream, so existing builders keep their draws.
+ */
+export function createSchool(name, fish, roam, rng = rnd) {
   const spec = SCHOOL_PROFILE[name] || SCHOOL_PROFILE['Reef fish school'];
   const mind = {
     name, spec, fish, cx: roam.cx, cy: roam.depth, cz: roam.cz, rx: roam.rx, rz: roam.rz, depth: roam.depth,
-    dest: { x: roam.cx, y: roam.depth, z: roam.cz }, state: 'cruise', stateT: rr(4, 10), hoverSpot: null,
-    vx: 0, vz: 0, spread: spec.spread, alarm: 0, heading: rnd() * TAU, breath: rnd() * TAU,
+    home: { x: roam.cx, z: roam.cz },   // destinations are drawn around home, so the roam area does not drift with the school
+    rng, rr: (a, b) => a + (b - a) * rng(),
+    dest: { x: roam.cx, y: roam.depth, z: roam.cz }, state: 'cruise', stateT: 0, hoverSpot: null,
+    vx: 0, vz: 0, spread: spec.spread, alarm: 0, heading: 0, breath: 0,
   };
-  for (const f of fish) {
-    f.slot = { x: 0, y: 0, z: 0 }; f.slotT = rr(4, 12); f.react = rr(1.6, 3.8); f.speedK = rr(0.9, 1.1);
-    f.tx = 0; f.ty = 0; f.tz = 0; f.wob = rnd() * TAU;
-    const a = rnd() * TAU, r = Math.sqrt(rnd());
-    f.slot.x = Math.cos(a) * r; f.slot.y = (rnd() - 0.5) * 0.7; f.slot.z = Math.sin(a) * r;
-  }
+  mind.stateT = mind.rr(4, 10);
+  mind.heading = rng() * TAU; mind.breath = rng() * TAU;
+  for (const f of fish) seatFish(mind, f);
   return mind;
+}
+
+/**
+ * a fish leaves its school (for example it is hooked). The school stops reading it at once; the others are unaffected.
+ * Returns the fish, which the caller now owns: it must write the fish's matrix itself until it is put back with attachFish.
+ */
+export function detachFish(m, f) {
+  const k = m.fish.indexOf(f);
+  if (k < 0) return null;
+  m.fish.splice(k, 1);
+  f.school = null;
+  return f;
+}
+
+/** a fish rejoins a school: it takes a new place in the formation and its velocity is blended toward the shoal's */
+export function attachFish(m, f) {
+  if (m.fish.includes(f)) return false;
+  seatFish(m, f);
+  f.vx = (f.vx + m.vx) * 0.5; f.vz = (f.vz + m.vz) * 0.5;
+  m.fish.push(f);
+  return true;
 }
 
 /** choose the next destination: a hover spot over the coral near the school's home, or a point across the roam area */
 function chooseDestination(m, t) {
-  const s = m.spec;
-  if (s.feeds === 'coral' && rnd() < s.hover) {
+  const s = m.spec, g = m.rng;
+  if (s.feeds === 'coral' && g() < s.hover) {
     // a coral head within the roam area (the school hovers above it, feeding)
     for (let k = 0; k < 14; k++) {
-      const a = rnd() * TAU, r = Math.sqrt(rnd());
-      const x = m.cx + Math.cos(a) * r * m.rx, z = m.cz + Math.sin(a) * r * m.rz;
+      const a = g() * TAU, r = Math.sqrt(g());
+      const x = m.home.x + Math.cos(a) * r * m.rx, z = m.home.z + Math.sin(a) * r * m.rz;
       const c = nearestCoral(x, z, 1.2);
       if (c) {
         m.dest = { x: x + c.dx * 0.5, y: m.depth + 0.8, z: z + c.dz * 0.5 };
-        m.state = 'hover'; m.stateT = rr(14, 30);
+        m.state = 'hover'; m.stateT = m.rr(14, 30);
         return;
       }
     }
   }
   for (let k = 0; k < 14; k++) {
-    const a = rnd() * TAU, r = Math.sqrt(rnd());
-    const x = m.cx + Math.cos(a) * r * m.rx, z = m.cz + Math.sin(a) * r * m.rz;
-    if (getHeight(x, z) < -1.2) { m.dest = { x, y: m.depth + (rnd() - 0.5) * 1.5, z }; break; }
+    const a = g() * TAU, r = Math.sqrt(g());
+    const x = m.home.x + Math.cos(a) * r * m.rx, z = m.home.z + Math.sin(a) * r * m.rz;
+    if (getHeight(x, z) < -1.2) { m.dest = { x, y: m.depth + (g() - 0.5) * 1.5, z }; break; }
   }
-  m.state = 'cruise'; m.stateT = rr(12, 26);
+  m.state = 'cruise'; m.stateT = m.rr(12, 26);
 }
 
 /**
- * one step for one school. ctx: { dt, t, disturbers: [{x, y, z, r}] (the castaway, the camera) }
- * writes each fish's matrix into im (the shared InstancedMesh) at its instance index i
+ * one step for one school. ctx: { dt, t, disturbers: [{x, y, z, r}] (the castaway, the camera, or what the school flees) }
+ * writes each fish's matrix into im (the shared InstancedMesh) at its instance index i, or calls im(f, position, quaternion)
  */
 export function updateSchool(m, ctx, im) {
   // im is an InstancedMesh (its matrix is written per fish) or a function write(f, position, quaternion) for other kinds of fish
   const write = typeof im === 'function' ? im : null;
   const { dt, t, disturbers } = ctx;
-  const s = m.spec;
+  const s = m.spec, g = m.rng;
   m.breath += dt * 0.35;
   // 1. disturbance: a person or the castaway close by makes the school tighten and burst away
   let alarmNow = false;
   for (const d of disturbers) {
     if (Math.hypot(d.x - m.cx, d.z - m.cz) < 6 + m.spread && Math.abs(d.y - m.cy) < 5) { alarmNow = true; break; }
   }
-  if (alarmNow && m.alarm <= 0) m.alarm = 0;
   if (alarmNow) m.alarm = 3.5;
   m.alarm = Math.max(0, m.alarm - dt);
   // 2. decide: the next destination when the current one is reached or its time is up
@@ -145,14 +181,13 @@ export function updateSchool(m, ctx, im) {
   for (const f of m.fish) {
     f.slotT -= dt;
     if (f.slotT <= 0) {                                   // every 4-12 s a fish takes a new place in the school
-      f.slotT = rr(4, 12);
-      const a = rnd() * TAU, r = Math.sqrt(rnd());
-      f.tx = Math.cos(a) * r; f.ty = (rnd() - 0.5) * 0.7; f.tz = Math.sin(a) * r;
+      f.slotT = m.rr(4, 12);
+      const a = g() * TAU, r = Math.sqrt(g());
+      f.tx = Math.cos(a) * r; f.ty = (g() - 0.5) * 0.7; f.tz = Math.sin(a) * r;
     }
     f.slot.x += (f.tx - f.slot.x) * Math.min(1, dt * 0.25);
     f.slot.y += (f.ty - f.slot.y) * Math.min(1, dt * 0.25);
     f.slot.z += (f.tz - f.slot.z) * Math.min(1, dt * 0.25);
-    // the slot in world space: stretched along the heading for a ribbon, then scaled by the formation's spread
     // the slot in the school's frame: side (x), along the heading (z, stretched for a ribbon) and up (y); then rotated to the world
     const side = f.slot.x * m.spread, fwd = f.slot.z * m.spread * stretch;
     const wx = m.cx + side * ch + fwd * sh, wz = m.cz - side * sh + fwd * ch;
@@ -171,19 +206,19 @@ export function updateSchool(m, ctx, im) {
     // reef and seabed: steer around coral heads, keep clear of the floor and the surface
     const cr = nearestCoral(f.x, f.z, len * 2.2 + 0.5);
     if (cr) { const push = (len * 2.2 + 0.5 - cr.d) * 4; ax -= cr.dx / (cr.d + 1e-3) * push; az -= cr.dz / (cr.d + 1e-3) * push; }
-    const g = getHeight(f.x, f.z), floorY = g + 0.5 + len * 1.5, topY = -0.6 - len;
+    const gh = getHeight(f.x, f.z), floorY = gh + 0.5 + len * 1.5, topY = -0.6 - len;
     if (f.y < floorY) ay += (floorY - f.y) * 6;
     if (f.y > topY) ay -= (f.y - topY) * 6;
     // a small wobble, so no two fish trace the same line
     f.wob += dt * (1.2 + f.speedK * 0.7);
     ax += Math.sin(f.wob) * 0.12 * (1 + m.spread * 0.05); az += Math.cos(f.wob * 0.8 + f.react) * 0.12 * (1 + m.spread * 0.05);
     // reaction delay: a fish follows its target velocity with its own response time, so turns move down the school
-    const target = state === 'flee' ? s.burst : state === 'hover' ? s.cruise * 0.3 : s.cruise;
     const resp = 2 / f.react;                              // a slower reactor turns later than a quick one: the wave travels
     f.vx += (ax + (m.vx - f.vx) * 0.6) * dt * resp;
     f.vy += (ay - f.vy * 0.6) * dt * resp;
     f.vz += (az + (m.vz - f.vz) * 0.6) * dt * resp;
     // speed limits from the state: cruise is steady, a burst is brief and brings the whole school forward
+    const target = state === 'flee' ? s.burst : state === 'hover' ? s.cruise * 0.3 : s.cruise;
     const sp = Math.hypot(f.vx, f.vy, f.vz) + 1e-6;
     const maxSp = (target * f.speedK * (state === 'flee' ? 1.1 : 1.15));
     const minSp = target * 0.5 * f.speedK;
@@ -193,9 +228,12 @@ export function updateSchool(m, ctx, im) {
     // 6. the matrix: the fish faces its velocity, pitched a little with its climb
     const yaw = Math.atan2(f.vx, f.vz), pit = -Math.asin(clamp(f.vy / (Math.hypot(f.vx, f.vy, f.vz) + 1e-6), -1, 1)) * 0.8;
     _e.set(pit, yaw, 0, 'YXZ'); _q.setFromEuler(_e);
-    const visible = f.y < topY + 0.6 && f.y > floorY - 0.6 ? f.sc : 0.0001;
     _p.set(f.x, f.y, f.z);
     if (write) write(f, _p, _q);
-    else { _s.setScalar(visible); _m.compose(_p, _q, _s); im.setMatrixAt(f.i, _m); }
+    else {
+      // a fish is drawn while it is under the surface and above the sand; the steering above keeps it there, this only hides a fish that has got out
+      const shown = f.y < -0.15 && f.y > gh - 0.2 ? f.sc : 0.0001;
+      _s.setScalar(shown); _m.compose(_p, _q, _s); im.setMatrixAt(f.i, _m);
+    }
   }
 }

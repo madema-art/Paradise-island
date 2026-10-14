@@ -140,8 +140,10 @@ async function addSpecies(entry) {
   const el = document.createElement('div');
   el.className = 'label';
   labels.appendChild(el);
-  selected.set(entry.id, { entry, group, el, sourceM: src.value, rootScale, factor, root });
-  layout(); refreshList();
+  // the models that carry clips (the game's factories return a mixer and its actions); the others are posed by code
+  const anim = made && made.mixer && made.actions instanceof Map && made.actions.size ? { mixer: made.mixer, actions: made.actions, current: null } : null;
+  selected.set(entry.id, { entry, group, el, sourceM: src.value, rootScale, factor, root, anim });
+  layout(); refreshList(); refreshAnimPanel();
 }
 
 function nextX() {
@@ -183,7 +185,66 @@ function removeSpecies(id) {
   stage.remove(s.group);
   s.el.remove();
   selected.delete(id);
-  layout(); refreshList();
+  layout(); refreshList(); refreshAnimPanel();
+}
+
+/** animation playback: the selected species' clips, one play state and speed, and scrubbing while paused */
+const animUI = { playing: false, speed: 1, species: null, clip: null, last: 0 };
+const animatable = () => [...selected.values()].filter((s) => s.anim);
+function refreshAnimPanel() {
+  // every species on the stage is listed; the ones without clips say so in the status line
+  const sel = $('#animSpecies'), list = [...selected.values()];
+  sel.innerHTML = '';
+  for (const s of list) sel.add(new Option(s.anim ? s.entry.name : s.entry.name + ' (no clips)', s.entry.id));
+  if (!list.some((s) => s.entry.id === animUI.species)) animUI.species = list.length ? list[0].entry.id : null;
+  if (animUI.species) sel.value = animUI.species;
+  fillClips();
+}
+function fillClips() {
+  const cs = $('#animClip'), s = animUI.species ? selected.get(animUI.species) : null;
+  cs.innerHTML = '';
+  if (s && s.anim) {
+    for (const name of s.anim.actions.keys()) cs.add(new Option(name, name));
+    if (!s.anim.actions.has(animUI.clip)) animUI.clip = [...s.anim.actions.keys()][0];
+    cs.value = animUI.clip;
+  } else { cs.add(new Option('(no clips)', '')); animUI.clip = null; }
+  applyClip();
+}
+/** play the chosen clip on every animated species that has it (its first clip otherwise), crossfading from the one before */
+function applyClip() {
+  for (const s of animatable()) {
+    const name = s.anim.actions.has(animUI.clip) ? animUI.clip : [...s.anim.actions.keys()][0];
+    const next = s.anim.actions.get(name);
+    if (s.anim.current === next) continue;
+    if (s.anim.current) s.anim.current.fadeOut(0.2);
+    next.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.2).play();
+    s.anim.current = next;
+  }
+  for (const s of animatable()) s.anim.mixer.timeScale = animUI.playing ? animUI.speed : 0;
+  updateAnimStatus();
+}
+function setPlaying(on) {
+  animUI.playing = on;
+  for (const s of animatable()) s.anim.mixer.timeScale = on ? animUI.speed : 0;
+  $('#animPlay').textContent = on ? 'Pause' : 'Play';
+  updateAnimStatus();
+}
+function updateAnimStatus() {
+  const el = $('#animStatus'), s = animUI.species ? selected.get(animUI.species) : null;
+  if (!animatable().length) { el.textContent = 'None of the species on the stage has clips built in. Boar, boa, owl, tern, flamingo, crabs, rat and bat are posed by code in the game, so there is nothing to play for them here.'; return; }
+  if (!s || !s.anim) { el.textContent = 'This model has no built-in clips; its motion is in code.'; return; }
+  const a = s.anim.current, dur = a ? a.getClip().duration : 0;
+  el.textContent = s.entry.name + ': ' + (animUI.clip || 'no clip') + ', ' + dur.toFixed(2) + ' s' + (animUI.playing ? '' : ' (paused)');
+}
+/** scrub the chosen species' clip; scrubbing pauses playback */
+function scrubTo(f) {
+  const s = animUI.species ? selected.get(animUI.species) : null;
+  if (!s || !s.anim || !s.anim.current) return;
+  setPlaying(false);
+  const a = s.anim.current;
+  a.time = f * a.getClip().duration;
+  s.anim.mixer.update(0);
+  updateAnimStatus();
 }
 
 /** the castaway, always on the stage at 2.00 m (his own model code applies the scale from his body mesh) */
@@ -276,15 +337,31 @@ function focus(id, view = 'front') {
   controls.update();
   return true;
 }
-window.__scaleViewer = { focus, controls, scene, camera, stage, THREE, addSpecies: (id) => addSpecies(CATALOGUE.find((e) => e.id === id)), removeSpecies, frameAll, measurements, catalogue: CATALOGUE.map((e) => e.id) };
+window.__scaleViewer = { focus, controls, scene, camera, stage, THREE, animUI, selected, addSpecies: (id) => addSpecies(CATALOGUE.find((e) => e.id === id)), removeSpecies, frameAll, measurements, catalogue: CATALOGUE.map((e) => e.id) };
 document.querySelectorAll('[data-view]').forEach((b) => { b.onclick = () => frameAll(b.dataset.view); });
-$('#anim') && ($('#anim').onchange = () => { window.__animate = $('#anim').checked; });
+$('#animPlay').onclick = () => setPlaying(!animUI.playing);
+$('#animFrame').onclick = () => { if (animUI.species) focus(animUI.species, 'side'); else frameAll('orbit'); };
+$('#animSpecies').onchange = (e) => { animUI.species = e.target.value; fillClips(); };
+$('#animClip').onchange = (e) => { animUI.clip = e.target.value; applyClip(); };
+$('#animSpeed').oninput = (e) => { animUI.speed = +e.target.value; $('#animSpeedVal').textContent = animUI.speed.toFixed(2) + 'x'; for (const s of animatable()) s.anim.mixer.timeScale = animUI.playing ? animUI.speed : 0; };
+$('#animScrub').oninput = (e) => scrubTo(+e.target.value);
 $('#export') && ($('#export').onclick = () => { const txt = JSON.stringify(measurements(), null, 1); navigator.clipboard && navigator.clipboard.writeText(txt).catch(() => {}); $('#out').textContent = txt; });
 
 addCastaway().then(() => frameAll('front'));
 refreshList();
+refreshAnimPanel();
 
 renderer.setAnimationLoop(() => {
+  // the frame time in seconds (capped, so a pause in the tab does not jump the clips)
+  const now = performance.now() / 1000, dt = animUI.last ? Math.min(0.1, now - animUI.last) : 0;
+  animUI.last = now;
+  for (const s of animatable()) s.anim.mixer.update(dt);
+  // the scrubber follows the clip while it plays
+  const cur = animUI.species ? selected.get(animUI.species) : null;
+  if (cur && cur.anim && cur.anim.current && animUI.playing) {
+    const a = cur.anim.current;
+    $('#animScrub').value = String((a.time % a.getClip().duration) / a.getClip().duration);
+  }
   controls.update();
   renderer.render(scene, camera);
   updateLabels();

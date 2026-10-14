@@ -14,6 +14,7 @@ import { buildWater } from './water.js';
 import { initRipples } from './ripples.js';
 import * as RIP from './ripples.js';
 import { cam, updateCamera, flyTo, followCreature, release as releaseCamera } from './camera.js';
+import { detachFish, attachFish } from './school_mind.js';
 import { spawnNear } from './walk.js';
 import { buildFlora } from './flora.js';
 import { buildFlora2, buildSouthSeas, reef } from './flora2.js';
@@ -150,7 +151,7 @@ async function boot() {
   initSurvival();
   initNeedsHud();
 
-  window.__dbg = { events, fx, RIP, falls, THREE, scene, camera, cam, flora, env, volcano, secrets, renderer, composer, bloom, sun, updaters, WORLD, creatures, dolphinPod: seaFauna.dolphinPod, dolphinPods: seaFauna.dolphinPods, audio, WX, lorikeetFlocks: seaFauna.lorikeetFlocks, frigatebirdColony: seaFauna.frigatebirdColony };
+  window.__dbg = { schoolMind: { detachFish, attachFish }, events, fx, RIP, falls, THREE, scene, camera, cam, flora, env, volcano, secrets, renderer, composer, bloom, sun, updaters, WORLD, creatures, dolphinPod: seaFauna.dolphinPod, dolphinPods: seaFauna.dolphinPods, audio, WX, lorikeetFlocks: seaFauna.lorikeetFlocks, frigatebirdColony: seaFauna.frigatebirdColony };
   window.__goto = (p, t) => cam.goto(p, t);
   // review hook: the game's own follow camera on any creature (used to inspect the monkeys in the running game)
   window.__cam = { follow: (c) => followCreature(c), release: releaseCamera };

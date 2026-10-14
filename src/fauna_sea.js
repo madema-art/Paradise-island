@@ -19,7 +19,7 @@ import { makeGullModel, gullModelsReady } from './gull_model.js';
 import { rnd, rr, pick, clamp, lerp, damp, angDiff, smoothstep, burn, mulberry32, TAU } from './util.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeYellowTangModel, yellowTangReady } from './yellow_tang_model.js';
-import { createSchool, updateSchool } from './school_mind.js';
+import { createSchool, updateSchool, SCHOOL_PROFILE } from './school_mind.js';
 
 // the shared school intelligence (school_mind.js) drives the procedural schools. false returns to the earlier per-fish loop below
 export const SCHOOLS_NEW = true;
@@ -952,6 +952,8 @@ function fishGeometry() {
 }
 // the schools' shared fish geometry and material, kept so the field guide can show one real fish
 let fishGeoRef = null, fishMatRef = null;
+// daylight for the fish shimmer (set from the sun each frame; 0 at night, when there is no sunlight to flash)
+const fishSunLit = { value: 1 };
 /** one fish drawn the way a school draws its members: same geometry, material and per-instance colour */
 export function fishSpecimen(hue) {
   if (!fishGeoRef || !fishMatRef) return null;
@@ -976,10 +978,20 @@ function buildFish() {
   mat.customProgramCacheKey = () => 'fish';
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = U.time;
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;')
+    sh.uniforms.uSunDir = U.sunDir;
+    sh.uniforms.uSunLit = fishSunLit;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform vec3 uSunDir;\nuniform float uSunLit;\nvarying float vShimmer;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         float fph = instanceMatrix[3][0]*1.3 + instanceMatrix[3][2]*0.7;
-        transformed.x += sin(uTime*9.0 + fph + position.z*6.0) * 0.12 * smoothstep(0.0, -0.9, position.z);`);
+        transformed.x += sin(uTime*9.0 + fph + position.z*6.0) * 0.12 * smoothstep(0.0, -0.9, position.z);
+        // shimmer: a flank that turns between the sun and the eye catches the light, a broad soft flash that follows the fish's own turns
+        vec3 flankS = normalize(mat3(instanceMatrix) * vec3(1.0, 0.0, 0.0));
+        vec3 wpS = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+        vec3 halfS = normalize(uSunDir + normalize(cameraPosition - wpS));
+        vShimmer = pow(abs(dot(flankS, halfS)), 8.0) * uSunLit;`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vShimmer;')
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        totalEmissiveRadiance += vec3(0.55, 0.68, 0.78) * vShimmer * 0.45;`);
   };
   const schools = [];
   const addSchool = (cx, cz, rx, rz, depth, n, hue, scale, name, spread = 3.2) => {
@@ -1015,18 +1027,21 @@ function buildFish() {
       im.setColorAt(idx, c);
       s.fish.push({ i: idx++, x: s.cx + rr(-6, 6), y: s.depth, z: s.cz + rr(-6, 6), vx: 0, vy: 0, vz: 1, o1: rnd() * TAU, o2: rnd() * TAU, w1: rr(0.15, 0.5) * (rnd() < 0.5 ? -1 : 1), w2: rr(0.2, 0.6), r: rr(0.3, 1) * s.spread, sc: s.scale * rr(0.92, 1.08) });   // individual variation: +-8%, a school of similar fish
     }
-    register({ id: 'school' + s.cx + s.cz, name: s.name, cat: 'Sea life', group: s.dummy, specimen: () => fishSpecimen(s.hue), viewDist: 8, desc: 'A shimmering school moving as one body through the water, bending around the coral heads.', pickR: Math.max(4, s.spread * 1.8), pickY: 0 });
+    // the school's mind is made once its fish are placed; the school is then a creature the camera can follow (framed by its spread)
+    s.mind = createSchool(s.name, s.fish, { cx: s.cx, cz: s.cz, rx: s.rx, rz: s.rz, depth: s.depth });
+    const prof = SCHOOL_PROFILE[s.name] || SCHOOL_PROFILE['Reef fish school'];
+    register({ id: 'school' + s.cx + s.cz, name: s.name, cat: 'Sea life', group: s.dummy, sim: s.mind, specimen: () => fishSpecimen(s.hue), viewDist: Math.max(8, prof.spread * 2.2), desc: 'A shimmering school moving as one body through the water, bending around the coral heads.', pickR: Math.max(4, s.spread * 1.8), pickY: 0 });
     fauna.add(s.dummy);
   }
   im.instanceColor.needsUpdate = true;
   scene.add(im);
-  for (const s of schools) s.mind = createSchool(s.name, s.fish, { cx: s.cx, cz: s.cz, rx: s.rx, rz: s.rz, depth: s.depth });
   updaters.push((dt, t) => {
     if (SCHOOLS_NEW) {
       const cas = creatures.find((c) => c.id === 'castaway');
       const dist = [{ x: camera.position.x, y: camera.position.y, z: camera.position.z, r: 0 }];
       if (cas && cas.group) dist.push({ x: cas.group.position.x, y: cas.group.position.y, z: cas.group.position.z, r: 0 });
       for (const s of schools) { updateSchool(s.mind, { dt, t, disturbers: dist }, im); s.dummy.position.set(s.mind.cx, s.mind.cy, s.mind.cz); }
+      fishSunLit.value = env.day;
       im.instanceMatrix.needsUpdate = true;
       return;
     }
@@ -1066,10 +1081,6 @@ function buildFish() {
 
 /* Orange anthias: a shoal with its own slender body and forked tail. It feeds up in the water above the reef, drifts as one with
    alignment and spacing, and scatters when the castaway or a reef shark comes close, then re-forms. */
-const ANTHIAS_STATE = {
-  feed: 'Feeding up in the water above the reef', cruise: 'Drifting along the reef as one shoal',
-  startled: 'Scattered, startled by something close',
-};
 function anthiasGeometry() {
   const mb = new MB();
   const body = new THREE.IcosahedronGeometry(1, 1);
@@ -1086,98 +1097,42 @@ function anthiasGeometry() {
 }
 function buildAnthiasSchool() {
   const geo = anthiasGeometry();
-  // wildlife size: the orange anthias (Pseudanthias squamipinnis) is 0.15 m total length (FishBase maximum), x 1.5 = 0.225 m. The shoal's
-  // distances and speeds were tuned for the old fish (about 1.2 m long), so they scale by the same factor kA (body lengths stay the same).
+  // wildlife size: the orange anthias (Pseudanthias squamipinnis) is 0.15 m total length (FishBase maximum), x 1.5 = 0.225 m. The fish are
+  // drawn at their own length (the geometry's length along Z), so the school's spacing and speeds come from its profile (school_mind.js).
   geo.computeBoundingBox();
   const anthiasLen = geo.boundingBox.max.z - geo.boundingBox.min.z;
-  const kA = 0.225 / (anthiasLen * 1.1);     // the old fish were drawn at sc x 1.1; the new ones at (0.225 / anthiasLen) per unit of sc
-  const n = 34, cx0 = COVE.x + 18, cz0 = COVE.z + 34;
+  const n = 34, home = { x: COVE.x + 18, z: COVE.z + 34 };
+  // the school has its own generator. The shared stream spends the same 273 draws the earlier builder used, so every later
+  // placement in the world stays where it was
+  burn(273);
+  const ar = mulberry32(90417);
   const im = new THREE.InstancedMesh(geo, fishMatRef, n);
   im.frustumCulled = false; im.castShadow = false;
-  const group = new THREE.Group(); group.position.set(cx0, -1.6, cz0); fauna.add(group);
-  const sim = { state: 'cruise', count: n, panic: 0, threat: null, feeding: false, feedT: rr(18, 30), c: new THREE.Vector3(cx0, -1.6, cz0), fish: [] };
+  const group = new THREE.Group(); group.position.set(home.x, -1.6, home.z); fauna.add(group);
   const base = new THREE.Color('#ff8a2e'), pink = new THREE.Color('#ff6f8f');
+  const fish = [];
   for (let i = 0; i < n; i++) {
-    im.setColorAt(i, base.clone().lerp(pink, rnd() * 0.5).multiplyScalar(rr(0.9, 1.08)));
-    sim.fish.push({ i, x: cx0 + rr(-6, 6), y: -1.6 + rr(-0.4, 0.4), z: cz0 + rr(-6, 6), vx: 0, vy: 0, vz: 0, sc: rr(0.95, 1.12) * kA, ph: rnd() * TAU, speedK: rr(0.85, 1.15) });
+    im.setColorAt(i, base.clone().lerp(pink, ar() * 0.5).multiplyScalar(0.9 + 0.18 * ar()));
+    fish.push({ i, x: home.x + (ar() * 12 - 6), y: -1.6 + (ar() * 0.8 - 0.4), z: home.z + (ar() * 12 - 6), vx: 0, vy: 0, vz: 0, sc: (0.95 + 0.17 * ar()) * 0.225 / anthiasLen, speedK: 0.85 + 0.3 * ar() });
   }
   im.instanceColor.needsUpdate = true;
   scene.add(im);
-  register({ id: 'school-anthias', name: 'Orange anthias school', cat: 'Sea life', group, sim,
+  // the shoal's mind: it drifts over the reef, hovers above the coral heads to feed, and bursts away from the castaway or a reef shark
+  const mind = createSchool('Orange anthias school', fish, { cx: home.x, cz: home.z, rx: 10, rz: 7, depth: -2.1 }, ar);
+  register({ id: 'school-anthias', name: 'Orange anthias school', cat: 'Sea life', group, sim: mind,
     specimen: () => new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, color: 0xff8a2e, roughness: 0.4, metalness: 0.2, side: THREE.DoubleSide })),
     viewDist: 8, desc: 'A slender orange-pink anthias shoal. It feeds up in the water above the reef, drifts as one, and scatters when something comes close.', pickR: 6, pickY: -1.6 });
-  const _pred = new THREE.Vector3();
+  const threats = [], _threatP = new THREE.Vector3();
   updaters.push((dt, t) => {
-    // the castaway and reef sharks within nine metres of the shoal startle it
-    let threat = null, td = 1e9;
+    threats.length = 0;
     for (const c of creatures) {
       if (!c.group || (c.id !== 'castaway' && c.name !== 'Blackfin reef shark')) continue;
-      c.group.getWorldPosition(_pred);
-      const d = Math.hypot(_pred.x - sim.c.x, _pred.z - sim.c.z);
-      if (d < 9 && d < td) { td = d; threat = _pred.clone(); }
+      const p = c.group.getWorldPosition(_threatP);
+      threats.push({ x: p.x, y: p.y, z: p.z, r: 0 });
     }
-    if (threat) {
-      // the first moment something comes close, the whole shoal bursts away from it
-      if (sim.panic <= 0) for (const f of sim.fish) {
-        const ex = f.x - threat.x, ez = f.z - threat.z, ed = Math.hypot(ex, ez) + 1e-3;
-        f.vx += ex / ed * 3.5 + rr(-1.5, 1.5); f.vz += ez / ed * 3.5 + rr(-1.5, 1.5); f.vy += rr(-0.6, 0.6);
-      }
-      sim.panic = 3.5; sim.threat = threat;
-    } else sim.panic = Math.max(0, sim.panic - dt);
-    sim.feedT -= dt;
-    if (sim.feedT <= 0) { sim.feeding = !sim.feeding; sim.feedT = sim.feeding ? rr(12, 20) : rr(18, 30); }
-    const feedingNow = sim.feeding && sim.panic <= 0;
-    // the shoal's centre drifts over the reef and rises into the water column to feed
-    const pathT = t * 0.035;
-    sim.c.x += (COVE.x + 18 + Math.cos(pathT) * 10 - sim.c.x) * Math.min(1, dt * 1.2);
-    sim.c.z += (COVE.z + 34 + Math.sin(pathT * 0.8) * 7 - sim.c.z) * Math.min(1, dt * 1.2);
-    sim.c.y = damp(sim.c.y, feedingNow ? -1.0 : -2.1, 0.8, dt);
-    const cruise = (sim.panic > 0 ? 4.0 : feedingNow ? 0.8 : 1.5) * kA;
-    for (const f of sim.fish) {
-      let alx = 0, aly = 0, alz = 0, sepX = 0, sepY = 0, sepZ = 0, nb = 0;
-      for (const o of sim.fish) {
-        if (o === f) continue;
-        const dx = o.x - f.x, dy = o.y - f.y, dz = o.z - f.z, d2 = dx * dx + dy * dy + dz * dz;
-        if (d2 < 16 * kA * kA) { alx += o.vx; aly += o.vy; alz += o.vz; nb++; }
-        if (d2 < 1.3 * kA * kA && d2 > 1e-4) { sepX -= dx / d2; sepY -= dy / d2; sepZ -= dz / d2; }
-      }
-      let ax = 0, ay = 0, az = 0;
-      if (nb) { ax += (alx / nb - f.vx) * 0.7; ay += (aly / nb - f.vy) * 0.7; az += (alz / nb - f.vz) * 0.7; }
-      // stay with the shoal's centre, more loosely while startled
-      const dx = sim.c.x - f.x, dy = sim.c.y - f.y, dz = sim.c.z - f.z, dist = Math.hypot(dx, dy, dz) + 1e-3;
-      const pull = clamp((dist - 2.5 * kA) * (sim.panic > 0 ? 0.04 : 0.22), -0.3, 1.0);
-      ax += dx / dist * pull; ay += dy / dist * pull * 0.6; az += dz / dist * pull;
-      ax += sepX * 1.1; ay += sepY * 1.4; az += sepZ * 1.1;
-      if (sim.panic > 0 && sim.threat) {
-        const ex = f.x - sim.threat.x, ez = f.z - sim.threat.z, ed = Math.hypot(ex, ez) + 1e-3;
-        const push = 5.0 * clamp(1 - ed / 18, 0.2, 1);
-        ax += ex / ed * push; az += ez / ed * push; ay += 0.3;
-      }
-      // each fish wanders a little on its own
-      ax += Math.sin(t * 0.9 + f.ph) * 0.25; az += Math.cos(t * 0.7 + f.ph) * 0.25; ay += Math.sin(t * 0.5 + f.ph * 1.3) * 0.15;
-      f.vx += ax * dt; f.vy += ay * dt; f.vz += az * dt;
-      const k = Math.exp(-1.2 * dt);
-      f.vx *= k; f.vy *= k; f.vz *= k;
-      const max = cruise * f.speedK, sp = Math.hypot(f.vx, f.vy, f.vz);
-      if (sp > max) { f.vx *= max / sp; f.vy *= max / sp; f.vz *= max / sp; }
-      f.x += f.vx * dt; f.y += f.vy * dt; f.z += f.vz * dt;
-      // keep the body in the water column, away from the sand and the surface
-      const g = getHeight(f.x, f.z), top = -0.55, bottom = g + 0.6;
-      if (f.y < bottom) { f.y = bottom; f.vy = Math.abs(f.vy) * 0.5; }
-      if (f.y > top) { f.y = top; f.vy = -Math.abs(f.vy) * 0.5; }
-      if (-g < 1.6) {
-        const gx = getHeight(f.x + 2, f.z) - getHeight(f.x - 2, f.z), gz = getHeight(f.x, f.z + 2) - getHeight(f.x, f.z - 2);
-        f.vx -= gx * 4 * dt; f.vz -= gz * 4 * dt;
-      }
-      const yaw = Math.atan2(f.vx, f.vz), pit = -Math.asin(clamp(f.vy / (Math.hypot(f.vx, f.vy, f.vz) + 1e-4), -1, 1)) * 0.8;
-      _e.set(pit, yaw, 0, 'YXZ'); _q.setFromEuler(_e);
-      const shown = -g > 1.2 ? f.sc * 1.1 : 0.0001;
-      _m.compose(_p.set(f.x, f.y, f.z), _q, _s.setScalar(shown));
-      im.setMatrixAt(f.i, _m);
-    }
+    updateSchool(mind, { dt, t, disturbers: threats }, im);
+    group.position.set(mind.cx, mind.cy, mind.cz);
     im.instanceMatrix.needsUpdate = true;
-    group.position.copy(sim.c);
-    sim.state = sim.panic > 0 ? 'startled' : feedingNow ? 'feed' : 'cruise';
   });
 }
 
