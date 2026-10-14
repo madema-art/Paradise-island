@@ -456,7 +456,7 @@ export function updateCamera(dt) {
       if (shoal) {
         // a school: the distance eases to frame the shoal, and the dolly sets how close to it the view sits
         F.zoom = clamp((F.zoom ?? 1) * Math.exp(dolly * dt), 0.35, 3);
-        F.dist += (clamp(vd * 2.0 + 3, 5, 90) * F.zoom - F.dist) * k1(1.2, dt);
+        F.dist += (clamp(vd * 1.4 + 2.5, 4, 60) * F.zoom - F.dist) * k1(1.2, dt);
       } else F.dist = clamp(F.dist * Math.exp(dolly * dt), Math.max(1.2, vd * 0.3), 140);
       const cp = Math.cos(F.pitch), ty = p.y + Math.min(0.5, vd * 0.08);
       _v.set(p.x + Math.sin(F.yaw) * cp * F.dist, ty + Math.sin(F.pitch) * F.dist, p.z + Math.cos(F.yaw) * cp * F.dist);
