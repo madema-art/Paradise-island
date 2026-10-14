@@ -1,0 +1,277 @@
+{
+  "schema": "paradise-island.island-notes/2",
+  "revision": 19,
+  "updated": "2026-10-14T13:41:24.449Z",
+  "notes": [
+    {
+      "id": "nmv6qtgrx97686c",
+      "subject": {
+        "kind": "object",
+        "id": "obj:palm:15.1,66.5",
+        "label": "Coconut palm",
+        "category": "Trees",
+        "pos": [
+          15.07,
+          3.35,
+          66.49
+        ],
+        "classId": "class:palm"
+      },
+      "status": "done",
+      "text": "Palm fronds look too uniform and the trunk rings are too regular; vary the frond length and add a lean.",
+      "blocker": "",
+      "resolution": "makePalm (src/flora.js): each frond now has its own length (some short, some long), droop, leaflet width and azimuth jitter; the trunk leans harder (per-palm lean strength) with an S-bend, uneven ring spacing, random ring colours and radius jitter. All new variation uses a local seeded generator so world placement and object ids are unchanged. Built and checked in the game.",
+      "created": "2026-10-13T13:55:04.365Z",
+      "updated": "2026-10-13T18:27:08.268Z",
+      "history": [
+        {
+          "at": "2026-10-13T14:09:21.302Z",
+          "from": "open",
+          "to": "done"
+        },
+        {
+          "at": "2026-10-13T14:09:46.838Z",
+          "from": "done",
+          "to": "open"
+        },
+        {
+          "at": "2026-10-13T18:27:08.268Z",
+          "from": "open",
+          "to": "done"
+        }
+      ]
+    },
+    {
+      "id": "nmv6qy0ay8d239e",
+      "subject": {
+        "kind": "object",
+        "id": "obj:stream",
+        "label": "Stream",
+        "category": "Water",
+        "pos": [
+          -70.32,
+          30.13,
+          11.75
+        ],
+        "classId": "class:stream"
+      },
+      "status": "done",
+      "text": "This water is flowing in the wrong direction: it should run downhill from the cliff lip to the pool.",
+      "blocker": "",
+      "resolution": "Root cause: the stream shader scrolled its pattern by flow*time, which shears without limit wherever a stream speeds up or slows, so after a few minutes the water crawled upstream. Replaced with a two-phase flow map plus bright streaks that slide downstream. Verified by measuring pattern motion: it now moves along the flow in the streams and downward on the falls.",
+      "created": "2026-10-13T13:58:36.298Z",
+      "updated": "2026-10-13T20:38:56.503Z",
+      "history": [
+        {
+          "at": "2026-10-13T20:38:56.503Z",
+          "from": "open",
+          "to": "done"
+        }
+      ]
+    },
+    {
+      "id": "nmv6r08s7cbbac4",
+      "subject": {
+        "kind": "creature",
+        "id": "creature:offshore-pod-2-dolphin5",
+        "label": "Bottlenose dolphin (offshore-pod-2-dolphin5)",
+        "category": "Sea life",
+        "speciesId": "Bottlenose dolphin"
+      },
+      "status": "done",
+      "text": "make more porpoising and arcing breaches, with smooth parabolic flight trajectories, realistic body rotation, and seamless nose-first water reentry.",
+      "blocker": "",
+      "resolution": "Dolphin leaps rewritten (Dolphin.launch/update in src/fauna_sea.js). Full breaches are now clean ballistic arcs (take-off climb 7.4-9.6 m/s) and the body follows its velocity, so it leaves the water nose-up, levels at the top and re-enters nose-first (the old pitch sign tipped the nose down while rising). About a third add a full twist about the long axis. New porpoising: every 40-80 s the leader starts a run of 3-6 fast, low arcs that the pod takes up one beat apart. Checked over a simulated day: about 470 low arcs and 46 breaches, no errors; checked the take-off pose in a rendered frame.",
+      "created": "2026-10-13T14:00:20.599Z",
+      "updated": "2026-10-14T13:41:24.449Z",
+      "history": [
+        {
+          "at": "2026-10-14T13:41:24.449Z",
+          "from": "open",
+          "to": "done"
+        }
+      ]
+    },
+    {
+      "id": "nmv6r5jo2bc2388",
+      "subject": {
+        "kind": "location",
+        "id": "loc:-75,-140",
+        "label": "Area around Lagoon",
+        "category": "Water",
+        "pos": [
+          -73.88,
+          0.23,
+          -139.06
+        ],
+        "radius": 10
+      },
+      "status": "open",
+      "text": "Still water near the reef: a good place for a canoe or a fishing spot.",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T14:04:27.986Z",
+      "updated": "2026-10-13T14:04:27.986Z",
+      "history": []
+    },
+    {
+      "id": "nmv6yi4u3abc269",
+      "subject": {
+        "kind": "object",
+        "id": "obj:dock",
+        "label": "Jetty",
+        "category": "Structures",
+        "pos": [
+          10.53,
+          -0.3,
+          123.31
+        ],
+        "classId": "class:dock"
+      },
+      "status": "open",
+      "text": "remove this structure",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T17:30:12.603Z",
+      "updated": "2026-10-13T17:30:12.603Z",
+      "history": []
+    },
+    {
+      "id": "nmv75t0fe56579b",
+      "subject": {
+        "kind": "creature",
+        "id": "creature:eagle0",
+        "label": "Sea eagle (eagle0)",
+        "category": "Birds",
+        "speciesId": "Sea eagle"
+      },
+      "status": "open",
+      "text": "i watched him fly for a full 24 hrs and it never dove",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T20:54:37.418Z",
+      "updated": "2026-10-13T20:54:37.418Z",
+      "history": []
+    },
+    {
+      "id": "nmv84ktcsf143cc",
+      "subject": {
+        "kind": "object",
+        "id": "obj:lake",
+        "label": "Mirror Lake",
+        "category": "Water",
+        "pos": [
+          -87.8,
+          30.62,
+          -23.8
+        ],
+        "classId": "class:lake"
+      },
+      "status": "open",
+      "text": "the edge of mirror lake shouldnt overhang the plateut also make it look more like a lake, less like a perfect circle",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-14T13:08:01.564Z",
+      "updated": "2026-10-14T13:08:01.564Z",
+      "history": []
+    },
+    {
+      "id": "nmv84mcvt2e1356",
+      "subject": {
+        "kind": "location",
+        "id": "loc:40,-55",
+        "label": "Area around Volcano slopes",
+        "category": "Terrain",
+        "pos": [
+          41.88,
+          86.23,
+          -57.22
+        ],
+        "radius": 10
+      },
+      "status": "open",
+      "text": "i dont want to see any active magma/lava on the side of the mountian. also, the climb to the top should be all natural rock climb. no rope or man-made grips and footholds",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-14T13:09:13.529Z",
+      "updated": "2026-10-14T13:09:13.529Z",
+      "history": []
+    },
+    {
+      "id": "nmv8523eif5023b",
+      "subject": {
+        "kind": "object",
+        "id": "obj:naupaka:-130.5,-47.8",
+        "label": "Naupaka",
+        "category": "Foliage",
+        "pos": [
+          -130.47,
+          1.31,
+          -47.77
+        ],
+        "classId": "class:naupaka"
+      },
+      "status": "open",
+      "text": "the naupaka design needs a major upgrade. its too low poly right now",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-14T13:21:27.738Z",
+      "updated": "2026-10-14T13:21:27.738Z",
+      "history": []
+    },
+    {
+      "id": "nmv852s1md2b6ee",
+      "subject": {
+        "kind": "class",
+        "id": "class:naupaka",
+        "label": "Naupaka",
+        "category": "Foliage"
+      },
+      "status": "open",
+      "text": "same not applies to all naupaka. currently too low poly. needs redesign/upgrade",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-14T13:21:59.674Z",
+      "updated": "2026-10-14T13:21:59.674Z",
+      "history": []
+    },
+    {
+      "id": "nmv8577nnae9eea",
+      "subject": {
+        "kind": "object",
+        "id": "obj:wreck",
+        "label": "Galleon wreck",
+        "category": "Structures",
+        "pos": [
+          56,
+          3,
+          134
+        ],
+        "classId": "class:wreck"
+      },
+      "status": "open",
+      "text": "this is the original boat design. needs a redesign to look much more realistic. i want it to look like a 400 year old pirate shipwreck. sails would not still be intact",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-14T13:25:26.531Z",
+      "updated": "2026-10-14T13:25:26.531Z",
+      "history": []
+    },
+    {
+      "id": "nmv85r831d72aec",
+      "subject": {
+        "kind": "class",
+        "id": "class:rock",
+        "label": "Boulder",
+        "category": "Rocks"
+      },
+      "status": "open",
+      "text": "boulders need an update. they are currently too low poly. add more size and shape variety. and allow for the castaway, monkeys and birds to be on top of them",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-14T13:41:00.205Z",
+      "updated": "2026-10-14T13:41:00.205Z",
+      "history": []
+    }
+  ]
+}

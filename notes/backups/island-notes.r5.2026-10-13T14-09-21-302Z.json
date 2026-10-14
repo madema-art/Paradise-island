@@ -1,0 +1,104 @@
+{
+  "schema": "paradise-island.island-notes/1",
+  "revision": 5,
+  "updated": "2026-10-13T14:04:27.986Z",
+  "notes": [
+    {
+      "id": "nmv6qtgrx97686c",
+      "subject": {
+        "kind": "object",
+        "id": "obj:palm:15.1,66.5",
+        "label": "Coconut palm",
+        "category": "Trees",
+        "pos": [
+          15.07,
+          3.35,
+          66.49
+        ],
+        "classId": "class:palm"
+      },
+      "type": "visual",
+      "priority": 1,
+      "status": "in-progress",
+      "text": "Palm fronds look too uniform and the trunk rings are too regular; vary the frond length and add a lean.",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T13:55:04.365Z",
+      "updated": "2026-10-13T13:57:03.319Z",
+      "history": [
+        {
+          "at": "2026-10-13T13:57:03.319Z",
+          "from": "ready",
+          "to": "in-progress"
+        }
+      ]
+    },
+    {
+      "id": "nmv6qy0ay8d239e",
+      "subject": {
+        "kind": "object",
+        "id": "obj:stream",
+        "label": "Stream",
+        "category": "Water",
+        "pos": [
+          -70.32,
+          30.13,
+          11.75
+        ],
+        "classId": "class:stream"
+      },
+      "type": "bug",
+      "priority": 2,
+      "status": "idea",
+      "text": "This water is flowing in the wrong direction: it should run downhill from the cliff lip to the pool.",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T13:58:36.298Z",
+      "updated": "2026-10-13T13:58:36.298Z",
+      "history": []
+    },
+    {
+      "id": "nmv6r08s7cbbac4",
+      "subject": {
+        "kind": "creature",
+        "id": "creature:offshore-pod-2-dolphin5",
+        "label": "Bottlenose dolphin (offshore-pod-2-dolphin5)",
+        "category": "Sea life",
+        "speciesId": "Bottlenose dolphin"
+      },
+      "type": "observation",
+      "priority": 2,
+      "status": "idea",
+      "text": "This calf swims too close to its mother while travelling; give calves a little more room.",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T14:00:20.599Z",
+      "updated": "2026-10-13T14:00:20.599Z",
+      "history": []
+    },
+    {
+      "id": "nmv6r5jo2bc2388",
+      "subject": {
+        "kind": "location",
+        "id": "loc:-75,-140",
+        "label": "Area around Lagoon",
+        "category": "Water",
+        "pos": [
+          -73.88,
+          0.23,
+          -139.06
+        ],
+        "radius": 10
+      },
+      "type": "observation",
+      "priority": 2,
+      "status": "idea",
+      "text": "Still water near the reef: a good place for a canoe or a fishing spot.",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T14:04:27.986Z",
+      "updated": "2026-10-13T14:04:27.986Z",
+      "history": []
+    }
+  ]
+}

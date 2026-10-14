@@ -1,0 +1,75 @@
+{
+  "vertices": 4098,
+  "polygons": 2926,
+  "bones": 39,
+  "clips": [
+    {
+      "name": "Flight_Soar",
+      "seconds": 4
+    },
+    {
+      "name": "Flight_Glide",
+      "seconds": 3
+    },
+    {
+      "name": "Flight_DeepFlaps",
+      "seconds": 1.1
+    },
+    {
+      "name": "Flight_BankLeft",
+      "seconds": 2
+    },
+    {
+      "name": "Flight_BankRight",
+      "seconds": 2
+    },
+    {
+      "name": "Feed_SurfaceSnatch",
+      "seconds": 1.6
+    },
+    {
+      "name": "Flight_Recovery",
+      "seconds": 2.2
+    },
+    {
+      "name": "Perch_Takeoff",
+      "seconds": 2.2
+    },
+    {
+      "name": "Perch_Landing",
+      "seconds": 2.4
+    },
+    {
+      "name": "Perch_Idle",
+      "seconds": 4
+    },
+    {
+      "name": "Perch_Alert",
+      "seconds": 3
+    },
+    {
+      "name": "Perch_Preen",
+      "seconds": 4
+    },
+    {
+      "name": "Perch_WingSettle",
+      "seconds": 2
+    },
+    {
+      "name": "Male_PouchInflate",
+      "seconds": 3
+    },
+    {
+      "name": "Male_Courtship",
+      "seconds": 4
+    }
+  ],
+  "variants": [
+    "male",
+    "female",
+    "juvenile"
+  ],
+  "spanMetres": 2.2,
+  "lengthMetres": 1.12,
+  "materials": 1
+}

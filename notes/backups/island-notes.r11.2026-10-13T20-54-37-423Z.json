@@ -1,0 +1,149 @@
+{
+  "schema": "paradise-island.island-notes/1",
+  "revision": 11,
+  "updated": "2026-10-13T20:38:56.504Z",
+  "notes": [
+    {
+      "id": "nmv6qtgrx97686c",
+      "subject": {
+        "kind": "object",
+        "id": "obj:palm:15.1,66.5",
+        "label": "Coconut palm",
+        "category": "Trees",
+        "pos": [
+          15.07,
+          3.35,
+          66.49
+        ],
+        "classId": "class:palm"
+      },
+      "type": "visual",
+      "priority": 1,
+      "status": "completed",
+      "text": "Palm fronds look too uniform and the trunk rings are too regular; vary the frond length and add a lean.",
+      "blocker": "",
+      "resolution": "makePalm (src/flora.js): each frond now has its own length (some short, some long), droop, leaflet width and azimuth jitter; the trunk leans harder (per-palm lean strength) with an S-bend, uneven ring spacing, random ring colours and radius jitter. All new variation uses a local seeded generator so world placement and object ids are unchanged. Built and checked in the game.",
+      "created": "2026-10-13T13:55:04.365Z",
+      "updated": "2026-10-13T18:27:08.268Z",
+      "history": [
+        {
+          "at": "2026-10-13T13:57:03.319Z",
+          "from": "ready",
+          "to": "in-progress"
+        },
+        {
+          "at": "2026-10-13T14:09:21.302Z",
+          "from": "in-progress",
+          "to": "completed"
+        },
+        {
+          "at": "2026-10-13T14:09:46.838Z",
+          "from": "completed",
+          "to": "in-progress"
+        },
+        {
+          "at": "2026-10-13T18:27:08.268Z",
+          "from": "in-progress",
+          "to": "completed"
+        }
+      ]
+    },
+    {
+      "id": "nmv6qy0ay8d239e",
+      "subject": {
+        "kind": "object",
+        "id": "obj:stream",
+        "label": "Stream",
+        "category": "Water",
+        "pos": [
+          -70.32,
+          30.13,
+          11.75
+        ],
+        "classId": "class:stream"
+      },
+      "type": "bug",
+      "priority": 2,
+      "status": "completed",
+      "text": "This water is flowing in the wrong direction: it should run downhill from the cliff lip to the pool.",
+      "blocker": "",
+      "resolution": "Root cause: the stream shader scrolled its pattern by flow*time, which shears without limit wherever a stream speeds up or slows, so after a few minutes the water crawled upstream. Replaced with a two-phase flow map plus bright streaks that slide downstream. Verified by measuring pattern motion: it now moves along the flow in the streams and downward on the falls.",
+      "created": "2026-10-13T13:58:36.298Z",
+      "updated": "2026-10-13T20:38:56.503Z",
+      "history": [
+        {
+          "at": "2026-10-13T20:38:56.503Z",
+          "from": "idea",
+          "to": "completed"
+        }
+      ]
+    },
+    {
+      "id": "nmv6r08s7cbbac4",
+      "subject": {
+        "kind": "creature",
+        "id": "creature:offshore-pod-2-dolphin5",
+        "label": "Bottlenose dolphin (offshore-pod-2-dolphin5)",
+        "category": "Sea life",
+        "speciesId": "Bottlenose dolphin"
+      },
+      "type": "observation",
+      "priority": 2,
+      "status": "idea",
+      "text": "make more porpoising and arcing breaches, with smooth parabolic flight trajectories, realistic body rotation, and seamless nose-first water reentry.",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T14:00:20.599Z",
+      "updated": "2026-10-13T17:26:12.984Z",
+      "history": []
+    },
+    {
+      "id": "nmv6r5jo2bc2388",
+      "subject": {
+        "kind": "location",
+        "id": "loc:-75,-140",
+        "label": "Area around Lagoon",
+        "category": "Water",
+        "pos": [
+          -73.88,
+          0.23,
+          -139.06
+        ],
+        "radius": 10
+      },
+      "type": "observation",
+      "priority": 2,
+      "status": "idea",
+      "text": "Still water near the reef: a good place for a canoe or a fishing spot.",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T14:04:27.986Z",
+      "updated": "2026-10-13T14:04:27.986Z",
+      "history": []
+    },
+    {
+      "id": "nmv6yi4u3abc269",
+      "subject": {
+        "kind": "object",
+        "id": "obj:dock",
+        "label": "Jetty",
+        "category": "Structures",
+        "pos": [
+          10.53,
+          -0.3,
+          123.31
+        ],
+        "classId": "class:dock"
+      },
+      "type": "observation",
+      "priority": 2,
+      "status": "idea",
+      "text": "remove this structure",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-13T17:30:12.603Z",
+      "updated": "2026-10-13T17:30:12.603Z",
+      "history": []
+    }
+  ]
+}

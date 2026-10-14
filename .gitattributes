@@ -1,0 +1,2 @@
+# store every file exactly as it is on disk: the project mixes CRLF and LF, and each file keeps its own endings
+* -text

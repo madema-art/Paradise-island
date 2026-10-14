@@ -1,0 +1,15 @@
+# dependencies and build output (rebuild with: npm run build)
+node_modules/
+dist/
+music/playlist.js
+
+# Blender autosave backups
+*.blend1
+*.blend2
+
+# logs, editor and OS junk
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+.claude/settings.local.json

@@ -1,0 +1,61 @@
+# Paradise Island — project guidance for Claude Code
+
+Paradise Island is a Three.js tropical island wildlife simulation. Source is in `src/` (ES modules, bundled by esbuild).
+`index.html` holds the interface markup and styles. `dist/island.js` is the built bundle the page loads.
+
+## Running and building
+
+- Build: `npm run build` (writes `dist/island.js`). The page loads the bundle, so rebuild after editing `src/`.
+- Run: `node serve.mjs 5173` from this folder, or use the `Open Paradise Island.bat` launcher. The server also
+  provides the Island Notes API (below). Use only one server per project; a second copy of the project would split the notes.
+- Preview: the `island` launch configuration in `.claude/launch.json` serves this folder on port 5173.
+- Line endings: keep each file's existing line endings (many source files are CRLF).
+
+## Island Notes (read this first, every session)
+
+The owner keeps a development notebook in `notes/`: observations, bugs and wishes, written in the game. **Every note is a request.**
+There are no ideas, priorities or approval steps: the owner always wants their notes implemented. A note is either **open**
+(to be implemented) or **done**. The summary is `notes/ISLAND_NOTES.md` (regenerated on every save); the full store is
+`notes/island-notes.json`; the format and API are in `notes/README.md`.
+
+**At the start of every development session:**
+
+1. Read `notes/ISLAND_NOTES.md`. Notes arrive while you work, so read the store again before you finish.
+2. List the open notes.
+
+**On every development task:**
+
+- Do the owner's main request, **and implement every open note**. When there is no main request, the open notes are the task.
+  Do not wait to be told which ones; do not skip any because they look small, vague or large.
+- A note may be vague or may duplicate another (the owner can enter one twice): do the sensible reading, resolve every copy, and say what you chose.
+- A note is **done** only after its change is implemented **and verified**: built, and checked in the game where it is visible (render it,
+  or measure it). Write what was done, and how it was checked, in `resolution`.
+- If a note truly cannot be finished (it needs a file you do not have, or a decision that is the owner's alone), leave it **open**, write why in
+  `blocker`, and say so in your final summary. Do not guess at a design that was supposed to come from elsewhere (a Codex asset, a reference
+  image): look for it first (`Documents/Codex/...`), and if it is not there, ask.
+- Never delete a note. Never silently overwrite one.
+- Do not break existing behaviour to satisfy a note, and do not use the notebook as a reason for unrelated rewrites.
+- Finish by summarising which notes you completed and which remain open.
+
+**Changing a note:** when the game server is running, use the API (it checks for conflicting edits; example in `notes/README.md`).
+If the server is not running, edit `notes/island-notes.json` carefully: read the latest file, change only the note in question, keep every
+other field, keep the file valid JSON, and set `"status": "done"` (the server also migrates files from the old six-status system).
+
+## Architecture notes
+
+- World generation is seeded (`src/util.js`, mulberry32). Placement is deterministic, so object ids (`obj:<kind>:<x>,<z>`)
+  are stable across reloads. Keep it that way: do not add unseeded randomness to placement.
+- Inspectable objects are tagged where they are built: `tagInstanced` / `tagObject` (`src/inspect.js`), with
+  catalogue entries in `src/catalog.js`. A new kind of object needs a catalogue entry.
+- Creatures register themselves with `register()` (`src/fauna_common.js`). Their `sim` field is the live simulation object
+  the Field Guide reads.
+- The Field Guide and inspection specimen viewer (`src/specimen.js`) use their own WebGL context; they do not change the main camera.
+- Notes are read and written through `src/notes.js`; the server side is in `serve.mjs`.
+- The world's random stream is shared and seeded (`rnd`, `rr`, `pick` in `src/util.js`), and **placement depends on how many numbers each builder
+  draws from it**. When you replace a builder (a wreck, a shrub, a rock shape), give the new one its own generator (`mulberry32`) and call
+  `burn(n)` for the draws the old one used, so nothing built after it moves. Measure `n` by counting draws around the old code first.
+- Boulder crowns that can be climbed are registered as perches (`addPerch` / `perchesNear` in `src/world.js`, filled by `src/flora.js` from the shapes in `src/rocks.js`).
+  The castaway (linger), monkeys and gulls use them.
+- The castaway's mind (`src/castaway_mind.js`) keeps food, energy and happiness (water is a drinking habit, not a need) and plans ahead; `src/human.js` runs the activities and `src/needs_hud.js`
+  shows the meters. Boars and monkeys react to him through `nearestPerson` in `src/fauna_common.js`.
+- Models made outside the project (Codex) live in `assets/` as GLB with a loader in `src/<name>_model.js`; their Blender sources are in `blender/`.
