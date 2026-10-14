@@ -146,3 +146,36 @@ newborn 1.1 kg (animal park fact sheet), adult size ranges (wildlifeonline.me.uk
 Weak check: the Large White domestic piglet growth study (20 weeks, 18.4 kg) gives the same order of mass.
 
 Not yet validated: every other species (about 25). They stay exactly as they were.
+
+---
+
+## Verified source measurements (viewer and game, rest pose, root-local frame)
+
+Method: the viewer (dev/scale_viewer.html) builds each factory model, measures its geometry at unit root scale in its local frame
+(the frame the game sizes in), applies target / (sourceM x root scale on the axis) once, and reports the scaled result. The game uses
+the same formula at registration (src/wildlife_size.js). "Game check" = group factor x root scale x sourceM, read in the running game.
+
+| Species | Axis | sourceM (m, unit root) | Root scale | Target (m) | Game check (m) | Notes |
+|---|---|---|---|---|---|---|
+| Wild boar | y (standing, mane/ears excluded) | 1.0047 | 1.00-1.04 | 1.20 | 1.18 (variety 0.985) | GLB rest pose |
+| Boar piglet | y | 1.0047 | 0.99 | 0.66 (estimate) | 0.66 (variety) | ESTIMATE: 0.44 m x 1.5 |
+| Pacific boa | z (extended) | 1.3415 | 1.00 | 3.00 (exception) | 2.95 | GLB rest pose, straight |
+| Barn owl | x (wingspan) | 0.961 | 1.00 | 1.43 | 1.42 | body too long in model (open note) |
+| Island rat | max | 0.3639 | 1.00 | 0.36 | 0.36 (variety) | |
+| Greater flamingo | y | 1.5937 | 1.00 | 1.95 | 1.94 | |
+| White tern | z | 0.5738 | 1.25 | 0.45 | 0.45 | |
+| Silver gull | z | 0.928 | 1.00 | 0.645 | 0.645 | |
+| Rainbow lorikeet | z | 0.247 | 1.00 | 0.42 | 0.42 | wingspan not resolved |
+| Great frigatebird | z | 1.1206 | 1.00 | 1.43 | 1.39 | male factor for all sexes |
+| White-bellied sea eagle | z | 1.003 | 1.00 | 1.20 | 1.20 | |
+| Red beach crab | x (carapace mesh) | 0.8282 | 0.47-0.65 | 0.09 | 0.088 | |
+| Ghost crab | x (carapace mesh) | 0.8282 | 0.47 | 0.09 | 0.091 | weakly sourced |
+| Coconut crab | x (leg span) | 1.5272 | 0.98 | 1.20 | 1.18 | leg span 0.8-1.0 m range |
+| Bottlenose dolphin | max | 5.3888 | 0.98 | 3.90 | 4.10 (variety 1.05) | adult male factor for the family |
+| Green sea turtle | z | 2.0808 | 1.15 | 1.35 | 1.39 | single body mesh; model ~2x a real turtle |
+| Humpback whale | max | 15.7 | 1.00 | 21.0 | 21.1 | |
+| Blackfin reef shark | max | 1.836 | 1.00 | 1.95 | 1.91 | |
+
+Not yet sized (no factory measured yet): fruit bat (makeBatColony returns a colony, not a single root: the bat needs its own
+measurement), hermit crab, giant manta ray (no exported factory), the instanced school fish (anthias, blue chromis, reef fish, silver
+mullet, pink fusilier, parrotfish, yellowfin tuna, yellow tang), and the monkey (sized by its rig, validated earlier).
