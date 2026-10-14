@@ -1,7 +1,7 @@
 {
   "schema": "paradise-island.island-notes/2",
-  "revision": 48,
-  "updated": "2026-10-14T15:47:18.870Z",
+  "revision": 49,
+  "updated": "2026-10-14T19:41:47.692Z",
   "notes": [
     {
       "id": "nmv6qtgrx97686c",
@@ -595,6 +595,22 @@
       "resolution": "",
       "created": "2026-10-14T15:47:18.870Z",
       "updated": "2026-10-14T15:47:18.870Z",
+      "history": []
+    },
+    {
+      "id": "nmv8in7e4149213",
+      "subject": {
+        "kind": "species",
+        "id": "species:Barn owl",
+        "label": "Barn owl",
+        "category": "Birds"
+      },
+      "status": "open",
+      "text": "Future asset improvement (Blender, not blocking): the barn owl model is built with a body that is about 40 percent too long. Measured in the rest pose from assets/barn_owl.glb: body, head and tail span 0.51 m against about 0.36 m total length for a real barn owl, while the wingspan (0.96 m) matches the real 0.95 m. The in-game owl is sized by its wingspan (1.43 m at 1.5x), so the body is currently longer than a real owl proportionally. Fix in the workshop: shorten the body and tail to real proportions, then re-export and re-check the wingspan.",
+      "blocker": "",
+      "resolution": "",
+      "created": "2026-10-14T19:41:47.692Z",
+      "updated": "2026-10-14T19:41:47.692Z",
       "history": []
     }
   ]

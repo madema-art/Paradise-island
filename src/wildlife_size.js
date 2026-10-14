@@ -28,6 +28,23 @@ export const SPECIES = {
   // Measured: node tools/measure/glb_rest.cjs assets/barn_owl.glb --include='arm|hand' -> X extent 0.961 m.
   'Barn owl': { src: 'assets/barn_owl.glb', axis: 'x', sourceM: 0.961, target: 1.43, variety: 0.06, on: true,
     note: 'wingspan 0.95 m x 1.5; body length of the model is too long (workshop)' },
+  // The rest of the registry, measured with the viewer (dev/scale_viewer.html) from the factory model at unit root scale, in the
+  // root's local frame (the frame the game sizes in). Each is one factor per species from the adult model, so juveniles and the
+  // other sexes keep their real proportions (their geometry is already at real size).
+  'Island rat': { src: 'rat_model (procedural/GLB factory)', axis: 'max', sourceM: 0.3639, target: 0.36, variety: 0.06, on: true, note: 'head-body + tail (viewer)' },
+  'Greater flamingo': { src: 'flamingo_model', axis: 'y', sourceM: 1.5937, target: 1.95, variety: 0.06, on: true, note: 'standing height' },
+  'White tern': { src: 'tern_model', axis: 'z', sourceM: 0.5738, target: 0.45, variety: 0.06, on: true, note: 'body length (root scale 1.25 in the factory)' },
+  'Silver gull': { src: 'gull_model', axis: 'z', sourceM: 0.928, target: 0.645, variety: 0.06, on: true, note: 'body length' },
+  'Rainbow lorikeet': { src: 'lorikeet_model', axis: 'z', sourceM: 0.247, target: 0.42, variety: 0.06, on: true, note: 'body length; wingspan not resolved' },
+  'Great frigatebird': { src: 'frigatebird_model (male)', axis: 'z', sourceM: 1.1206, target: 1.43, variety: 0.06, on: true, note: 'body length (female and juvenile share the male factor)' },
+  'White-bellied sea eagle': { src: 'sea_eagle_model (adult)', axis: 'z', sourceM: 1.003, target: 1.20, variety: 0.06, on: true, note: 'body length' },
+  'Red beach crab': { src: 'crab_model (red)', axis: 'x', sourceM: 0.8282, target: 0.09, variety: 0.08, on: true, note: 'carapace width (carapace mesh only)' },
+  'Ghost crab': { src: 'crab_model (ghost)', axis: 'x', sourceM: 0.8282, target: 0.09, variety: 0.08, on: true, note: 'carapace width (carapace mesh only); weakly sourced' },
+  'Coconut crab': { src: 'crab_model (coconut)', axis: 'x', sourceM: 1.5272, target: 1.20, variety: 0.08, on: true, note: 'leg span (0.80 m x 1.5; range 0.8-1.0 m)' },
+  'Bottlenose dolphin': { src: 'dolphin_model (adult male)', axis: 'max', sourceM: 5.3888, target: 3.90, variety: 0.08, on: true, note: 'total length (2.60 m x 1.5)' },
+  'Green sea turtle': { src: 'turtle_model', axis: 'z', sourceM: 2.0808, target: 1.35, variety: 0.06, on: true, note: 'length (viewer: single body mesh; the model is about twice a real turtle, so the game turtle shrinks)' },
+  'Humpback whale': { src: 'whale_model', axis: 'max', sourceM: 15.7, target: 21.0, variety: 0.06, on: true, note: 'total length (14 m x 1.5)' },
+  'Blackfin reef shark': { src: 'shark_model', axis: 'max', sourceM: 1.836, target: 1.95, variety: 0.06, on: true, note: 'total length (1.30 m x 1.5)' },
 };
 
 // the boar variants are the same species (wild boar): same source, same target, their own coat and root scale
@@ -45,7 +62,7 @@ export function sizeFor(c) {
   const spec = SPECIES[c.name];
   if (!spec || !spec.on || !c.group) return null;
   const root = c.group.children[0];
-  const rootScale = root && root.scale ? root.scale[spec.axis] : 1;
+  const rootScale = !root || !root.scale ? 1 : spec.axis === 'max' ? Math.max(root.scale.x, root.scale.y, root.scale.z) : root.scale[spec.axis];
   const v = 1 + spec.variety * (2 * unit(String(c.id)) - 1);
   return { f: spec.target * v / (spec.sourceM * rootScale), spec, v, rootScale };
 }

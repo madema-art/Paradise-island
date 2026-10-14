@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wildlife scale viewer (development)</title>
+<style>
+  :root { --panel: rgba(18, 26, 33, 0.92); --ink: #e8eef3; --dim: #9fb0bd; --accent: #7fd1ae; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font: 13px/1.4 system-ui, sans-serif; background: #c9d6df; color: var(--ink); }
+  canvas { display: block; }
+  #panel { position: fixed; top: 0; left: 0; bottom: 0; width: 260px; overflow: auto; background: var(--panel); padding: 12px 14px; box-sizing: border-box; }
+  #panel h1 { font-size: 15px; margin: 0 0 4px; }
+  #panel p { color: var(--dim); margin: 4px 0 10px; }
+  #panel h4 { margin: 12px 0 4px; color: var(--accent); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+  #panel button { display: block; width: 100%; text-align: left; margin: 2px 0; padding: 5px 8px; background: #26333d; color: var(--ink); border: 1px solid #34434e; border-radius: 4px; cursor: pointer; }
+  #panel button.on { background: #2f5a48; border-color: var(--accent); }
+  #panel .row { display: flex; gap: 6px; margin: 8px 0; }
+  #panel .row button { flex: 1; text-align: center; }
+  #panel pre { white-space: pre-wrap; font-size: 11px; background: #0d141a; padding: 8px; border-radius: 4px; max-height: 240px; overflow: auto; }
+  .label { position: absolute; transform: translate(-50%, -100%); background: rgba(12, 18, 24, 0.82); color: #fff; padding: 4px 7px; border-radius: 4px; font-size: 11px; pointer-events: none; white-space: nowrap; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+  #warn { position: fixed; right: 12px; bottom: 10px; color: #3a4650; font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1>Wildlife scale viewer</h1>
+  <p>Development only. Builds each species from the game's own model code and applies its 1.5x target once. The castaway stays at 2.00 m.</p>
+  <div class="row">
+    <button data-view="front">Front</button><button data-view="side">Side</button><button data-view="top">Top</button><button data-view="orbit">Orbit</button>
+  </div>
+  <label style="display:block;margin:6px 0"><input type="checkbox" id="anim" /> Animation playback (GLB clips; code-driven motion is not replayed)</label>
+  <div class="row"><button id="export">Copy measurements</button></div>
+  <pre id="out"></pre>
+  <div id="list"></div>
+</div>
+<div id="warn">1 grid square = 1 m</div>
+<script src="../dist/scale_viewer.js"></script>
+</body>
+</html>

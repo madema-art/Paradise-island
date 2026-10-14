@@ -23,9 +23,13 @@ const opts = {
   logLevel: 'info',
 };
 
+// the development-only wildlife scale viewer (dev/scale_viewer.html), built separately
+const devOpts = { ...opts, entryPoints: ['src/dev/scale_viewer.js'], outfile: 'dist/scale_viewer.js' };
+
 if (process.argv.includes('--watch')) {
   const ctx = await context(opts);
   await ctx.watch();
 } else {
   await build(opts);
+  await build(devOpts);
 }

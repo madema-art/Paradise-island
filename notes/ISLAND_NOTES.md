@@ -2,11 +2,11 @@
 
 This file is generated from `notes/island-notes.json` every time the notebook is saved. Edit notes in the game (Notebook tab), not here.
 
-Revision 48 · updated 2026-10-14T15:47:18.870Z · 2 open, 21 done.
+Revision 49 · updated 2026-10-14T19:41:47.692Z · 0 ready for Claude, 3 open (waiting for approval), 21 done.
 
 **Only notes marked Ready for Claude are implemented automatically.** An open note is waiting for the owner's approval: do not implement it, and do not change its status. Claude implements a ready note, checks it in the game, then marks it done. If a ready note cannot be finished, leave it ready and write why in its blocker.
 
-## Open (2)
+## Open (waiting for approval) (3)
 
 - **Pacific boa** — scope species `species:Pacific boa`
   - movement doesnt look right. size seems small unless its a juvenille. i want giant snakes because they've been feeding on a huge rat popluation
@@ -14,6 +14,9 @@ Revision 48 · updated 2026-10-14T15:47:18.870Z · 2 open, 21 done.
 - **Pacific boa (boa1)** — scope creature `creature:boa1`
   - should spend more time in the trees curled around branches
   - id `nmv8a9nti201b39`, created 2026-10-14T15:47:18.870Z, updated 2026-10-14T15:47:18.870Z
+- **Barn owl** — scope species `species:Barn owl`
+  - Future asset improvement (Blender, not blocking): the barn owl model is built with a body that is about 40 percent too long. Measured in the rest pose from assets/barn_owl.glb: body, head and tail span 0.51 m against about 0.36 m total length for a real barn owl, while the wingspan (0.96 m) matches the real 0.95 m. The in-game owl is sized by its wingspan (1.43 m at 1.5x), so the body is currently longer than a real owl proportionally. Fix in the workshop: shorten the body and tail to real proportions, then re-export and re-check the wingspan.
+  - id `nmv8in7e4149213`, created 2026-10-14T19:41:47.692Z, updated 2026-10-14T19:41:47.692Z
 
 ## Done (21)
 
