@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { scene, creatures, pickables, camera } from './core.js';
 import { getHeight, getSlope, riverDist, VOL, lavaDist } from './world.js';
 import { rnd, rr, angDiff, TAU, clamp, damp } from './util.js';
+import { sizeCreature } from './wildlife_size.js';
 
 export const fauna = new THREE.Group();
 scene.add(fauna);
@@ -25,6 +26,7 @@ const proxyGeo = new THREE.SphereGeometry(1, 6, 4);
 export function register(c) {
   c.viewDist = c.viewDist || 9;
   c.focus = c.focus || ((out) => c.group.getWorldPosition(out || new THREE.Vector3()));
+  sizeCreature(c);                                  // the species size (docs/WILDLIFE_SCALE_RESEARCH.md), before the pick proxy is added
   const p = new THREE.Mesh(proxyGeo, proxyMat);
   p.scale.setScalar(c.pickR || 1.4);
   p.position.y = c.pickY ?? 0.6;

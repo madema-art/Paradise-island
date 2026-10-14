@@ -10,9 +10,9 @@ export const NEW_MONKEY = new URLSearchParams(location.search).get('monkey') !==
 
 const BASE = 'assets/monkey/';
 const URLS = { hero: BASE + 'Monkey.glb', lite: BASE + 'Monkey_lite.glb', lod1: BASE + 'Monkey_lod1.glb', coconut: BASE + 'coconut.glb', clips: BASE + 'monkey_clips.json' };
-// the monkey's size: the asset is a real capuchin (about 0.37 m standing). The castaway is 1.85 m and a human about 1.75 m, so a real
-// capuchin (about 0.4 m) is 0.4 x 1.85 / 1.75 = 0.42 m, and 1.5x for visibility: 0.64 m, a rig scale of about 1.7.
-export const MONKEY_SCALE = 1.7;
+// the monkey's size: the asset is built at real scale (workshop docs: 0.46 m head-body length, Sapajus apella). The game target
+// is 1.5x real (docs/WILDLIFE_SCALE_RESEARCH.md): 0.46 x 1.5 = 0.69 m head-body.
+export const MONKEY_SCALE = 1.5;
 const loader = new GLTFLoader();
 const store = { ready: false, tier: null, scenes: {}, lod1: null, coconut: null, clips: [], meta: null, loading: null };
 

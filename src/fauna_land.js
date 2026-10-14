@@ -29,7 +29,7 @@ class Monkey {
     this.rig = makeMonkeyRig();
     const r = this.rig ? null : makeMonkey();
     if (r) Object.assign(this, r);
-    this.group = new THREE.Group(); this.group.scale.setScalar(rnd() < 0.18 ? rr(1.15, 1.3) : rr(0.82, 1.08));
+    this.group = new THREE.Group(); this.group.scale.setScalar(rr(0.92, 1.08));   // individual adult variation (see docs/WILDLIFE_SCALE_RESEARCH.md)
     this.group.add(this.rig ? this.rig.group : r.root);
     // traits and timers for the social and contest rules. These use Math.random, not the world's seeded stream, so placement is unchanged.
     this.size = this.group.scale.x; Object.assign(this, monkeyTraits());
