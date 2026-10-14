@@ -2,6 +2,7 @@
 // Plant descriptions name real species where the game model is one; anything else is described as a game model.
 export const CATALOG = {
   // ---- trees and palms
+  coconut: { name: 'Coconut', category: 'Food and materials', status: 'real', desc: 'A small oval coconut with a fibrous brown husk and three dark eyes. Opening reveals its thick shell, white flesh and coconut water.' },
   palm: { name: 'Coconut palm', category: 'Trees', status: 'real', desc: 'Tall palm with a crown of long pinnate fronds. Its buoyant coconuts can drift between islands and seed new beaches.' },
   treeA: { name: 'Jungle tree', category: 'Trees', status: 'model', desc: 'Broadleaf canopy tree of the island jungle. A game model, not a particular species.' },
   treeB: { name: 'Tall jungle tree', category: 'Trees', status: 'model', desc: 'Taller broadleaf tree of the forest. A game model, not a particular species.' },

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createCoconut, setCoconutState } from './coconut.js';
 import { scene, updaters, U, env, camera } from './core.js';
 import { M, sphere, box, cyl, cone, mesh, windify, MB, C } from './gfx.js';
 import { getHeight, getSlope, riverDist, volcanoDist, lavaDist, perchesNear, TEMPLE, COVE, VOL, FAIRY, falls } from './world.js';
@@ -18,7 +19,7 @@ import { Particles } from './particles.js';
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 
 /* ====================================================================== MONKEY */
-const NUT_GEO = new THREE.SphereGeometry(1, 10, 8), NUT_MAT = new THREE.MeshStandardMaterial({ color: 0x4e3622, roughness: 0.85 });
+// Coconut geometry is shared with the castaway, pickups and animated monkey rig.
 // the idle clip for each idle behaviour of the new monkey (see Monkey.act)
 const IDLE_CLIP = { look: 'look_around', scratch: 'scratch', eat: 'investigate' };
 const idleClip = (act) => IDLE_CLIP[act] || 'idle';
@@ -50,7 +51,7 @@ class Monkey {
     this.cooldown = rr(10, 40);
     // coconut rivalry: monkeys burst out of the foliage to snatch coconuts that fall or roll, carry them off and eat them
     this.nutScan = rr(0, 1); this.nutCool = rr(0, 8); this.nutT = null; this.nutTimer = 0; this.tmpN = new THREE.Vector3(); this.stolen = 0;
-    this.nut = new THREE.Mesh(NUT_GEO, NUT_MAT); this.nut.scale.set(0.15, 0.14, 0.15); this.nut.visible = false; this.nut.castShadow = true;
+    this.nut = createCoconut({ variant: i % 3 }); this.nut.visible = false; this.nut.castShadow = true;
     if (!this.rig) this.group.add(this.nut);
     register({
       id: 'monkey' + i, name: 'Capuchin monkey', cat: 'Mammals', group: this.group, sim: this, viewDist: 7,
@@ -185,6 +186,7 @@ class Monkey {
       ts = clamp(this.speed / meta.speed_mps, 0.6, 3.2);
     }
     R.play(name, { ...opts, timeScale: ts });
+    if (st === 'eatNut') R.setNutState('half');
     if (this.grabT > 0) this.grabT -= dt;
     // far from the camera the mixer is stepped less often
     if (cd > 40) R.throttled(dt, 0.2); else R.update(dt);
@@ -273,7 +275,7 @@ class Monkey {
         if (canStand(nx, nz, { minH: 1.8, river: 1.2 })) { this.x = nx; this.z = nz; } else { this.state = 'idle'; this.t = 1; this.nutCool = rr(8, 16); this.nutT = null; }
         moving = true;
         if (d < 0.75) {
-          if (this.ctx.coconuts.take(n)) { this.nut.visible = true; this.state = 'carry'; this.stolen++; this.pickStash(); this.fleeT = 2; if (this.rig) this.grabAt(p); }
+          if (this.ctx.coconuts.take(n)) { setCoconutState(this.nut, 'whole'); this.rig?.setNutState('whole'); this.nut.visible = true; this.state = 'carry'; this.stolen++; this.pickStash(); this.fleeT = 2; if (this.rig) this.grabAt(p); }
           else { this.state = 'idle'; this.t = 1; this.nutCool = rr(8, 16); }                        // beaten to it
           this.nutT = null;
         }
@@ -363,7 +365,7 @@ class Monkey {
     }
     this.hp.rotation.x = -this.pitch * 0.75 + (moving ? 0.04 * w2 : 0) + (this.act === 'eat' && st === 'idle' ? 0.2 : 0);
     this.hp.rotation.y = st === 'idle' && this.act === 'look' ? Math.sin(t * 0.9 + this.ph) * 0.7 : 0;
-    if (this.nut.visible) this.nut.position.set(0, 0.5 - 0.16 * this.fold, 0.34 - 0.06 * this.fold);
+    if (this.nut.visible) { if (st === 'eatNut') setCoconutState(this.nut, 'half'); this.nut.position.set(0, 0.5 - 0.16 * this.fold, 0.34 - 0.06 * this.fold); }
     this.tailP.rotation.x = Math.sin(t * 2 + this.ph) * 0.12;
     this.tailP.rotation.y = Math.sin(t * 1.6 + this.ph * 0.3) * 0.3;
     // joints
