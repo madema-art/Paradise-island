@@ -152,6 +152,8 @@ async function boot() {
   initNeedsHud();
 
   window.__dbg = { schoolMind: { detachFish, attachFish }, events, fx, RIP, falls, THREE, scene, camera, cam, flora, env, volcano, secrets, renderer, composer, bloom, sun, updaters, WORLD, creatures, dolphinPod: seaFauna.dolphinPod, dolphinPods: seaFauna.dolphinPods, audio, WX, lorikeetFlocks: seaFauna.lorikeetFlocks, frigatebirdColony: seaFauna.frigatebirdColony };
+  // development only: ?inspect= holds the camera on one school (src/dev/school_inspect.js); normal play never loads it
+  if (/[?&]inspect=/.test(location.search)) import('./dev/school_inspect.js').then((m) => m.startSchoolInspect());
   window.__goto = (p, t) => cam.goto(p, t);
   // review hook: the game's own follow camera on any creature (used to inspect the monkeys in the running game)
   window.__cam = { follow: (c) => followCreature(c), release: releaseCamera };

@@ -32,6 +32,24 @@ const padKeys = new Set();           // keys the pad is holding down for first-p
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const groundY = (x, z) => Math.max(getHeight(x, z), 0);
 const k1 = (rate, dt) => 1 - Math.exp(-rate * dt);
+// a school is framed by its own shoal: the centroid of its fish and the shoal's size, both followed smoothly (so the camera never jumps)
+const shoalCam = new WeakMap();
+function shoalFrame(m, dt) {
+  const fish = m.fish, n = fish.length;
+  let x = 0, y = 0, z = 0;
+  for (const f of fish) { x += f.x; y += f.y; z += f.z; }
+  x /= n; y /= n; z /= n;
+  let meanR = 0;
+  for (const f of fish) meanR += Math.hypot(f.x - x, f.z - z);
+  meanR /= n;
+  const want = Math.max(meanR * 1.9, m.spread * 0.9);
+  let c = shoalCam.get(m);
+  if (!c) { c = { x, y, z, radius: want }; shoalCam.set(m, c); }
+  const a = k1(1.6, dt), b = k1(0.9, dt);
+  c.x += (x - c.x) * a; c.y += (y - c.y) * a; c.z += (z - c.z) * a;
+  c.radius += (want - c.radius) * b;
+  return c;
+}
 
 /* ---------------------------------------------------------------- helpers */
 function rayGround(origin, dir, max = 3500) {
@@ -420,8 +438,12 @@ export function updateCamera(dt) {
     // free camera: mouse look, WASD, Q/E turn, R/F rise/sink. A followed creature stays locked in the middle of the view: the mouse, the keys and
     // the right stick swing the camera round it, and it only lets go on a deliberate act (Esc, the Release button, or holding B on the pad).
     if (cam.follow) {
-      const f = cam.follow, p = focusOf(f, _v2), vd = f.viewDist || 9;
+      const f = cam.follow, school = !!(f.sim && f.sim.spec && Array.isArray(f.sim.fish) && f.sim.fish.length);
+      const shoal = school ? shoalFrame(f.sim, dt) : null;
+      const p = shoal ? _v2.set(shoal.x, shoal.y, shoal.z) : focusOf(f, _v2);
+      const vd = shoal ? shoal.radius : f.viewDist || 9;
       if (!F.ready) {                                                                // take the bearing we have as the starting orbit
+        F.zoom = 1;
         const o = _v3.copy(camera.position).sub(p), d = Math.max(o.length(), 0.5);
         F.dist = clamp(d, Math.max(1.2, vd * 0.3), 140); F.yaw = Math.atan2(o.x, o.z); F.pitch = Math.asin(clamp(o.y / d, -1, 1)); F.ready = true;
         if (F.pitch < 0.1) F.pitch = 0.3;
@@ -430,11 +452,18 @@ export function updateCamera(dt) {
       F.yaw += (-pad.rx * 2.4 * lookK * (shift ? 1.5 : 1) + pad.lx * 0.8 * fast + (strIn - pad.lx - rotIn) * 1.2) * dt;
       F.pitch = clamp(F.pitch + (pad.ry * 1.7 * lookK + upIn * 0.8 * (pad.rt || pad.lt ? 0 : 1)) * dt, -1.2, 1.45);
       // dolly: W / S, the left stick's up and down, and the triggers (right closer, left farther)
-      F.dist = clamp(F.dist * Math.exp((-fwdIn * 0.9 * fast + (pad.lt - pad.rt) * 1.3) * dt), Math.max(1.2, vd * 0.3), 140);
+      const dolly = -fwdIn * 0.9 * fast + (pad.lt - pad.rt) * 1.3;
+      if (shoal) {
+        // a school: the distance eases to frame the shoal, and the dolly sets how close to it the view sits
+        F.zoom = clamp((F.zoom ?? 1) * Math.exp(dolly * dt), 0.35, 3);
+        F.dist += (clamp(vd * 2.0 + 3, 5, 90) * F.zoom - F.dist) * k1(1.2, dt);
+      } else F.dist = clamp(F.dist * Math.exp(dolly * dt), Math.max(1.2, vd * 0.3), 140);
       const cp = Math.cos(F.pitch), ty = p.y + Math.min(0.5, vd * 0.08);
       _v.set(p.x + Math.sin(F.yaw) * cp * F.dist, ty + Math.sin(F.pitch) * F.dist, p.z + Math.cos(F.yaw) * cp * F.dist);
       if (!inCave(_v.x, _v.y, _v.z)) _v.y = Math.max(_v.y, getHeight(_v.x, _v.z) + 1.2);       // the orbit never dips into the ground
-      camera.position.lerp(_v, k1(14, dt));
+      // a school is watched from under the surface, above the sand
+      if (shoal) _v.y = clamp(_v.y, getHeight(_v.x, _v.z) + 0.4, -0.45);
+      camera.position.lerp(_v, k1(shoal ? 4 : 14, dt));
       aim.set(p.x, ty, p.z); aimOn = true;
       camera.lookAt(aim);                                                     // locked on: the target is always dead centre
       const e = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');

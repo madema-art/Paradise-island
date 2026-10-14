@@ -966,6 +966,10 @@ export function fishSpecimen(hue) {
   return root;
 }
 function buildFish() {
+  // the schools have their own generator. The world's shared stream is spent by the same 4585 draws the earlier builder used (its fish,
+  // school setup and school minds), so every later placement in the world stays where it was
+  burn(4585);
+  const sg = mulberry32(51733), srr = (a, b) => a + (b - a) * sg();
   const geo = fishGeometry();
   // wildlife size (docs/WILDLIFE_SCALE_RESEARCH.md): the schools are sized from the fish's own geometry (its length along Z, measured here)
   geo.computeBoundingBox();
@@ -988,32 +992,32 @@ function buildFish() {
         vec3 flankS = normalize(mat3(instanceMatrix) * vec3(1.0, 0.0, 0.0));
         vec3 wpS = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
         vec3 halfS = normalize(uSunDir + normalize(cameraPosition - wpS));
-        vShimmer = pow(abs(dot(flankS, halfS)), 8.0) * uSunLit;`);
+        vShimmer = pow(abs(dot(flankS, halfS)), 3.0) * uSunLit;`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vShimmer;')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(0.55, 0.68, 0.78) * vShimmer * 0.45;`);
+        totalEmissiveRadiance += vec3(0.5, 0.64, 0.74) * vShimmer * 0.22;`);
   };
   const schools = [];
   const addSchool = (cx, cz, rx, rz, depth, n, hue, scale, name, spread = 3.2) => {
     // the school's fish are scaled to the target length; its swimming speed and its spread scale with them (body lengths per second and per school stay the same)
     const target = SCHOOL_TARGET[name];
     const k = target ? (target / fishLen) / scale : 1;
-    schools.push({ cx, cz, rx, rz, depth, n, hue, scale: target ? target / fishLen : scale, spread: spread * k, name, a: rr(0.03, 0.07), b: rr(0.04, 0.08), p: rnd() * 6, q: rnd() * 6, fish: [] });
+    schools.push({ cx, cz, rx, rz, depth, n, hue, scale: target ? target / fishLen : scale, spread: spread * k, name, a: srr(0.03, 0.07), b: srr(0.04, 0.08), p: sg() * 6, q: sg() * 6, fish: [] });
   };
   // lagoon
   // the yellow tang school is individually rigged (buildYellowTangSchool); the instanced school below is the fallback if the model fails
   if (!yellowTangReady()) addSchool(COVE.x + 4, COVE.z + 14, 14, 10, -1.3, 42, '#ffd23a', 1.0, 'Yellow tang school');
-  addSchool(COVE.x - 12, COVE.z + 28, 12, 8, -1.6, 36, '#3b8dff', 1.0, 'Blue chromis school');
+  addSchool(COVE.x - 12, COVE.z + 28, 12, 8, -1.6, 90, '#3b8dff', 1.0, 'Blue chromis school');
   // the orange anthias shoal is built on its own (buildAnthiasSchool)
-  addSchool(COVE.x - 2, COVE.z + 4, 9, 7, -1.1, 26, '#e9f6ff', 0.9, 'Silver mullet school');
+  addSchool(COVE.x - 2, COVE.z + 4, 9, 7, -1.1, 40, '#e9f6ff', 0.9, 'Silver mullet school');
   // reef edge / offshore
-  addSchool(COVE.x + 38, COVE.z + 48, 16, 12, -3.4, 36, '#ff5d8f', 1.2, 'Pink fusilier school');
-  addSchool(COVE.x - 40, COVE.z + 40, 16, 12, -3.6, 34, '#6fe0d2', 1.2, 'Parrotfish school');
-  addSchool(COVE.x + 4, COVE.z + 72, 22, 14, -6.0, 26, '#9fb8cc', 1.7, 'Yellowfin tuna school', 4.6);
-  addSchool(-120, 110, 22, 16, -5.0, 28, '#ffd23a', 1.3, 'Reef fish school');
-  addSchool(130, 90, 22, 16, -5.0, 28, '#59d0ff', 1.3, 'Reef fish school');
-  addSchool(-150, -20, 22, 18, -6, 26, '#ff9a3c', 1.4, 'Reef fish school');
-  addSchool(150, -90, 24, 16, -6, 26, '#e0e8f0', 1.6, 'Reef fish school', 4);
+  addSchool(COVE.x + 38, COVE.z + 48, 16, 12, -3.4, 80, '#ff5d8f', 1.2, 'Pink fusilier school');
+  addSchool(COVE.x - 40, COVE.z + 40, 16, 12, -3.6, 60, '#6fe0d2', 1.2, 'Parrotfish school');
+  addSchool(COVE.x + 4, COVE.z + 72, 22, 14, -6.0, 34, '#9fb8cc', 1.7, 'Yellowfin tuna school', 4.6);
+  addSchool(-120, 110, 22, 16, -5.0, 50, '#ffd23a', 1.3, 'Reef fish school');
+  addSchool(130, 90, 22, 16, -5.0, 50, '#59d0ff', 1.3, 'Reef fish school');
+  addSchool(-150, -20, 22, 18, -6, 46, '#ff9a3c', 1.4, 'Reef fish school');
+  addSchool(150, -90, 24, 16, -6, 46, '#e0e8f0', 1.6, 'Reef fish school', 4);
   let total = 0;
   for (const s of schools) total += s.n;
   const im = new THREE.InstancedMesh(geo, mat, total);
@@ -1023,12 +1027,12 @@ function buildFish() {
     const base = new THREE.Color(s.hue);
     s.dummy = new THREE.Group();
     for (let i = 0; i < s.n; i++) {
-      const c = base.clone().multiplyScalar(rr(0.85, 1.12));
+      const c = base.clone().multiplyScalar(srr(0.85, 1.12));
       im.setColorAt(idx, c);
-      s.fish.push({ i: idx++, x: s.cx + rr(-6, 6), y: s.depth, z: s.cz + rr(-6, 6), vx: 0, vy: 0, vz: 1, o1: rnd() * TAU, o2: rnd() * TAU, w1: rr(0.15, 0.5) * (rnd() < 0.5 ? -1 : 1), w2: rr(0.2, 0.6), r: rr(0.3, 1) * s.spread, sc: s.scale * rr(0.92, 1.08) });   // individual variation: +-8%, a school of similar fish
+      s.fish.push({ i: idx++, x: s.cx + srr(-6, 6), y: s.depth, z: s.cz + srr(-6, 6), vx: 0, vy: 0, vz: 1, o1: sg() * TAU, o2: sg() * TAU, w1: srr(0.15, 0.5) * (sg() < 0.5 ? -1 : 1), w2: srr(0.2, 0.6), r: srr(0.3, 1) * s.spread, sc: s.scale * srr(0.92, 1.08) });   // individual variation: +-8%, a school of similar fish
     }
     // the school's mind is made once its fish are placed; the school is then a creature the camera can follow (framed by its spread)
-    s.mind = createSchool(s.name, s.fish, { cx: s.cx, cz: s.cz, rx: s.rx, rz: s.rz, depth: s.depth });
+    s.mind = createSchool(s.name, s.fish, { cx: s.cx, cz: s.cz, rx: s.rx, rz: s.rz, depth: s.depth }, sg);
     const prof = SCHOOL_PROFILE[s.name] || SCHOOL_PROFILE['Reef fish school'];
     register({ id: 'school' + s.cx + s.cz, name: s.name, cat: 'Sea life', group: s.dummy, sim: s.mind, specimen: () => fishSpecimen(s.hue), viewDist: Math.max(8, prof.spread * 2.2), desc: 'A shimmering school moving as one body through the water, bending around the coral heads.', pickR: Math.max(4, s.spread * 1.8), pickY: 0 });
     fauna.add(s.dummy);
@@ -1101,7 +1105,7 @@ function buildAnthiasSchool() {
   // drawn at their own length (the geometry's length along Z), so the school's spacing and speeds come from its profile (school_mind.js).
   geo.computeBoundingBox();
   const anthiasLen = geo.boundingBox.max.z - geo.boundingBox.min.z;
-  const n = 34, home = { x: COVE.x + 18, z: COVE.z + 34 };
+  const n = 80, home = { x: COVE.x + 18, z: COVE.z + 34 };
   // the school has its own generator. The shared stream spends the same 273 draws the earlier builder used, so every later
   // placement in the world stays where it was
   burn(273);
@@ -1159,12 +1163,13 @@ function buildYellowTangSchool() {
     fish.push(f); group.add(holder);
   }
   fauna.add(group);
-  register({ id: 'yellow-tang-school', name: 'Yellow tang school', cat: 'Sea life', group,
+  const tangCreature = register({ id: 'yellow-tang-school', name: 'Yellow tang school', cat: 'Sea life', group,
     specimen: () => { const m = makeYellowTangModel(); if (!m) return fishSpecimen('#ffd23a'); const g = new THREE.Group(); g.add(m.root); return g; },
     viewDist: 10, desc: 'A shoal of yellow tangs travels the reef edge, grazing in short turns and bunching close to coral shelter at dusk.', pickR: 10, pickY: -1 });
   const center = new THREE.Vector3(cx, -1.3, cz);
   // the shared school intelligence drives the tangs too (school_mind.js); their holders are placed in the school's frame
   const mind = createSchool('Yellow tang school', fish.map((f, i) => Object.assign(f, { i, sc: 1, vy: 0, vx: f.vx || 0, vz: f.vz || 0 })), { cx, cz, rx: 12, rz: 9, depth: -1.45 });
+  tangCreature.sim = mind;   // the school's mind: the camera, the Field Guide and the inspection read the shoal through it
   const tangWrite = (f, p, q) => { f.holder.position.set(p.x - mind.cx, p.y - mind.cy, p.z - mind.cz); f.holder.quaternion.copy(q); };
   let grazing = false, grazeT = rr(18,32), grazeX = cx, grazeZ = cz;
   updaters.push((dt, t) => {
