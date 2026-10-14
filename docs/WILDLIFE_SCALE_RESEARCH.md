@@ -123,3 +123,26 @@ Units: m unless stated. "Measurement" says which dimension is quoted. Do not com
 - Coconut crab leg span: a 0.8-1.0 m range; 0.8 m chosen.
 - Generic "reef fish school": the game names no species for it.
 - Ginger boar, Silver tusker, Spotted pig: boar colour and size variants of Sus scrofa in the game; they follow the wild boar reference, with their own size classes in boar.js (see the report).
+
+---
+
+## Validated measurement (rest pose from the source GLB) and species switched on
+
+Method: `node tools/measure/glb_rest.cjs <glb> [--include=regex | --exclude=regex] [--chain=regex]` reads the GLB, composes each
+node's rest transform, transforms the real vertices of the chosen meshes and reports the extents (model units = metres).
+Runtime size = target / (sourceM x the model root's own scale on that axis) x group scale. Invisible selection proxies, props
+and animation are not part of the measurement.
+
+| Species (game name) | Source file | Measured (rest) | Target (game) | Game value at runtime (numbers from the factors) | Status |
+|---|---|---|---|---|---|
+| Wild boar (+ variants) | assets/boar.glb | standing height at the back 1.0047 m (mane, ears, tusks, eyes excluded) | 1.20 m (0.80 x 1.5) | 1.182 m (1.20 x variety 0.985) | ON, numbers checked; visual check NOT done |
+| Boar piglet (3-month) | assets/boar.glb | same model | 0.66 m (0.44 x 1.5), ESTIMATE | 0.704 m with variety 1.055 (hashed per id) | ON, ESTIMATE (see piglet note) |
+| Pacific boa | assets/pacific_boa.glb | extended length head tip to tail tip 1.3415 m (rest pose is straight) | 3.00 m (EXCEPTION, owner decision) | 2.95 m (3.0 x variety 0.98), extended; ~2.30 group at variety 1.03 gives 3.08 m | ON, EXCEPTION; coiled-length not used |
+| Barn owl | assets/barn_owl.glb | wingspan 0.961 m (wing and hand meshes) | 1.43 m (0.95 x 1.5) | 1.42 m (1.43 x variety 0.99) | ON; model BODY is too long: 0.51 m against a real 0.36 m (workshop modelling error, not corrected here) |
+
+Piglet estimate (not measured): adult shoulder 0.80 m; piglet mass about 12 kg at three months against an adult of about 70 kg
+(mass ratio 0.17); linear size from the cube root of the mass ratio: 0.80 x 0.17^(1/3) = 0.44 m. Sources for the inputs:
+newborn 1.1 kg (animal park fact sheet), adult size ranges (wildlifeonline.me.uk), juvenile studies found no measured 3-month figure.
+Weak check: the Large White domestic piglet growth study (20 weeks, 18.4 kg) gives the same order of mass.
+
+Not yet validated: every other species (about 25). They stay exactly as they were.

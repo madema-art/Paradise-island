@@ -28,7 +28,7 @@ export function register(c) {
   c.focus = c.focus || ((out) => c.group.getWorldPosition(out || new THREE.Vector3()));
   sizeCreature(c);                                  // the species size (docs/WILDLIFE_SCALE_RESEARCH.md), before the pick proxy is added
   const p = new THREE.Mesh(proxyGeo, proxyMat);
-  p.scale.setScalar(c.pickR || 1.4);
+  p.scale.setScalar((c.pickR || 1.4) / c.group.scale.x);   // the selection radius is in world metres, whatever the creature's size
   p.position.y = c.pickY ?? 0.6;
   p.userData.creature = c;
   c.group.add(p);

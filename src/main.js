@@ -154,6 +154,7 @@ async function boot() {
   window.__goto = (p, t) => cam.goto(p, t);
   // review hook: the game's own follow camera on any creature (used to inspect the monkeys in the running game)
   window.__cam = { follow: (c) => followCreature(c), release: releaseCamera };
+  window.__sizes = () => window.__dbg.creatures.filter((c) => c.sizeInfo).map((c) => ({ id: c.id, name: c.name, group: +c.group.scale.x.toFixed(3), info: c.sizeInfo }));
   const DAWN = { tod: 5.0, speed: 0.4 };           // a slow sunrise: the sun clears the horizon in about a minute and a half
   const VIEW = { pos: [-230, 60, -20], tgt: [0, 30, -10] };   // over the western sea, facing east: the volcano and the falls, the sun coming up behind them
   const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'];

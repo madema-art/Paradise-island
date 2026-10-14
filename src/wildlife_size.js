@@ -1,87 +1,62 @@
-// Wildlife size: every creature is its real adult dimension x 1.5 (docs/WILDLIFE_SCALE_RESEARCH.md). The castaway (2.00 m) is the fixed
-// reference and is not part of this. Each species has one reference dimension: the game target is the researched target, and the
-// factor is target / (the same dimension measured on the model as it is built). The factor is computed once per species from the
-// first model of that species, and applied to every individual's group scale, so individuals keep their own variation and a rebuild
-// from the seeded world gives the same sizes (nothing compounds across reloads).
+// Wildlife size. Each species is set from its source model's rest geometry, not from the running game:
+//   size on screen = target / (sourceM x the model root's own scale on that axis) x the group's scale
+// sourceM is measured from the GLB in rest pose by tools/measure/glb_rest.cjs (see docs/WILDLIFE_SCALE_RESEARCH.md for the exact
+// command and value). The target is the researched adult dimension x 1.5 (or a documented exception). Each species is switched on
+// only after it has been validated, so the registry can grow one species at a time.
+//
+// The factor is applied at registration (before the selection proxy is added), so it is set once per creature from the model as it
+// is built, and a reload gives the same size (nothing compounds). Individuals vary by a small, stable amount (hashed from the id),
+// so two adults are never identical, but both stay in the adult range.
 import * as THREE from 'three';
 
-// target = the researched adult dimension x 1.5, in metres. axis: 'x' | 'y' | 'z' (group-local) or 'max' (longest local extent).
-// mesh: optional name filter, to measure one named part (for example a crab's carapace).
-// species that are not measured here keep their current size (listed in the research document as flagged).
-export const WILDLIFE = {
-  'Wild boar':          { axis: 'y', target: 1.20 },   // standing height at the shoulder (0.80 m x 1.5); also used for the boar variants and piglet (same species)
-  'Island rat':         { axis: 'max', target: 0.36 },  // head-body + tail (0.24 m x 1.5)
-  'Barn owl':           { axis: 'y', target: 0.54 },   // total length (0.36 m x 1.5), standing or perched
-  'Pacific boa':        { axis: 'max', target: 1.50 },  // total length (1.00 m x 1.5)
-  'Greater flamingo':   { axis: 'y', target: 1.95 },   // standing height (1.30 m x 1.5)
-  'Bottlenose dolphin': { axis: 'max', target: 3.90 },  // total length (2.60 m x 1.5)
-  'Green sea turtle':   { axis: 'max', target: 1.35 },  // carapace length (0.90 m x 1.5)
-  'Humpback whale':     { axis: 'max', target: 21.0 },  // total length (14.0 m x 1.5)
-  'Giant manta ray':    { axis: 'max', target: 6.75 },  // disc width (4.5 m x 1.5)
-  'Blackfin reef shark':{ axis: 'max', target: 1.95 },  // total length (1.30 m x 1.5)
-  'Red beach crab':     { mesh: 'carapace', axis: 'x', target: 0.09 },  // carapace width (0.06 m x 1.5)
-  'Ghost crab':         { mesh: 'carapace', axis: 'x', target: 0.09 },  // carapace width (0.06 m x 1.5), weakly sourced
-  'Coconut crab':       { axis: 'x', target: 1.20 },   // leg span (0.80 m x 1.5), range 0.8-1.0 m
-  'Silver gull':        { axis: 'z', target: 0.645 },  // length (0.43 m x 1.5)
-  'Rainbow lorikeet':   { axis: 'z', target: 0.42 },   // length (0.28 m x 1.5)
-  'White tern':         { axis: 'z', target: 0.45 },   // length (0.30 m x 1.5)
-  'Great frigatebird':  { axis: 'z', target: 1.43 },   // length (0.95 m x 1.5)
-  'Sea eagle':          { axis: 'z', target: 1.20 },   // length (0.80 m x 1.5)
+export const SPECIES = {
+  // Wild boar: standing height at the back (shoulder), mane and ears excluded. Source: assets/boar.glb, rest pose.
+  // Measured: node tools/measure/glb_rest.cjs assets/boar.glb --exclude='mane|ear|tusk|eye' -> max Y = 1.0051 (min 0.0004): 1.0047 m.
+  'Wild boar': { src: 'assets/boar.glb', axis: 'y', sourceM: 1.0047, target: 1.20, variety: 0.08, on: true,
+    note: 'standing height at the back: 0.80 m real x 1.5' },
+  // Piglet at about three months: an ESTIMATE. The shoulder height is derived from the adult (0.80 m) scaled by the cube root of the
+  // mass ratio (about 12 kg / 70 kg); no measured figure for this age was found. Target: 0.44 m x 1.5.
+  'Boar piglet': { src: 'assets/boar.glb', axis: 'y', sourceM: 1.0047, target: 0.66, variety: 0.06, on: true,
+    estimate: true, note: 'ESTIMATE: 3-month shoulder height 0.44 m (derived), x 1.5' },
+  // Pacific boa: EXCEPTION to the 1.5x rule. Target 3.0 m total body length (the owner's decision). The measured quantity is the full
+  // extended length from the head tip to the tail tip (the rest pose is straight), not the straight-line distance of a coiled snake.
+  // Measured: node tools/measure/glb_rest.cjs assets/pacific_boa.glb -> model Z extent 1.3415 m.
+  'Pacific boa': { src: 'assets/pacific_boa.glb', axis: 'z', sourceM: 1.3415, target: 3.0, variety: 0.10, on: true, exception: true,
+    note: 'EXCEPTION: 3.0 m total body length (owner decision), extended length' },
+  // Barn owl: the wingspan is the reliable measure (model 0.961 m, real 0.95 m). The model's body is about 40% longer than a real owl's
+  // (0.51 m against 0.36 m total length): a modelling error for the workshop. Scaled by the wingspan: target 0.95 x 1.5 = 1.43 m.
+  // Measured: node tools/measure/glb_rest.cjs assets/barn_owl.glb --include='arm|hand' -> X extent 0.961 m.
+  'Barn owl': { src: 'assets/barn_owl.glb', axis: 'x', sourceM: 0.961, target: 1.43, variety: 0.06, on: true,
+    note: 'wingspan 0.95 m x 1.5; body length of the model is too long (workshop)' },
 };
 
-const SAME_SPECIES = { 'Ginger boar': 'Wild boar', 'Silver tusker': 'Wild boar', 'Spotted pig': 'Wild boar', 'Boar piglet': 'Wild boar' };
+// the boar variants are the same species (wild boar): same source, same target, their own coat and root scale
+for (const k of ['Ginger boar', 'Silver tusker', 'Spotted pig']) SPECIES[k] = { ...SPECIES['Wild boar'], note: 'variant of wild boar' };
 
-/** the extent of a creature's own geometry in its group's local frame (the group's own scale is not part of it) */
-function localBox(group, meshName) {
-  group.updateWorldMatrix(true, true);
-  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
-  const box = new THREE.Box3();
-  const m = new THREE.Matrix4(), p = new THREE.Vector3();
-  group.traverse((o) => {
-    if (!o.isMesh || !o.geometry || o.userData.creature) return;     // the pick proxy is not the animal
-    if (meshName && !(o.name || '').toLowerCase().includes(meshName)) return;
-    o.geometry.computeBoundingBox();
-    const bb = o.geometry.boundingBox;
-    m.multiplyMatrices(inv, o.matrixWorld);
-    for (let i = 0; i < 8; i++) {
-      p.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(m);
-      box.expandByPoint(p);
-    }
-  });
-  return box.isEmpty() ? null : box;
+/** a stable number in [0, 1) from a string (the creature id) */
+function unit(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 100000) / 100000;
 }
 
-/** the reference dimension of a creature, in its group's local units */
-export function referenceDimension(group, spec) {
-  const box = localBox(group, spec.mesh);
-  if (!box) return null;
-  const s = box.getSize(new THREE.Vector3());
-  return spec.axis === 'max' ? Math.max(s.x, s.y, s.z) : s[spec.axis];
+/** the factor for a creature, or null when its species is not switched on */
+export function sizeFor(c) {
+  const spec = SPECIES[c.name];
+  if (!spec || !spec.on || !c.group) return null;
+  const root = c.group.children[0];
+  const rootScale = root && root.scale ? root.scale[spec.axis] : 1;
+  const v = 1 + spec.variety * (2 * unit(String(c.id)) - 1);
+  return { f: spec.target * v / (spec.sourceM * rootScale), spec, v, rootScale };
 }
 
-const factors = {};
-
-/** OFF until the measurement is validated: at runtime several rigs change their extents (the boar's measured height goes from 0.81 m at
- *  registration to 1.55 m in play; the Pacific boa reads 0.31 m against a 1.34 m reference). See the report and docs/WILDLIFE_SCALE_RESEARCH.md. */
-export const WILDLIFE_SIZE_ON = false;
-
-/** set a creature's size from the species research. Idempotent: the factor for a species is computed once, from the group's own model. */
+/** set a creature's size (called from register(), before its selection proxy is added) */
 export function sizeCreature(c) {
-  if (!WILDLIFE_SIZE_ON) return;
-  const key = SAME_SPECIES[c.name] || c.name;
-  const spec = WILDLIFE[key];
-  if (!spec || !c.group) return;
-  if (factors[key] === undefined) {
-    const ref = referenceDimension(c.group, spec);
-    if (!ref) return;                          // no geometry (a school's marker group): sized with its instances instead
-    factors[key] = spec.target / ref;
-    factors[key + ' (ref)'] = ref;
-  }
-  const f = factors[key];
-  c.group.scale.multiplyScalar(f);
-  c.viewDist = (c.viewDist || 9) * f;
-  c.sizeFactor = f;
+  const s = sizeFor(c);
+  if (!s) return;
+  const before = c.group.scale.x;
+  c.group.scale.setScalar(s.f);
+  c.viewDist = (c.viewDist || 9) * (s.f / before);
+  c.sizeFactor = s.f;
+  c.sizeInfo = { target: s.spec.target, variety: +s.v.toFixed(3), rootScale: +s.rootScale.toFixed(3), exception: !!s.spec.exception, estimate: !!s.spec.estimate };
 }
-
-/** the factors computed so far (for the research report and for checks in the game) */
-export const sizeFactors = () => ({ ...factors });
