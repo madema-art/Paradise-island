@@ -14,6 +14,8 @@ import { buildWater } from './water.js';
 import { initRipples } from './ripples.js';
 import * as RIP from './ripples.js';
 import { cam, updateCamera, flyTo, followCreature, release as releaseCamera } from './camera.js';
+import { perf } from './perf_hooks.js';
+import './skeleton_share.js';
 import { detachFish, attachFish } from './school_mind.js';
 import { spawnNear } from './walk.js';
 import { buildFlora } from './flora.js';
@@ -154,6 +156,7 @@ async function boot() {
   window.__dbg = { schoolMind: { detachFish, attachFish }, events, fx, RIP, falls, THREE, scene, camera, cam, flora, env, volcano, secrets, renderer, composer, bloom, sun, updaters, WORLD, creatures, dolphinPod: seaFauna.dolphinPod, dolphinPods: seaFauna.dolphinPods, audio, WX, lorikeetFlocks: seaFauna.lorikeetFlocks, frigatebirdColony: seaFauna.frigatebirdColony };
   // development only: ?inspect= holds the camera on one school (src/dev/school_inspect.js); normal play never loads it
   if (/[?&]inspect=/.test(location.search)) import('./dev/school_inspect.js').then((m) => m.startSchoolInspect());
+  if (/[?&]perf=1/.test(location.search)) import('./dev/perf_bench.js').then((m) => m.startPerfBench());
   window.__goto = (p, t) => cam.goto(p, t);
   // review hook: the game's own follow camera on any creature (used to inspect the monkeys in the running game)
   window.__cam = { follow: (c) => followCreature(c), release: releaseCamera };
@@ -229,7 +232,10 @@ function loop() {
   const dt = Math.min((now - last) / 1000, 0.05);
   autoQuality((now - last) / 1000);
   last = now;
+  if (perf.on) perf.begin();
   step(dt);
-  composer.render();
+  if (perf.on) perf.mid();
+  if (perf.render) perf.render(); else composer.render();
+  if (perf.on) perf.end();
 }
 boot();

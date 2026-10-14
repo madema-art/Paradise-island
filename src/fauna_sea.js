@@ -1021,6 +1021,7 @@ function buildFish() {
   let total = 0;
   for (const s of schools) total += s.n;
   const im = new THREE.InstancedMesh(geo, mat, total);
+  im.name = 'school-fish';   // named for the performance benchmark (src/dev/perf_bench.js)
   im.frustumCulled = false; im.castShadow = false;
   let idx = 0;
   for (const s of schools) {
@@ -1111,6 +1112,7 @@ function buildAnthiasSchool() {
   burn(273);
   const ar = mulberry32(90417);
   const im = new THREE.InstancedMesh(geo, fishMatRef, n);
+  im.name = 'anthias-fish';
   im.frustumCulled = false; im.castShadow = false;
   const group = new THREE.Group(); group.position.set(home.x, -1.6, home.z); fauna.add(group);
   const base = new THREE.Color('#ff8a2e'), pink = new THREE.Color('#ff6f8f');

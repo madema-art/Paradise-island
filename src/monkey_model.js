@@ -88,24 +88,28 @@ export class MonkeyRig {
     const root = cloneSkeleton(store.scenes[tier]);
     this.near = this.buildSide(root, tier);
     for (const clip of store.clips) this.near.actions.set(clip.name, this.near.mixer.clipAction(clip, root));
-    if (old) { this.group.remove(old.root); old.mixer.stopAllAction(); }
-    this.group.add(root);
-    root.visible = !this.isFar;
+    if (old) { if (old.root.parent) this.group.remove(old.root); old.mixer.stopAllAction(); }
+    this.attach(this.near, !this.isFar);
   }
   buildFar() {
     const root = cloneSkeleton(store.lod1);
     this.far = this.buildSide(root, 'lod1');
     for (const clip of store.clips) this.far.actions.set(clip.name, this.far.mixer.clipAction(clip, root));
-    this.group.add(root);
-    root.visible = this.isFar;
+    this.attach(this.far, this.isFar);
+  }
+  /** a skeleton that is not drawn is taken out of the scene, so its bones are not updated every frame (it is put back when it is drawn) */
+  attach(side, on) {
+    if (on) { if (!side.root.parent) this.group.add(side.root); side.root.visible = true; }
+    else { if (side.root.parent) this.group.remove(side.root); side.root.visible = false; }
   }
   /** swap to the near or far skeleton; the new one resumes the same clip at the same time */
   setFar(far) {
     if (far === this.isFar) return;
     const from = this.active(), name = this.current, time = from.actions.get(name)?.time ?? 0;
     this.isFar = far;
-    from.root.visible = false; from.mixer.stopAllAction();
-    const to = this.active(); to.root.visible = true;
+    from.mixer.stopAllAction();
+    this.attach(from, false);
+    const to = this.active(); this.attach(to, true);
     this.current = ''; this.play(name, { fade: 0, time, loop: this.loop, timeScale: this.timeScale, next: this.next });
     this.setNut(this.usesCoconut);
   }
