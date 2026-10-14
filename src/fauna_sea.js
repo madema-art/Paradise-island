@@ -1173,16 +1173,20 @@ function buildAnthiasSchool() {
 function buildYellowTangSchool() {
   const count = 32, group = new THREE.Group(), fish = [];
   const cx = COVE.x + 4, cz = COVE.z + 14;
+  // wildlife size: the yellow tang (Zebrasoma flavescens) is 0.20 m total length (FishBase maximum) x 1.5 = 0.30 m. The model is 2.655 units
+  // long in its holder's frame (measured in game, bind pose), so each holder is scaled to 0.30 / 2.655 per unit, with +-6% variation.
+  // The school's distances and speeds were tuned for the old fish (about 1.06 m long), so they scale by kT = 0.30 / 1.06.
+  const TANG_K = 0.30 / 2.655, kT = 0.30 / (2.655 * 0.40);
   for (let i = 0; i < count; i++) {
     const model = makeYellowTangModel();
     if (!model) return;
     // the Blender model is about 2.8 m from snout to tail; the lagoon's reef fish are about 1.2 m, so the tangs are scaled to match them
-    const holder = new THREE.Group(); holder.add(model.root); holder.scale.setScalar(rr(0.36, 0.44));
+    const holder = new THREE.Group(); holder.add(model.root); holder.scale.setScalar(TANG_K * rr(0.94, 1.06));
     const a = rnd() * TAU, r = rr(2, 7);
     const f = { holder, mixer: model.mixer, actions: model.actions,
       x: cx + Math.cos(a) * r, y: -1.35 + rr(-.35,.35), z: cz + Math.sin(a) * r,
       vx: rr(-.12,.12), vz: rr(.18,.38), yaw: 0,
-      phase: rnd()*TAU, size: holder.scale.x, graze: 0, nextGraze: rr(8,24), turn: rr(5,16), formationR: rr(2.5,6.2) };
+      phase: rnd()*TAU, size: holder.scale.x, graze: 0, nextGraze: rr(8,24), turn: rr(5,16), formationR: rr(2.5,6.2) * kT };
     f.actions.get('Tang_Cruise_Swim')?.play();
     fish.push(f); group.add(holder);
   }
@@ -1204,25 +1208,25 @@ function buildYellowTangSchool() {
     const patrolX = cx + Math.cos(pathT)*12, patrolZ = cz + Math.sin(pathT*.73)*9;
     center.set(lerp(patrolX,cx+1,shelterBlend), -1.45, lerp(patrolZ,cz-2,shelterBlend));
     if (grazing && !night) { center.x = lerp(center.x,grazeX,.72); center.z = lerp(center.z,grazeZ,.72); }
-    const cruiseSpeed = lerp(1.05,.34,shelterBlend) * (grazing ? .55 : 1);
+    const cruiseSpeed = lerp(1.05,.34,shelterBlend) * kT * (grazing ? .55 : 1);
     group.position.set(center.x,center.y,center.z);
     for (let i=0;i<fish.length;i++) {
       const f=fish[i];let ax=0,ay=0,az=0,alignX=0,alignZ=0,neighbors=0,sepX=0,sepZ=0;
       for (let j=0;j<fish.length;j++) if (i!==j) {
         const o=fish[j],dx=o.x-f.x,dz=o.z-f.z,d2=dx*dx+dz*dz;
-        if(d2<25){alignX+=o.vx;alignZ+=o.vz;neighbors++;}
-        if(d2<2.2&&d2>.001){sepX-=dx/d2;sepZ-=dz/d2;}
+        if(d2<25*kT*kT){alignX+=o.vx;alignZ+=o.vz;neighbors++;}
+        if(d2<2.2*kT*kT&&d2>.001){sepX-=dx/d2;sepZ-=dz/d2;}
       }
       if(neighbors){ax+=(alignX/neighbors-f.vx)*.42;az+=(alignZ/neighbors-f.vz)*.42;}
       // Cohere around the moving shoal center while retaining personal spacing.
       const dx=center.x-f.x,dz=center.z-f.z,dist=Math.hypot(dx,dz)+1e-3;
-      const ring= grazing&&!night ? f.formationR : lerp(5.5,2.5,shelterBlend);
+      const ring= grazing&&!night ? f.formationR : lerp(5.5,2.5,shelterBlend) * kT;
       const pull=clamp((dist-ring)*.14,-.18,.75);ax+=dx/dist*pull;az+=dz/dist*pull;
       ax+=sepX*.9;az+=sepZ*.9;
       // Small correlated heading changes ripple through the shoal instead of lockstep turns.
       f.turn-=dt;if(f.turn<=0){f.turn=rr(5,17);f.phase+=rr(-.7,.7);}
       ax+=Math.cos(pathT+f.phase*.18)*.12;az+=Math.sin(pathT+f.phase*.18)*.12;
-      const desiredY= -1.45 + Math.sin(t*.42+f.phase)*.28 + (grazing&&!night ? -.22 : 0);
+      const desiredY= -1.45 + Math.sin(t*.42+f.phase)*.28*kT + (grazing&&!night ? -.22 : 0);
       ay=(desiredY-f.y)*.62;
       f.vx+=ax*dt;f.vz+=az*dt;f.vy=(f.vy||0)+ay*dt;
       const dampFactor=Math.exp(-1.3*dt);f.vx*=dampFactor;f.vz*=dampFactor;f.vy*=Math.exp(-1.7*dt);
