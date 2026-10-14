@@ -45,6 +45,14 @@ export const SPECIES = {
   'Green sea turtle': { src: 'turtle_model', axis: 'z', sourceM: 2.0808, target: 1.35, variety: 0.06, on: true, note: 'length (viewer: single body mesh; the model is about twice a real turtle, so the game turtle shrinks)' },
   'Humpback whale': { src: 'whale_model', axis: 'max', sourceM: 15.7, target: 21.0, variety: 0.06, on: true, note: 'total length (14 m x 1.5)' },
   'Blackfin reef shark': { src: 'shark_model', axis: 'max', sourceM: 1.836, target: 1.95, variety: 0.06, on: true, note: 'total length (1.30 m x 1.5)' },
+  // Giant manta ray: the game's procedural manta (fauna_sea.js Manta), a simple six-triangle wing shape with a tail cone and root scale 1.5.
+  // Measured in its own vertices: wing tip to tip 5.2 units (x). Disc width 4.5 m (typical adult) x 1.5 = 6.75 m. NOTE: the shape itself is
+  // a placeholder-level model (flat and angular): a real manta model is a defect to fix separately; it is not replaced here.
+  'Giant manta ray': { src: 'procedural Manta (fauna_sea.js)', axis: 'x', sourceM: 5.2, target: 6.75, variety: 0.06, on: true, note: 'disc width (4.5 m x 1.5); procedural placeholder shape' },
+  // Hermit crab (Coenobita perlatus): carapace LENGTH, not width. The model is the crab body with its borrowed shell shown (crab.glb,
+  // rest pose): carapace length 0.5733 m (z). Research: large adults 20-25 mm carapace length (Enewetak study, 25 mm species maximum).
+  // Target 0.022 m x 1.5 = 0.033 m. The shell is part of the same model and scales with it. Very small by design: flagged for review.
+  'Hermit crab': { src: 'crab.glb (hermit variant)', axis: 'z', sourceM: 0.5733, target: 0.033, variety: 0.10, on: true, note: 'carapace length (22 mm adult x 1.5); shell scales with the body' },
 };
 
 // the boar variants are the same species (wild boar): same source, same target, their own coat and root scale

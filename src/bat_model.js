@@ -18,6 +18,12 @@ export async function loadBatModel() {
     // custom attributes are not converted by the exporter: Blender (x, y, z up) -> three (x, z, -y)
     const a = new Float32Array(f.count * 3);
     for (let i = 0; i < f.count; i++) { a[i * 3] = f.getX(i); a[i * 3 + 1] = f.getZ(i); a[i * 3 + 2] = -f.getY(i); }
+    // wildlife size (docs/WILDLIFE_SCALE_RESEARCH.md): the forearm is 0.160 m in this model (blender/bat_build.py: elbow to wrist) against a
+    // sourced 0.140 m (Animal Diversity Web 120-160 mm), so the whole bat scales by 0.140 x 1.5 / 0.160 = 1.3125, applied once here to
+    // the shared geometry (positions, normals and the roosting pose), so the colony stays a single draw call.
+    const BAT_SIZE = 1.3125;
+    g.scale(BAT_SIZE, BAT_SIZE, BAT_SIZE);
+    for (let i = 0; i < a.length; i++) a[i] *= BAT_SIZE;
     g.setAttribute('aFold', new THREE.BufferAttribute(a, 3));
     baseGeo = g;
   } catch (e) { console.warn('fruit bat model failed to load', e); baseGeo = null; }
