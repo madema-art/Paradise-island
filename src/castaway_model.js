@@ -6,6 +6,8 @@ import headBin from '../assets/castaway_head.glb';
 
 let ready = null;
 export const castawayModelReady = () => ready !== null;
+/** the castaway's standing height in metres: the fixed human reference for every creature in the game */
+export const CASTAWAY_HEIGHT = 2.0;
 
 const parse = (bin) => new Promise((res, rej) => {
   const buf = bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength);
@@ -119,6 +121,11 @@ export function buildHumanFromModel() {
     m.frustumCulled = false;
     hairG.add(m);
   });
+  // The castaway is exactly 2.00 m tall: feet (y = 0 in the bind pose) to the top of his skin, hair excluded. The scale is set from the
+  // body mesh itself, after the inverse bind matrices are taken, so the skin still follows the skeleton and only the whole man grows.
+  const bodyMesh = skinned.find((m) => m.name === 'body');
+  bodyMesh.geometry.computeBoundingBox();
+  root.scale.setScalar(CASTAWAY_HEIGHT / (bodyMesh.geometry.boundingBox.max.y - bodyMesh.geometry.boundingBox.min.y));
   const mkArm = (n) => { const a = nodes['arm' + n]; a.elbow = nodes['elbow' + n]; a.hand = nodes['hand' + n]; return a; };
   const mkLeg = (n) => { const l = nodes['leg' + n]; l.knee = nodes['knee' + n]; l.foot = nodes['foot' + n]; return l; };
   return {
