@@ -13,7 +13,7 @@ import { buildTerrain } from './terrain.js';
 import { buildWater } from './water.js';
 import { initRipples } from './ripples.js';
 import * as RIP from './ripples.js';
-import { cam, updateCamera, flyTo } from './camera.js';
+import { cam, updateCamera, flyTo, followCreature, release as releaseCamera } from './camera.js';
 import { spawnNear } from './walk.js';
 import { buildFlora } from './flora.js';
 import { buildFlora2, buildSouthSeas, reef } from './flora2.js';
@@ -152,6 +152,8 @@ async function boot() {
 
   window.__dbg = { events, fx, RIP, falls, THREE, scene, camera, cam, flora, env, volcano, secrets, renderer, composer, bloom, sun, updaters, WORLD, creatures, dolphinPod: seaFauna.dolphinPod, dolphinPods: seaFauna.dolphinPods, audio, WX, lorikeetFlocks: seaFauna.lorikeetFlocks, frigatebirdColony: seaFauna.frigatebirdColony };
   window.__goto = (p, t) => cam.goto(p, t);
+  // review hook: the game's own follow camera on any creature (used to inspect the monkeys in the running game)
+  window.__cam = { follow: (c) => followCreature(c), release: releaseCamera };
   const DAWN = { tod: 5.0, speed: 0.4 };           // a slow sunrise: the sun clears the horizon in about a minute and a half
   const VIEW = { pos: [-230, 60, -20], tgt: [0, 30, -10] };   // over the western sea, facing east: the volcano and the falls, the sun coming up behind them
   const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'];

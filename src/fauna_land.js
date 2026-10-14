@@ -5,6 +5,7 @@ import { getHeight, getSlope, riverDist, volcanoDist, lavaDist, perchesNear, TEM
 import { fauna, register, orient, steer, canStand, randomSpot, limb, lookAtCamera, blinkAt, nearestPerson } from './fauna_common.js';
 import { makeMonkey, makeBoar, makeCrab, makeFlamingo } from './creatures.js';
 import { makeMonkeyRig, monkeyMeta } from './monkey_model.js';
+import { updateContests, monkeyTraits } from './monkey_contest.js';
 import { spawnRats } from './rat.js';
 import { spawnOwls } from './owl.js';
 import { spawnBoas } from './boa.js';
@@ -21,6 +22,7 @@ const NUT_GEO = new THREE.SphereGeometry(1, 10, 8), NUT_MAT = new THREE.MeshStan
 // the idle clip for each idle behaviour of the new monkey (see Monkey.act)
 const IDLE_CLIP = { look: 'look_around', scratch: 'scratch', eat: 'investigate' };
 const idleClip = (act) => IDLE_CLIP[act] || 'idle';
+const MONKEYS = [];   // every monkey, for the social and contest rules
 class Monkey {
   constructor(home, i, ctx) {
     // the new monkey (monkey_model.js) when its models are loaded; the procedural monkey otherwise, and with ?monkey=old
@@ -29,6 +31,12 @@ class Monkey {
     if (r) Object.assign(this, r);
     this.group = new THREE.Group(); this.group.scale.setScalar(rnd() < 0.18 ? rr(1.15, 1.3) : rr(0.82, 1.08));
     this.group.add(this.rig ? this.rig.group : r.root);
+    // traits and timers for the social and contest rules. These use Math.random, not the world's seeded stream, so placement is unchanged.
+    this.size = this.group.scale.x; Object.assign(this, monkeyTraits());
+    this.contest = null; this.contestScan = Math.random() * 2; this.nbrScan = Math.random() * 2;
+    this.climbV = 1; this.downV = 1;
+    this.greetT = 0; this.curiousT = 0; this.startleT = 0; this.startled = false; this.wasNear = false; this.personD = 99;
+    MONKEYS.push(this);
     fauna.add(this.group);
     this.ctx = ctx;
     this.home = home;
@@ -74,7 +82,7 @@ class Monkey {
   }
   /** run off with the coconut to somewhere quiet */
   pickStash() {
-    const s = randomSpot(this.x, this.z, 14, 28, { minH: 2.5 }, 30);
+    const s = this.rig ? randomSpot(this.x, this.z, 5, 12, { minH: 2.5 }, 30) : randomSpot(this.x, this.z, 14, 28, { minH: 2.5 }, 30);
     if (s) { this.tx = s.x; this.tz = s.z; } else { this.tx = this.home.x + rr(-6, 6); this.tz = this.home.z + rr(-6, 6); }
     this.stashT = 14;
   }
@@ -120,12 +128,15 @@ class Monkey {
     if (st === 'climb') return this.climbPhase === 0 ? ['climb_start', { loop: false, next: 'climb_up' }] : ['climb_up', {}];
     if (st === 'perch') return ['climb_hang_idle', {}];
     if (st === 'descend') return ['climb_down', {}];
+    if (this.startleT > 0 && Math.abs(this.speed) < 0.6) return ['startled', { loop: false, next: 'alert_idle' }];
     if (this.grabT > 0) return cur === 'coconut_reach' || cur === 'coconut_grab_lift' ? [cur, {}] : ['coconut_reach', { loop: false, next: 'coconut_grab_lift' }];
     if (st === 'carry') return ['coconut_carry_walk', {}];
     if (st === 'eatNut') return ['coconut_hold_idle', {}];
     if (moving) return this.speed <= 0.8 ? ['walk', {}] : ['scurry', {}];
     // at rest: sitting, standing up, or the idle behaviour
     const sitting = cur === 'sit_idle' || cur === 'sit_down' || cur === 'groom';
+    if (st === 'idle' && this.curiousT > 0) return ['curious', { loop: false, next: 'alert_idle' }];
+    if (st === 'idle' && this.greetT > 0) return ['social_greet', {}];
     if (cur === 'stand_up' && !R.finished()) return [cur, {}];
     if (this.act === 'sit' && (st === 'idle' || st === 'rock' || st === 'unrock')) {
       if (sitting) return [cur, {}];
@@ -134,7 +145,23 @@ class Monkey {
       return ['sit_down', { loop: false, next: this.sitClip }];
     }
     if (sitting) return ['stand_up', { loop: false, next: idleClip(this.act) }];
-    return [idleClip(this.act), {}];
+    return [this.act === 'look' && this.personD < 12 ? 'alert_idle' : idleClip(this.act), {}];
+  }
+  /** what is around the monkey: a person coming close (a curious look), a neighbour to greet, a chase that has just begun (startled) */
+  noticeRig(st, dt) {
+    this.greetCool = Math.max(0, (this.greetCool || 0) - dt); this.greetT = Math.max(0, this.greetT - dt); this.curiousT = Math.max(0, this.curiousT - dt); this.startleT = Math.max(0, this.startleT - dt);
+    const who = nearestPerson(this.x, this.z, this.group.position.y, 12);
+    this.personD = who.d;
+    const near = who.d < 7;
+    if (near && !this.wasNear && st === 'idle' && Math.abs(this.speed) < 0.5) this.curiousT = 2.0;
+    this.wasNear = near;
+    if (this.fleeT > 2.9 && !this.startled) { this.startled = true; this.startleT = 1.0; }
+    if (!(this.fleeT > 0)) this.startled = false;
+    this.nbrScan -= dt;
+    if (this.nbrScan <= 0 && st === 'idle' && this.greetT <= 0 && this.greetCool <= 0 && this.act !== 'sit') {
+      this.nbrScan = rr(2, 4);
+      for (const m of MONKEYS) if (m !== this && !m.contest && m.state === 'idle' && m.greetT <= 0 && !(m.greetCool > 0) && Math.hypot(m.x - this.x, m.z - this.z) < 3.5 && rnd() < 0.3) { this.greetT = 2.4; m.greetT = 2.4; this.greetCool = m.greetCool = rr(20, 35); break; }
+    }
   }
   poseRig(st, moving, dt) {
     const R = this.rig;
@@ -142,10 +169,18 @@ class Monkey {
     const cd = Math.hypot(this.x - camera.position.x, this.z - camera.position.z);
     R.setFar(R.isFar ? cd > 5.5 : cd > 7);
     R.retier();
+    this.noticeRig(st, dt);
     const [name, opts] = this.pickClip(st, moving);
     const meta = monkeyMeta(name);
-    // locomotion plays at the ground speed the clip was made for, clamped to 0.7-1.4 (beyond that the feet slide: see the report)
-    const ts = meta && meta.speed_mps && !st.startsWith('climb') ? clamp(Math.abs(this.speed) / Math.abs(meta.speed_mps), 0.7, 1.4) : 1;
+    // the playback rate is the monkey's own speed over the clip's speed, so the hands and feet keep up with the ground. A monkey never
+    // moves faster than its locomotion clip can keep up with (3.2x), so the timescale stays within the range the clips are made for.
+    let ts = 1;
+    if (name === 'climb_up') ts = this.climbV / 0.343;
+    else if (name === 'climb_down') ts = this.downV / 0.244;
+    else if (meta && meta.speed_mps && (name === 'walk' || name === 'scurry' || name === 'coconut_carry_walk')) {
+      this.speed = Math.min(Math.abs(this.speed), meta.speed_mps * 3.2);
+      ts = clamp(this.speed / meta.speed_mps, 0.6, 3.2);
+    }
     R.play(name, { ...opts, timeScale: ts });
     if (this.grabT > 0) this.grabT -= dt;
     // far from the camera the mixer is stepped less often
@@ -153,6 +188,7 @@ class Monkey {
   }
 
   update(dt, t) {
+    if (this.contest) return;      // a contest runs this monkey (monkey_contest.js)
     this.t -= dt;
     this.cooldown -= dt;
     this.nutCool -= dt; this.nutScan -= dt;
@@ -217,7 +253,7 @@ class Monkey {
       const nx = this.x + Math.sin(this.heading) * this.speed * dt, nz = this.z + Math.cos(this.heading) * this.speed * dt;
       if (canStand(nx, nz, { minH: 1.8, river: 1.2 }) || st === 'toTree') { this.x = nx; this.z = nz; } else { this.state = 'idle'; this.t = 1; }
       moving = true;
-      if (st === 'toTree' && d < 1.1) { this.state = 'climb'; this.climb = 0; this.out = Math.atan2(this.x - this.tree.x, this.z - this.tree.z); this.climbPhase = 0; this.climbT = 0; this.climbFrom = { x: this.x, y: getHeight(this.x, this.z), z: this.z }; }
+      if (st === 'toTree' && d < 1.1) { this.state = 'climb'; this.climb = 0; this.out = Math.atan2(this.x - this.tree.x, this.z - this.tree.z); this.climbPhase = 0; this.climbT = 0; this.climbFrom = { x: this.x, y: getHeight(this.x, this.z), z: this.z }; this.climbV = clamp(this.trunkLen(this.tree) / rr(8, 15), 0.85, 1.6); this.downV = clamp(this.trunkLen(this.tree) / rr(9, 14), 0.8, 1.0); }
       else if (st === 'walk' && d < 1.2) { this.state = 'idle'; this.t = rr(2, 6); this.act = pick(['look', 'sit', 'scratch', 'eat']); }
     } else if (st === 'toNut') {
       // a sprint out of the foliage at the rolling coconut
@@ -244,7 +280,7 @@ class Monkey {
       const dx = this.tx - this.x, dz = this.tz - this.z, d = Math.hypot(dx, dz);
       this.stashT -= dt;
       this.heading = steer(this.heading, Math.atan2(dx, dz), dt * (this.grabT > 0 ? 0 : 4));
-      this.speed = damp(this.speed, this.grabT > 0 ? 0 : 5.6, 4, dt);
+      this.speed = damp(this.speed, this.grabT > 0 ? 0 : (this.rig ? 0.85 : 5.6), 4, dt);
       const nx = this.x + Math.sin(this.heading) * this.speed * dt, nz = this.z + Math.cos(this.heading) * this.speed * dt;
       if (canStand(nx, nz, { minH: 1.8, river: 1.2 })) { this.x = nx; this.z = nz; } else this.stashT = 0;
       moving = true;
@@ -259,7 +295,7 @@ class Monkey {
     } else if (st === 'climb' || st === 'descend') {
       this.pitchT = -1.25; this.foldT = 0.0;
       const dir = st === 'climb' ? 1 : -1;
-      this.climb = clamp(this.climb + dir * dt * (this.rig ? (dir > 0 ? 0.343 : 0.244) / this.trunkLen(this.tree) : 0.2), 0, 1);
+      this.climb = clamp(this.climb + dir * dt * (this.rig ? (dir > 0 ? this.climbV : this.downV) / (0.85 * this.trunkLen(this.tree)) : 0.2), 0, 1);
       if (st === 'climb' && this.climb >= 1) { this.state = 'perch'; this.t = rr(6, 10); this.dropped = false; }
       if (st === 'descend' && this.climb <= 0) { this.state = 'idle'; this.t = 2; this.heading = this.out; const off = this.rig ? this.trunkR(0.08) + 0.36 : 1.0; this.x = this.tree.x + Math.sin(this.out) * off; this.z = this.tree.z + Math.cos(this.out) * off; if (this.rig) this.dismount = 1.1; }
       moving = true; this.speed = 1.2;
@@ -844,6 +880,9 @@ export function buildLandFauna(ctx) {
   const mk = [];
   let mi = 0;
   [[0, 4], [1, 3], [2, 2]].forEach(([h, n]) => { for (let i = 0; i < n; i++) mk.push(new Monkey(homes[h], mi++, ctx)); });
+  // test populations only: ?monkeys=N adds N monkeys (created after everything else, so nothing else moves)
+  const extraMonkeys = Math.min(40, Number(new URLSearchParams(location.search).get('monkeys')) || 0);
+  for (let i = 0; i < extraMonkeys; i++) mk.push(new Monkey(homes[i % 3], mi++, ctx));
   const boars = spawnBoars(ctx);
   // The capybaras that lived here are gone. Their code drew 128 numbers from the world's random stream; spending them keeps every later placement where it was.
   burn(128);
@@ -875,6 +914,7 @@ export function buildLandFauna(ctx) {
   const all = [...mk, ...boars, ...crabs, flams, ...rats, ...owls, ...boas];
   updaters.push((dt, t) => {
     const d = Math.min(dt, 0.05);
+    updateContests(MONKEYS, d);
     for (const a of all) a.update(d, t);
   });
   makeButterflies(32);
