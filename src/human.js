@@ -16,6 +16,7 @@ import { wake as waterWake, waterY } from './ripples.js';
 import { rr, rnd, pick, clamp, lerp, damp, TAU } from './util.js';
 import { makeMind } from './castaway_mind.js';
 import { createComfortLife } from './comfort_life.js';
+import { installFishingReview } from './fishing_review.js';
 import { eco } from './ecology.js';
 import { makeRatModel } from './rat_model.js';
 import { buildNewBody, coverage, clipMeta } from './castaway_new.js';
@@ -245,6 +246,16 @@ export function buildCastaway() {
   const mind = makeMind();
   const life = createComfortLife(camp, hut, mind);
   castawayAI.life = life;
+  const mealFish = mkFish(true); mealFish.visible = false; scene.add(mealFish);
+  const mealSupport = new THREE.Group(); mealSupport.visible = false; scene.add(mealSupport);
+  for (const side of [-1, 1]) { const post = seg(.018, .025, .9, '#6b4a2c', 5); post.position.set(side * .45, .45, 0); mealSupport.add(post); }
+  const cookingSkewer = seg(.009, .012, 1.05, '#6b4a2c', 5); cookingSkewer.rotation.z = Math.PI / 2; cookingSkewer.position.y = .93; mealSupport.add(cookingSkewer);
+  if (new URLSearchParams(location.search).has('fishingReview')) {
+    const site = fishable.filter(s => s.method === 'bank' && life.safe(s.stand))
+      .sort((a, b) => Math.hypot(a.stand.x - camp.x, a.stand.z - camp.z) - Math.hypot(b.stand.x - camp.x, b.stand.z - camp.z))[0];
+    if (site) installFishingReview({ ...site, target: { ...site.target, y: (waterAt(site.target.x, site.target.z) ?? 0) - .45 } }, life, () => castawayAI.paused);
+    else console.error('Fishing review requires a safe bank');
+  }
   let lastHours = env.hours;
 
   register({
@@ -259,6 +270,7 @@ export function buildCastaway() {
     return ` ${[nf ? `${nf} fish` : '', nr ? `${nr} rat${nr > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ')} in the basket so far.`;
   };
   function describe() {
+    if (act === 'angling') return life.fishing.describe();
     if (act === 'project') return mind.projectText();
     if (act === 'quest') { const q = castawayAI.lf && castawayAI.lf.quest, st = q && q.steps[q.i]; return q ? `${st && st.label ? st.label.charAt(0).toUpperCase() + st.label.slice(1) : 'Following his own interests'} (${q.why}).` : 'Following his own interests.'; }
     if (act === 'sleep') return phase === 'asleep' ? 'Asleep on a woven mat in his palm-frond lean-to, the campfire burning low beside him.' : 'Turning in for the night.';
@@ -407,6 +419,8 @@ export function buildCastaway() {
     bobber.visible = line.visible = false;
   };
   function begin(a) {
+    if (act === 'angling' && a !== 'angling') life.fishing.pause('Interrupted by ' + a);
+    mealFish.visible = mealSupport.visible = false;
     if (act === 'project' && a !== 'project') life.project.pause('Interrupted by ' + a);
     if (act === 'quest' && a !== 'quest') { lf.pause('interrupted by ' + a); showHeld(null); qFace = null; }
     if (act === 'hunt' && a !== 'hunt') endHunt();
@@ -1201,7 +1215,7 @@ export function buildCastaway() {
   }
   function placeFor(a) {
     act = a; hurry = false; stuck = 0; clearProps();
-    if (a === 'project') {
+    if (a === 'project' || a === 'angling') {
       const site = life.project.state.site || life.project.options.findSite();
       if (site) life.project.state.site = site;
       const start = site ? { x: site.x + 1.8, z: site.z } : spawnNear(camp.x, camp.z);
@@ -1254,7 +1268,7 @@ export function buildCastaway() {
     const nutT = eco.coconuts ? eco.coconuts.free(x, z, 80, true) : null;
     let freshNear = false;
     for (const q of freshSpots) if (Math.hypot(q.stand.x - x, q.stand.z - z) < 45) { freshNear = true; break; }
-    return { hour: env.tod, rain: wx.rain, fishOK: !!(fishSpots && fishSpots.length), canoeOK: !!cn && wx.rain < 0.2, calm: wx.rain < 0.1, wildlife: wild, watchable: nearC ? nearC.name : null, watchC: nearC,
+    return { hour: env.tod, rain: wx.rain, fishOK: !!(fishSpots && fishSpots.length) && !life.fishing.available(mind.clock), anglingOK: life.fishing.available(mind.clock), fishingPending: !!life.fishing.pending(), canoeOK: !!cn && wx.rain < 0.2, calm: wx.rain < 0.1, wildlife: wild, watchable: nearC ? nearC.name : null, watchC: nearC,
       projectOK: life.project.available(mind.clock), quest: lf.propose(), drives: lf.drivesNow(), huntBoost: mind.clock < huntBoostUntil, novel: (mind.memory.tries.hike || 0) < 5, rockNear: perchesNear(x, z, 35, (p) => p.kind !== 'volcano' && p.r >= 0.45 && p.y - getHeight(p.x, p.z) > 0.5 && p.y - getHeight(p.x, p.z) < 1.5 && !unsafeAt(p.x, p.z, 22)).length > 0, threat: !!threatC, threatC, monkeyC, unsafeCamp: unsafeAt(camp.x, camp.z, 30), unsafeHut: unsafeAt(hut.mat.x, hut.mat.z, 24), freshOK: freshSpots.some((q) => !unsafeAt(q.stand.x, q.stand.z, 22)), freshNear, ratC: !!ratT, coconutOK: !!nutT, caught: caught.length };
   }
   let ctx = null, ctxT = 0, curDh = 0, sessionCatch = 0;
@@ -1268,7 +1282,7 @@ export function buildCastaway() {
     : a === 'sleep' || a === 'shelter' ? 'his lean-to'
     : a === 'camp' ? 'the campfire' : a === 'watch' ? 'the wildlife' : a === 'hunt' ? 'the rat burrows' : a === 'drink' ? (dKind === 'coconut' ? 'the coconut palms' : dSpot ? dSpot.name : 'the water') : a === 'chase' ? 'the monkeys’ clearing' : a === 'flee' ? 'a hasty retreat' : 'the shore');
   // a catch: he is pleased, which can tip him into a dance
-  const landed = (name) => { caught.push(name); mind.note(`Landed a ${name}.`, act, 0.06, true); };
+  const landed = () => { mind.note('The fish slipped away; this old fishing routine has no population ownership link.', null, 0); }; // Retired visual routines cannot award unowned catches.
   const sessionEnd = (where) => { const ok = caught.length > sessionCatch; mind.note(ok ? `A good session at ${where}.` : `No bites at ${where}.`, null, ok ? 0.04 : -0.05); };
 
   // watching: he turns to follow a nearby animal with his head and body, for as long as it stays close
@@ -1696,6 +1710,59 @@ export function buildCastaway() {
     if (pick && nb.layer(pick, 0.85, { why: act + '/' + reason })) nb.lastLayerAt = performance.now();
   }
 
+  function anglingUpdate(dt, t) {
+    const f = life.fishing, job = f.next({ x, z }, mind.clock);
+    clearProps(); mealFish.visible = mealSupport.visible = false;
+    if (!job) { mind.finish(); return; }
+    mind.current.until = Math.max(mind.current.until, mind.clock + .3);
+    const d = Math.hypot(job.target.x - x, job.target.z - z);
+    const pending = f.pending();
+    if (d > .8) {
+      while (job.path?.length > 1 && Math.hypot(job.path[0].x - x, job.path[0].z - z) < .55) job.path.shift();
+      const wp = job.path?.[0] || job.target; lastOff = 0;
+      step(wp.x, wp.z, 2.4, dt, false); settleY(dt); gait(dt, speedNow);
+      fishHeld.visible = !!pending;
+    } else {
+      settleY(dt);
+      const face = job.site?.target || life.actor.structs[0];
+      heading = turnTo(heading, Math.atan2(face.x - x, face.z - z), dt * 3);
+      const session = f.session, st = session?.stage;
+      if (job.kind === 'fish') {
+        const cast = st === 'cast' ? Math.sin(Math.min(1, session.elapsed / 1.5) * Math.PI) : 0;
+        const fighting = st === 'fight';
+        setPose({ aPs: -1.1 + cast * .9 - (fighting ? .2 : 0), aPe: -1.05 + (fighting ? .18 * Math.sin(t * 8) : 0), aNs: -.95, aNe: -1.2, hdX: .25 });
+        rod.visible = true;
+      } else if (job.kind === 'inspect' || job.kind === 'prepare') {
+        fishHeld.visible = true; const fish = f.session?.result?.fish || pending;
+        fishHeld.scale.setScalar((fish?.length || .4) / .5); tint(fishHeld, 0);
+        setPose({ aNs: -1.25, aNe: -1.5, aPs: -.9, aPe: -1.2, hdX: .4, spX: .15 });
+      } else if (job.kind === 'cook' || job.kind === 'eat') {
+        const fire = life.actor.structs[0];
+        setPose({ py: .56, lPh: -1.2, lNh: -1.2, lPk: 1.9, lNk: 1.9, spX: .15, aNs: -.95, aNe: -1.4, aPs: -.9, aPe: -1.2 });
+        if (job.kind === 'cook') {
+          mealFish.visible = mealSupport.visible = true; mealSupport.position.set(fire.x, getHeight(fire.x, fire.z), fire.z); mealFish.position.set(fire.x, getHeight(fire.x, fire.z) + .95, fire.z);
+          mealFish.rotation.set(0, Math.PI / 2, Math.sin(t) * .03); tint(mealFish, Math.min(1, job.elapsed / job.duration));
+        } else { stick.visible = true; stickFish.visible = true; stickRat.visible = false; }
+      } else {
+        setPose({ py: .67, spX: .45, lPh: -.6, lNh: -.6, lPk: .9, lNk: .9, aPs: -.8 + Math.sin(t * 7) * .15, aNs: -.8, aPe: -.8, aNe: -.8 });
+      }
+    }
+    apply(dt);
+    const result = f.update(dt, { x, z }, mind.clock, stuck);
+    const session = f.session;
+    if (session && job.kind === 'fish') {
+      const lure = session.stage === 'fight' ? session.lure : session.bait;
+      rodTip.getWorldPosition(_tip);
+      const k = session.stage === 'cast' ? Math.min(1, session.elapsed / 1.5) : 1;
+      bob.pos.set(lerp(_tip.x, lure.x, k), (waterAt(lure.x, lure.z) ?? waterAt(session.bait.x, session.bait.z) ?? 0) + Math.sin(k * Math.PI) * 2 - (session.stage === 'bite' ? .12 : 0), lerp(_tip.z, lure.z, k));
+      bobber.position.copy(bob.pos); bobber.visible = line.visible = true;
+      for (let i = 0; i < linePts.length; i++) { const u = i / (linePts.length - 1); linePts[i].lerpVectors(_tip, bob.pos, u); linePts[i].y -= Math.sin(u * Math.PI) * (session.stage === 'fight' ? .03 : .25); }
+      lineGeo.setFromPoints(linePts);
+      if (session.stage === 'fight' && Math.sin(t * 8) > .95) fx.splash(lure.x, (waterAt(lure.x, lure.z) ?? waterAt(session.bait.x, session.bait.z) ?? 0), lure.z, .15);
+    }
+    if (result) events.emit('sfx', result.kind === 'cook' ? 'sizzle' : result.kind === 'craft' ? 'craft' : 'pickup');
+  }
+
   function projectUpdate(dt, t) {
     const job = life.project.next({ x, z }, mind.clock);
     if (!job) { mind.finish(); return; }
@@ -1718,7 +1785,7 @@ export function buildCastaway() {
   }
 
   const castawayStep = (dt0, t) => {
-    if (castawayAI.paused) { life.update(0, 0, t, { x, z }, true); lastHours = env.hours; actors.castaway.on = false; return; }
+    if (castawayAI.paused) { clearProps(); mealFish.visible = mealSupport.visible = false; life.update(0, 0, t, { x, z }, true); lastHours = env.hours; actors.castaway.on = false; return; }
     if (env.paused) return;
     const dt = Math.min(dt0, 0.05);
     const dh = Math.max(0, env.hours - lastHours); lastHours = env.hours; curDh = dh;
@@ -1738,7 +1805,8 @@ export function buildCastaway() {
       if (wakeUp(dt)) { me.group.position.set(x, y, z); me.group.rotation.y = heading; if (nb) driveNew(dt); return; }
       begin(w);
     }
-    if (act === 'project') projectUpdate(dt, t);
+    if (act === 'angling') anglingUpdate(dt, t);
+    else if (act === 'project') projectUpdate(dt, t);
     else if (act === 'quest') questUpdate(dt, t);
     else if (act === 'sleep') sleepUpdate(dt, t);
     else if (act === 'hike') hikeUpdate(dt, t);

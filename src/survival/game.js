@@ -20,7 +20,7 @@ import { collectActions, waterAhead, waterKind, depthAt } from './actions.js';
 import { ITEMS, RECIPES, LEVELS, QUESTS, DISCOVERIES, RATES } from './items.js';
 import { clamp, damp, rr, rnd, pick, TAU } from '../util.js';
 
-import { gatherResource, canAfford, spend, awardRecipe, constructRecipe, fuelFire } from './mechanics.js';
+import { gatherResource, canAfford, spend, awardRecipe, constructRecipe, fuelFire, cookItems } from './mechanics.js';
 
 const SAVE_KEY = 'paradise.survival.v1';
 const FISH_SEA = ['parrotfish', 'red snapper', 'mackerel', 'grouper', 'sea bream', 'trevally'];
@@ -293,7 +293,7 @@ export class Survival {
     const n = Object.keys(map).reduce((a, id) => a + this.count(id), 0);
     if (!n) return;
     this.startAct('cook', Math.min(4.2, 0.9 + 0.6 * n), { done: () => {
-      for (const [raw, done] of Object.entries(map)) { const c = this.count(raw); if (c) { this.take(raw, c); this.add(done, c); this.bump('cooked', c); this.addXp(3 * c); } }
+      for (const raw of Object.keys(map)) { const c = this.count(raw); if (c) cookItems(this, s, raw, c); }
       events.emit('sfx', 'sizzle');
     } });
   }

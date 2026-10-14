@@ -191,7 +191,7 @@ async function boot() {
   // browsers hold audio back until the visitor's first touch: the first click, key, wheel or touch unlocks it
   const unlock = () => { audio.unlock(); for (const ev of UNLOCK_EVENTS) window.removeEventListener(ev, unlock); };
   for (const ev of UNLOCK_EVENTS) window.addEventListener(ev, unlock, { passive: true });
-  if (location.search.includes('lifeReview')) {
+  if (location.search.includes('lifeReview') || location.search.includes('fishingReview')) {
     env.tod = 10; env.speed = 1;
     followCreature(creatures.find(c => c.id === 'castaway'));
   }

@@ -11,6 +11,7 @@
 import { rnd, rr, clamp } from './util.js';
 
 export const ACTIVITY_LABEL = {
+  angling: 'A fishing afternoon and dinner',
   project: 'Making a personal evening fire', quest: 'Following his own interests', sleep: 'Sleeping in his lean-to', camp: 'At the campfire', hike: 'Exploring on foot', swim: 'Swimming in the lagoon',
   fish: 'Fishing from the shore', canoe: 'Fishing from his canoe', shelter: 'Sheltering from the rain',
   watch: 'Watching wildlife', linger: 'Resting and taking in the view', dance: 'Dancing',
@@ -18,12 +19,14 @@ export const ACTIVITY_LABEL = {
 };
 // how long an activity may run, in game hours (about 25 real seconds per game hour at normal speed)
 const BUDGET = {
+  angling: [4, 6],
   project: [6, 8], quest: [5, 9], sleep: [4, 8], camp: [2.2, 2.8], hike: [2, 3.5], swim: [0.6, 1.2], fish: [1.2, 2.2], canoe: [1.8, 2.8],
   shelter: [0.6, 1.5], watch: [0.5, 1.6], linger: [1.0, 2.2], dance: [0.5, 0.8],
   drink: [0.6, 1.0], hunt: [0.5, 1.0], chase: [0.4, 0.7], flee: [0.5, 0.9],
 };
 // what each activity does to his body per game hour: fatigue and boredom (negative values recover)
 const BODY = {
+  angling: { fatigue: .018, boredom: -.22 },
   project: { fatigue: 0.025, boredom: -0.25 }, quest: { fatigue: 0.04, boredom: -0.3 }, sleep: { fatigue: -0.45, boredom: -0.2 }, camp: { fatigue: -0.05, boredom: -0.1 }, hike: { fatigue: 0.07, boredom: -0.25 },
   swim: { fatigue: 0.12, boredom: -0.3 }, fish: { fatigue: 0.04, boredom: -0.15 }, canoe: { fatigue: 0.06, boredom: -0.2 },
   shelter: { fatigue: -0.04, boredom: 0.05 }, watch: { fatigue: 0.01, boredom: -0.35 }, linger: { fatigue: -0.08, boredom: -0.1 },
@@ -32,6 +35,7 @@ const BODY = {
 };
 // how much each activity lifts his spirits, per game hour
 const JOY = {
+  angling: .035,
   project: 0.04, quest: 0.05, sleep: 0.0, camp: 0.05, hike: 0.05, swim: 0.1, fish: 0.03, canoe: 0.07, shelter: -0.03, watch: 0.08, linger: 0.04,
   dance: 0.3, drink: 0.05, hunt: 0.06, chase: 0.28, flee: -0.3,
 };
@@ -142,6 +146,7 @@ export function makeMind(traits = TRAITS) {
         if (ctx.caught > 0) return 0.2 + Math.max(0, N.hunger - 0.15) * 3.0 - (ctx.caught < 2 && N.hunger < 0.65 ? 0.7 : 0) + (dusk && N.hunger > 0.3 ? 0.25 : 0) + (N.fatigue > 0.5 ? 0.1 : 0) - justDone(a);
         return N.hunger > 0.5 ? 0.03 + (N.hunger - 0.5) * 1.1 - justDone(a) : 0.02 + T.contemplation * 0.04 + ((h >= 17 && h < 19.5) ? 0.12 : 0) - justDone(a);
       }
+      case 'angling': return ctx.anglingOK && !night && ctx.rain < .25 && N.fatigue < .7 ? (ctx.fishingPending ? 2.2 : .65 + N.boredom * .4 + seek * .4 + (1 - N.fulfillment) * .25) - justDone(a) * .4 : -1;
       case 'fish': return ctx.fishOK ? 0.25 + N.hunger * 0.7 + (ctx.caught === 0 && N.hunger > 0.35 ? 0.3 : 0) + N.boredom * 0.15 + practice(a) * 0.4 + ((morning || lateAfternoon) ? 0.2 : 0) - N.fatigue * 0.4 - (night ? 0.2 : 0) - (ctx.caught > 0 ? 0.3 : 0) - (ctx.caught >= 3 ? 0.4 : 0) - justDone(a) * 0.3 : -1;
       case 'canoe': return ctx.canoeOK ? 0.15 + N.boredom * 0.3 + T.boldness * 0.15 + ((h >= 12 && h < 17) ? 0.2 : 0) + N.hunger * 0.3 + seek * 0.25 - N.fatigue * 0.45 + practice(a) * 0.3 - justDone(a) * 0.3 : -1;
       case 'hike': return 0.1 + T.curiosity * 0.4 + N.boredom * 0.55 + seek * 0.6 + (ctx.calm ? 0.08 : 0) + (ctx.novel ? 0.15 : 0) - N.fatigue * 0.6 - Math.max(0, N.hunger - 0.5) * 2 - justDone(a) * 0.25 + (morning ? 0.05 : 0) - (night ? 0.25 : 0) + (ctx.drives ? ctx.drives.adventure * 0.25 + ctx.drives.curiosity * 0.15 : 0);
@@ -168,6 +173,7 @@ export function makeMind(traits = TRAITS) {
   // what he is allowed to do right now (the hard limits: a canoe he does not have, rain, no fishing water)
   const available = (a, ctx) => {
     if (a === 'project') return !!ctx.projectOK;
+    if (a === 'angling') return !!ctx.anglingOK;
     if (a === 'quest') return !!ctx.quest;
     if (a === 'flee') return false;
     if (a === 'camp') return !ctx.unsafeCamp;           // a boar is loitering there: wait it out
@@ -204,10 +210,10 @@ export function makeMind(traits = TRAITS) {
     // a real need (well before it is critical) is reason enough to go out in the rain
     const needy = N.hunger > 0.55;
     // he is never pulled off an activity that is already serving a critical need
-    const eating = ca === 'camp' || ca === 'fish' || ca === 'canoe' || ca === 'hunt', serving = starving && eating;
+    const eating = ca === 'angling' || ca === 'camp' || ca === 'fish' || ca === 'canoe' || ca === 'hunt', serving = starving && eating;
     const crit = serving ? null : starving ? 'hunger' : null;
     if (ca !== 'flee') {
-      if (crit === 'hunger') return start((ctx.caught > 0 || !ctx.fishOK) && !ctx.unsafeCamp ? 'camp' : 'fish');
+      if (crit === 'hunger') return start(ctx.fishingPending && ctx.anglingOK && !ctx.unsafeCamp ? 'angling' : (ctx.caught > 0 || !ctx.fishOK) && !ctx.unsafeCamp ? 'camp' : 'fish');
       if (ctx.rain > 0.45 && ca !== 'shelter' && ca !== 'drink' && ca !== 'camp' && ca !== 'sleep' && !needy) return start('shelter');
       if (N.fatigue > 0.85 && ca !== 'sleep' && !starving && !ctx.unsafeHut) return start('sleep');
     }
@@ -247,7 +253,7 @@ export function makeMind(traits = TRAITS) {
     return {
       doing: mind.current ? ACTIVITY_LABEL[mind.current.act] : 'Deciding what to do',
       act: mind.current ? mind.current.act : '',
-      intention: mind.current?.act === 'project' && mind.projectText ? mind.projectText() : mind.current ? `${ACTIVITY_LABEL[mind.current.act]}, for about ${Math.max(0, (mind.current.until - mind.clock) * 60).toFixed(0)} more game minutes` : 'Not yet decided',
+      intention: mind.current?.act === 'angling' && mind.fishingText ? mind.fishingText() : mind.current?.act === 'project' && mind.projectText ? mind.projectText() : mind.current ? `${ACTIVITY_LABEL[mind.current.act]}, for about ${Math.max(0, (mind.current.until - mind.clock) * 60).toFixed(0)} more game minutes` : 'Not yet decided',
       // the three meters, as the share of each bar that is full
       bars: { food: pct(1 - N.hunger), energy: pct(1 - N.fatigue), happy: pct(N.happy) },
       happiness: word(N.happy, [[0.2, 'Miserable'], [0.4, 'Low'], [0.6, 'Content'], [0.8, 'Happy'], [2, 'Joyful']]),

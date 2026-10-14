@@ -1,3 +1,4 @@
+import { ITEMS } from './items.js';
 // Actor-neutral transactions. Presentation, timers, movement and persistence belong to the caller.
 export const canAfford = (actor, cost) => Object.entries(cost).every(([id, n]) => actor.count(id) >= n);
 export function spend(actor, cost) {
@@ -32,4 +33,10 @@ export function fuelFire(actor, fire, maxFuel = 6) {
   const wasOut = fire.fuel <= 0; actor.take('stick'); fire.fuel = Math.min(maxFuel, fire.fuel + 1.4);
   if (wasOut) { actor.bump('lit'); actor.addXp(4); }
   return { wasOut };
+}
+export function cookItems(actor, fire, id, n = 1) {
+  const to = ITEMS[id]?.cooks;
+  if (!fire?.lit || !to || !Number.isInteger(n) || n < 1 || actor.count(id) < n) return false;
+  actor.take(id, n); actor.add(to, n); actor.bump('cooked', n); actor.addXp(3 * n);
+  return { from: id, to, n };
 }
