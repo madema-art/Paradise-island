@@ -59,3 +59,4 @@ other field, keep the file valid JSON, and set the status as the rule above allo
 - The castaway's mind (`src/castaway_mind.js`) keeps food, energy and happiness (water is a drinking habit, not a need) and plans ahead; `src/human.js` runs the activities and `src/needs_hud.js`
   shows the meters. Boars and monkeys react to him through `nearestPerson` in `src/fauna_common.js`.
 - Models made outside the project (Codex) live in `assets/` as GLB with a loader in `src/<name>_model.js`; their Blender sources are in `blender/`.
+- The monkey (capuchin) is the Blender model in `assets/monkey/`, loaded by `src/monkey_model.js` (near and far skeletons, one mixer each, the coconut on `coconut_attach`). `src/fauna_land.js` maps its state machine onto the clips; `src/monkey_contest.js` runs coconut contests between monkeys. `?monkey=old` keeps the procedural monkey. Test only: `?monkeys=N` adds N monkeys, and `window.__cam.follow(creature)` is the game camera on any creature.

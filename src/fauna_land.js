@@ -131,7 +131,7 @@ class Monkey {
     if (this.startleT > 0 && Math.abs(this.speed) < 0.6) return ['startled', { loop: false, next: 'alert_idle' }];
     if (this.grabT > 0) return cur === 'coconut_reach' || cur === 'coconut_grab_lift' ? [cur, {}] : ['coconut_reach', { loop: false, next: 'coconut_grab_lift' }];
     if (st === 'carry') return ['coconut_carry_walk', {}];
-    if (st === 'eatNut') return ['coconut_hold_idle', {}];
+    if (st === 'eatNut') return [Math.floor(this.t / 5) % 2 ? 'coconut_inspect' : 'coconut_hold_idle', {}];   // turns the nut over now and then
     if (moving) return this.speed <= 0.8 ? ['walk', {}] : ['scurry', {}];
     // at rest: sitting, standing up, or the idle behaviour
     const sitting = cur === 'sit_idle' || cur === 'sit_down' || cur === 'groom';
