@@ -1,19 +1,20 @@
 // The castaway: a blond, sun-tanned man living a simple island life —
 // hiking (and running) all over the island, fishing and spear-fishing anywhere there is water, swimming,
 // drinking at fresh water, cooking and eating what he catches by the campfire, and sleeping in his lean-to.
-// He plays survival on its hardest setting and plays it well: he keeps his food, water and energy up, runs from
+// He keeps fed and rested while pursuing comfort and accomplishment. He runs from
 // boars, chases monkeys for fun, and when he is happy he dances, whistles and sings.
 import * as THREE from 'three';
 import { scene, env, camera, updaters, creatures, events } from './core.js';
 import { makeHuman, blob, seg, cone, at } from './creatures.js';
 import { fauna, register, actors } from './fauna_common.js';
 import { getHeight, getSlope, walkHeight, resolveColliders, perchesNear, lavaDist, riverSurface, riverDist, river, falls, TEMPLE, FAIRY, SPRING, COVE, VOL } from './world.js';
-import { poolLevel } from './walk.js';
+import { poolLevel, spawnNear } from './walk.js';
 import { wx } from './weather.js';
 import { fx, makePaddle } from './props.js';
 import { wake as waterWake, waterY } from './ripples.js';
 import { rr, rnd, pick, clamp, lerp, damp, TAU } from './util.js';
 import { makeMind } from './castaway_mind.js';
+import { createComfortLife } from './comfort_life.js';
 import { eco } from './ecology.js';
 import { makeRatModel } from './rat_model.js';
 import { buildNewBody, coverage } from './castaway_new.js';
@@ -241,6 +242,8 @@ export function buildCastaway() {
   let desc = '';
   // his mind: needs, mood, memory and what he decides to do (see castaway_mind.js)
   const mind = makeMind();
+  const life = createComfortLife(camp, hut, mind);
+  castawayAI.life = life;
   let lastHours = env.hours;
 
   register({
@@ -255,6 +258,7 @@ export function buildCastaway() {
     return ` ${[nf ? `${nf} fish` : '', nr ? `${nr} rat${nr > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ')} in the basket so far.`;
   };
   function describe() {
+    if (act === 'project') return mind.projectText();
     if (act === 'sleep') return phase === 'asleep' ? 'Asleep on a woven mat in his palm-frond lean-to, the campfire burning low beside him.' : 'Turning in for the night.';
     if (act === 'hike') return phase === 'pause' ? `Resting at ${route[wpi] ? route[wpi].name : 'a viewpoint'}, leaning on his staff.` : `${jog && speedNow > RUN_V ? 'Running' : 'Hiking'} toward ${route[wpi] ? route[wpi].name : 'a new corner of the island'} with his walking staff.`;
     if (act === 'swim') return phase === 'float' ? 'Floating on his back in the warm lagoon.' : 'Swimming laps across the lagoon.';
@@ -401,6 +405,7 @@ export function buildCastaway() {
     bobber.visible = line.visible = false;
   };
   function begin(a) {
+    if (act === 'project' && a !== 'project') life.project.pause('Interrupted by ' + a);
     if (act === 'hunt' && a !== 'hunt') endHunt();
     if (act === 'drink' && coco.visible) coco.visible = false;
     if (act === 'canoe' && a !== 'canoe') leaveCanoe();
@@ -1184,7 +1189,12 @@ export function buildCastaway() {
   }
   function placeFor(a) {
     act = a; hurry = false; stuck = 0; clearProps();
-    if (a === 'fish') {
+    if (a === 'project') {
+      const site = life.project.state.site || life.project.options.findSite();
+      if (site) life.project.state.site = site;
+      const start = site ? { x: site.x + 1.8, z: site.z } : spawnNear(camp.x, camp.z);
+      x = start.x; z = start.z; y = getHeight(x, z); heading = 0; phase = 'init';
+    } else if (a === 'fish') {
       spot = fishable.filter((q) => q.method === 'bank').sort((a, b) => Math.hypot(a.stand.x - camp.x, a.stand.z - camp.z) - Math.hypot(b.stand.x - camp.x, b.stand.z - camp.z))[0] || fishable[0];
       x = spot.stand.x; z = spot.stand.z; y = getHeight(x, z); heading = spot.face; phase = 'work'; sub = 'wait'; pt = 3; waitT = 9; sessionT = 32; newCastTarget();
       bob.pos.copy(bob.to); rod.visible = true; Object.assign(C, STAND);
@@ -1233,7 +1243,7 @@ export function buildCastaway() {
     let freshNear = false;
     for (const q of freshSpots) if (Math.hypot(q.stand.x - x, q.stand.z - z) < 45) { freshNear = true; break; }
     return { hour: env.tod, rain: wx.rain, fishOK: !!(fishSpots && fishSpots.length), canoeOK: !!cn && wx.rain < 0.2, calm: wx.rain < 0.1, wildlife: wild, watchable: nearC ? nearC.name : null, watchC: nearC,
-      novel: (mind.memory.tries.hike || 0) < 5, rockNear: perchesNear(x, z, 35, (p) => p.kind !== 'volcano' && p.r >= 0.45 && p.y - getHeight(p.x, p.z) > 0.5 && p.y - getHeight(p.x, p.z) < 1.5 && !unsafeAt(p.x, p.z, 22)).length > 0, threat: !!threatC, threatC, monkeyC, unsafeCamp: unsafeAt(camp.x, camp.z, 30), unsafeHut: unsafeAt(hut.mat.x, hut.mat.z, 24), freshOK: freshSpots.some((q) => !unsafeAt(q.stand.x, q.stand.z, 22)), freshNear, ratC: !!ratT, coconutOK: !!nutT, caught: caught.length };
+      projectOK: life.project.available(mind.clock), novel: (mind.memory.tries.hike || 0) < 5, rockNear: perchesNear(x, z, 35, (p) => p.kind !== 'volcano' && p.r >= 0.45 && p.y - getHeight(p.x, p.z) > 0.5 && p.y - getHeight(p.x, p.z) < 1.5 && !unsafeAt(p.x, p.z, 22)).length > 0, threat: !!threatC, threatC, monkeyC, unsafeCamp: unsafeAt(camp.x, camp.z, 30), unsafeHut: unsafeAt(hut.mat.x, hut.mat.z, 24), freshOK: freshSpots.some((q) => !unsafeAt(q.stand.x, q.stand.z, 22)), freshNear, ratC: !!ratT, coconutOK: !!nutT, caught: caught.length };
   }
   let ctx = null, ctxT = 0, curDh = 0, sessionCatch = 0;
   // where a boar last drove him off: for the next game hour and a bit he keeps clear of that ground
@@ -1409,12 +1419,35 @@ export function buildCastaway() {
     nb.update(dt);
   }
 
+  function projectUpdate(dt, t) {
+    const job = life.project.next({ x, z }, mind.clock);
+    if (!job) { mind.finish(); return; }
+    mind.current.until = Math.max(mind.current.until, mind.clock + .3);
+    const d = Math.hypot(job.target.x - x, job.target.z - z);
+    if (d > .8) {
+      while (job.path?.length > 1 && Math.hypot(job.path[0].x - x, job.path[0].z - z) < .55) job.path.shift();
+      const waypoint = job.path?.[0] || job.target;
+      lastOff = 0; // Reconsider the direct approach instead of retaining a detour for the entire project walk.
+      step(waypoint.x, waypoint.z, 2.4, dt, false); settleY(dt); gait(dt, speedNow); apply(dt);
+    } else {
+      heading = turnTo(heading, Math.atan2((job.node?.x ?? life.project.state.site.x) - x, (job.node?.z ?? life.project.state.site.z) - z), dt * 3);
+      const work = Math.sin(job.elapsed * 7);
+      setPose(job.kind === 'enjoy' ? { py: .56, lPh: -1.2, lNh: -1.2, lPk: 1.9, lNk: 1.9, spX: .12 } : { py: .67, spX: .5, lPh: -.6, lNh: -.6, lPk: .9, lNk: .9, aPs: -.8 + work * .15, aNs: -.8 - work * .15, aPe: -.8, aNe: -.8 });
+      apply(dt);
+    }
+    const result = life.project.update(dt, { x, z }, mind.clock, stuck);
+    if (result) events.emit('sfx', result.kind === 'gather' ? 'pickup' : result.kind === 'build' ? 'craft' : result.kind === 'fuel' ? 'fire' : 'tap');
+    if (result?.completed) mind.finish();
+  }
+
   updaters.push((dt0, t) => {
-    if (castawayAI.paused) { lastHours = env.hours; actors.castaway.on = false; return; }
+    if (castawayAI.paused) { life.update(0, 0, t, { x, z }, true); lastHours = env.hours; actors.castaway.on = false; return; }
+    if (env.paused) return;
     const dt = Math.min(dt0, 0.05);
     const dh = Math.max(0, env.hours - lastHours); lastHours = env.hours; curDh = dh;
     mind.exertion = runFlag ? 1 : 0; runFlag = false;
     mind.tick(dh);
+    life.update(dt, dh, t, { x, z }, false);
     ctxT -= dt;
     if (!ctx || ctxT <= 0) { ctx = buildCtx(); ctxT = 0.5; }
     if (!started) { started = true; placeFor(mind.choose(ctx)); }
@@ -1427,7 +1460,8 @@ export function buildCastaway() {
       if (wakeUp(dt)) { me.group.position.set(x, y, z); me.group.rotation.y = heading; if (nb) driveNew(dt); return; }
       begin(w);
     }
-    if (act === 'sleep') sleepUpdate(dt, t);
+    if (act === 'project') projectUpdate(dt, t);
+    else if (act === 'sleep') sleepUpdate(dt, t);
     else if (act === 'hike') hikeUpdate(dt, t);
     else if (act === 'swim') swimUpdate(dt, t);
     else if (act === 'fish') fishUpdate(dt, t);

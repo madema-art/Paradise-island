@@ -1,0 +1,6 @@
+// Static-only isolated preview: no notebook API and no writes to the original project.
+import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const types={'.html':'text/html','.js':'text/javascript','.glb':'model/gltf-binary','.png':'image/png','.json':'application/json','.mp3':'audio/mpeg','.ogg':'audio/ogg'};
+http.createServer((req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/api/notes'&&req.method==='GET'){res.writeHead(200,{'Content-Type':'application/json'});fs.createReadStream(path.join(root,'notes/island-notes.json')).pipe(res);return;}if(u.pathname.startsWith('/api/')){res.writeHead(405).end('Notebook is read-only in isolated preview');return;}const rel=decodeURIComponent(u.pathname==='/'?'/index.html':u.pathname);const p=path.resolve(root,'.'+rel);if(!p.startsWith(path.resolve(root)+path.sep)){res.writeHead(403).end();return;}fs.stat(p,(err,s)=>{if(err||!s.isFile()){res.writeHead(404).end();return;}res.writeHead(200,{'Content-Type':types[path.extname(p)]||'application/octet-stream','Cache-Control':'no-store'});fs.createReadStream(p).pipe(res);});}).listen(8767,'127.0.0.1',()=>console.log('Isolated life preview http://127.0.0.1:8767'));

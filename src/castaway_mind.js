@@ -1,30 +1,30 @@
 // The castaway's mind: what he needs, how he feels, what he has learned, and what he decides to do next.
-// He plays the island like survival mode on its hardest setting, and plays it well: hunger and energy drain fast,
-// so he keeps ahead of them (fishes and hunts rats before he is hungry, cooks what he catches, eats before bed) and is
+// Meals and rest remain visible needs, with gentler observation hunger rates so pleasure and projects have room.
+// He fishes, hunts, cooks and eats before bed, and is
 // careful of the boars and the boas. Water is not a need here: the island has plenty, but he is seen drinking regularly,
 // by habit, from the streams and pools and from coconuts he has beaten the monkeys to. Within that, his goal is happiness: once the basics are safe he goes looking for what lifts his
 // spirits (new places, wildlife, a swim, a chase after a monkey), and when he is happy he dances, whistles and sings.
 // Activities are chosen from how much each one appeals to him now (a utility score), not from the clock. Time of day
 // shifts the scores but does not decide them. Once he commits to something he keeps at it for its time budget, unless
 // something urgent interrupts him (a charging boar, rain, hunger, exhaustion). The activities are run by human.js.
-// Memory lives for the session only: the game has no save system for him yet.
+// Activity practice is session memory. Comfort projects, supplies and their results have a separate observation save.
 import { rnd, rr, clamp } from './util.js';
 
 export const ACTIVITY_LABEL = {
-  sleep: 'Sleeping in his lean-to', camp: 'At the campfire', hike: 'Exploring on foot', swim: 'Swimming in the lagoon',
+  project: 'Making a personal evening fire', sleep: 'Sleeping in his lean-to', camp: 'At the campfire', hike: 'Exploring on foot', swim: 'Swimming in the lagoon',
   fish: 'Fishing from the shore', canoe: 'Fishing from his canoe', shelter: 'Sheltering from the rain',
   watch: 'Watching wildlife', linger: 'Resting and taking in the view', dance: 'Dancing',
   drink: 'Taking a drink', hunt: 'Hunting rats', chase: 'Chasing a monkey', flee: 'Running from a boar',
 };
 // how long an activity may run, in game hours (about 25 real seconds per game hour at normal speed)
 const BUDGET = {
-  sleep: [4, 8], camp: [2.2, 2.8], hike: [2, 3.5], swim: [0.6, 1.2], fish: [1.2, 2.2], canoe: [1.8, 2.8],
+  project: [6, 8], sleep: [4, 8], camp: [2.2, 2.8], hike: [2, 3.5], swim: [0.6, 1.2], fish: [1.2, 2.2], canoe: [1.8, 2.8],
   shelter: [0.6, 1.5], watch: [0.5, 1.6], linger: [1.0, 2.2], dance: [0.5, 0.8],
   drink: [0.6, 1.0], hunt: [0.5, 1.0], chase: [0.4, 0.7], flee: [0.5, 0.9],
 };
 // what each activity does to his body per game hour: fatigue and boredom (negative values recover)
 const BODY = {
-  sleep: { fatigue: -0.45, boredom: -0.2 }, camp: { fatigue: -0.05, boredom: -0.1 }, hike: { fatigue: 0.07, boredom: -0.25 },
+  project: { fatigue: 0.025, boredom: -0.25 }, sleep: { fatigue: -0.45, boredom: -0.2 }, camp: { fatigue: -0.05, boredom: -0.1 }, hike: { fatigue: 0.07, boredom: -0.25 },
   swim: { fatigue: 0.12, boredom: -0.3 }, fish: { fatigue: 0.04, boredom: -0.15 }, canoe: { fatigue: 0.06, boredom: -0.2 },
   shelter: { fatigue: -0.04, boredom: 0.05 }, watch: { fatigue: 0.01, boredom: -0.35 }, linger: { fatigue: -0.08, boredom: -0.1 },
   dance: { fatigue: 0.35, boredom: -0.5 }, drink: { fatigue: -0.02, boredom: -0.05 }, hunt: { fatigue: 0.1, boredom: -0.3 }, chase: { fatigue: 0.3, boredom: -0.6 },
@@ -32,11 +32,11 @@ const BODY = {
 };
 // how much each activity lifts his spirits, per game hour
 const JOY = {
-  sleep: 0.0, camp: 0.05, hike: 0.05, swim: 0.1, fish: 0.03, canoe: 0.07, shelter: -0.03, watch: 0.08, linger: 0.04,
+  project: 0.04, sleep: 0.0, camp: 0.05, hike: 0.05, swim: 0.1, fish: 0.03, canoe: 0.07, shelter: -0.03, watch: 0.08, linger: 0.04,
   dance: 0.3, drink: 0.05, hunt: 0.06, chase: 0.28, flee: -0.3,
 };
 // the survival rates (per game hour, as a fraction of a full bar): about the same as survival mode itself
-const RATE = { hunger: 0.042 };
+const RATE = { hunger: 0.022 }; // Observation: meals remain visible without dominating island life.
 // how many game hours he goes between drinks (water is a habit, not a need)
 const DRINK_EVERY = 3.4;
 const ACTS = Object.keys(ACTIVITY_LABEL);
@@ -48,7 +48,7 @@ export const TRAITS = { curiosity: 0.78, laziness: 0.34, boldness: 0.55, contemp
 
 export function makeMind(traits = TRAITS) {
   // hunger and fatigue are 0 (fine) to 1 (dire); happy is 0 (miserable) to 1 (joyful)
-  const needs = { hunger: 0.3, fatigue: 0.25, boredom: 0.3, happy: 0.5 };
+  const needs = { hunger: 0.3, fatigue: 0.25, boredom: 0.3, happy: 0.5, comfort: 0.35, fulfillment: 0 };
   // what he has learned this session: how often he tried each activity, how often it went well, when it last ended
   const memory = { tries: {}, good: {}, lastEnd: {}, places: {}, watched: {}, danceUntil: -1, lastDrink: -1.5, lastKind: 'coconut' };
   const log = [];
@@ -124,6 +124,7 @@ export function makeMind(traits = TRAITS) {
     const fine = N.hunger < 0.55 && N.fatigue < 0.65;       // the basics are covered, so he can go looking for joy
     const seek = fine ? 1 - N.happy : 0;
     switch (a) {
+      case 'project': return ctx.projectOK && fine && !night && ctx.rain < .25 ? 1 + (1 - N.comfort) * .2 + N.boredom * .3 + seek * .3 - N.fatigue * .3 : -1;
       case 'sleep': return 0.04 + N.fatigue * 0.7 + Math.max(0, N.fatigue - 0.55) * 2.0 + (night ? 0.55 : -0.1) - justDone(a) - (night && N.hunger > 0.6 ? 0.45 : 0);
       case 'drink': {                    // a habit: every few hours, more readily in the cool of the morning and evening
         if (!ctx.freshOK && !ctx.coconutOK) return -1;
@@ -164,6 +165,7 @@ export function makeMind(traits = TRAITS) {
 
   // what he is allowed to do right now (the hard limits: a canoe he does not have, rain, no fishing water)
   const available = (a, ctx) => {
+    if (a === 'project') return !!ctx.projectOK;
     if (a === 'flee') return false;
     if (a === 'camp') return !ctx.unsafeCamp;           // a boar is loitering there: wait it out
     if (a === 'sleep') return !ctx.unsafeHut;
@@ -239,7 +241,7 @@ export function makeMind(traits = TRAITS) {
     return {
       doing: mind.current ? ACTIVITY_LABEL[mind.current.act] : 'Deciding what to do',
       act: mind.current ? mind.current.act : '',
-      intention: mind.current ? `${ACTIVITY_LABEL[mind.current.act]}, for about ${Math.max(0, (mind.current.until - mind.clock) * 60).toFixed(0)} more game minutes` : 'Not yet decided',
+      intention: mind.current?.act === 'project' && mind.projectText ? mind.projectText() : mind.current ? `${ACTIVITY_LABEL[mind.current.act]}, for about ${Math.max(0, (mind.current.until - mind.clock) * 60).toFixed(0)} more game minutes` : 'Not yet decided',
       // the three meters, as the share of each bar that is full
       bars: { food: pct(1 - N.hunger), energy: pct(1 - N.fatigue), happy: pct(N.happy) },
       happiness: word(N.happy, [[0.2, 'Miserable'], [0.4, 'Low'], [0.6, 'Content'], [0.8, 'Happy'], [2, 'Joyful']]),

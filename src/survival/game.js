@@ -20,6 +20,8 @@ import { collectActions, waterAhead, waterKind, depthAt } from './actions.js';
 import { ITEMS, RECIPES, LEVELS, QUESTS, DISCOVERIES, RATES } from './items.js';
 import { clamp, damp, rr, rnd, pick, TAU } from '../util.js';
 
+import { gatherResource, canAfford, spend, awardRecipe, constructRecipe, fuelFire } from './mechanics.js';
+
 const SAVE_KEY = 'paradise.survival.v1';
 const FISH_SEA = ['parrotfish', 'red snapper', 'mackerel', 'grouper', 'sea bream', 'trevally'];
 const FISH_FRESH = ['mullet', 'freshwater eel', 'rainbow fish'];
@@ -226,14 +228,9 @@ export class Survival {
   gatherNode(n) {
     const kind = n.kind;
     this.startAct('gather', 0.55, { done: () => {
-      if (!n.alive) return;
-      this.res.take(n, this.hoursAbs);
-      if (kind === 'stick') this.add('stick', rnd() < 0.35 ? 2 : 1);
-      else if (kind === 'stone') this.add('stone', 1);
-      else if (kind === 'fiber') this.add('fiber', rnd() < 0.3 ? 3 : 2);
-      else if (kind === 'coconut') this.add('coconut', 1);
-      else if (kind === 'clam') { this.add('clam', 1); if (rnd() < 0.05) { this.add('pearl', 1); this.hud.banner('A pearl!', 'Lucky find', 'There was a pearl inside the clam.'); } }
-      this.bump('gathered.' + kind); this.addXp(kind === 'clam' ? 2 : 1);
+      const result = gatherResource(this, n, rnd);
+      if (!result) return;
+      if (result.pearl) this.hud.banner('A pearl!', 'Lucky find', 'There was a pearl inside the clam.');
       events.emit('sfx', 'pickup');
     } });
   }
@@ -285,10 +282,9 @@ export class Survival {
   }
   feedFire(s) {
     this.startAct('wood', 0.9, { done: () => {
-      if (!this.count('stick')) return;
-      const wasOut = s.fuel <= 0;
-      this.take('stick', 1); s.fuel = Math.min(BUILD.campfire.maxFuel, s.fuel + 1.4);
-      if (wasOut) { this.hud.banner('The fire is lit', 'Warmth and light', 'Cook your food here with E.'); this.bump('lit'); this.addXp(4); }
+      const result = fuelFire(this, s, BUILD.campfire.maxFuel);
+      if (!result) return;
+      if (result.wasOut) this.hud.banner('The fire is lit', 'Warmth and light', 'Cook your food here with E.');
       events.emit('sfx', 'fire');
     } });
   }
@@ -426,12 +422,12 @@ export class Survival {
   craft(id) {
     const r = RECIPES.find((q) => q.id === id);
     if (!r || r.level > this.s.level || this.act || this.fishing) return;
-    if (!Object.entries(r.cost).every(([k, n]) => this.count(k) >= n)) return;
+    if (!canAfford(this, r.cost)) return;
     if (r.place) { this.togglePanel(false); this.placing = { recipe: r, yaw: this.player.heading }; this.ghost.show(r.place); return; }
-    for (const [k, n] of Object.entries(r.cost)) this.take(k, n);
+    spend(this, r.cost);
     this.togglePanel(false);
     this.startAct('craft', 1.5, { done: () => {
-      this.add(r.gives, r.n || 1); this.bump('crafted.' + r.id); this.addXp(r.xp || 5); events.emit('sfx', 'craft');
+      awardRecipe(this, r); events.emit('sfx', 'craft');
       this.hud.banner('Crafted', ITEMS[r.gives].name, ITEMS[r.gives].desc);
       this.save();
     }, marks: [0.2, 0.45, 0.7] });
@@ -448,10 +444,10 @@ export class Survival {
     pl.pos = { x, z }; pl.reason = reason;
     if (input.hit('KeyE')) {
       if (reason) { this.hud.gain(`Can't build here: ${reason}`, 'bad'); events.emit('sfx', 'nope'); return; }
-      for (const [k, n] of Object.entries(pl.recipe.cost)) this.take(k, n);
-      const st = new Structure(pl.recipe.place, x, z, pl.yaw);
+      const result = constructRecipe(this, pl.recipe, { x, z, yaw: pl.yaw }, canPlace, (...args) => new Structure(...args));
+      if (result.error) { this.hud.gain(result.error, 'bad'); return; }
+      const st = result.structure;
       this.structs.push(st); this.s.structs.push(st);
-      this.bump('built.' + pl.recipe.place); this.addXp(pl.recipe.xp || 10);
       this.hud.banner('Built', BUILD[pl.recipe.place].name, '');
       events.emit('sfx', 'craft');
       this.placing = null; this.ghost.hide(); this.save();

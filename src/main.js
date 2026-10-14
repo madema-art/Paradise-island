@@ -26,7 +26,7 @@ import { buildVolcano } from './volcano.js';
 import { buildFx, fx, buildGrotto, buildTemple, buildCove, buildPirate, buildFairy, buildSpring, buildCascade, buildJunctions, secrets } from './props.js';
 import { buildLandFauna } from './fauna_land.js';
 import { buildSkyAndSeaFauna } from './fauna_sea.js';
-import { buildCastaway } from './human.js';
+import { buildCastaway, castawayAI } from './human.js';
 import { loadNewCastaway, loadAnimationPacks } from './castaway_new.js';
 import { loadCastawayModel } from './castaway_model.js';
 import { loadCrabModel } from './crab_model.js';
@@ -167,6 +167,15 @@ async function boot() {
   // review hook: the game's own follow camera on any creature (used to inspect the monkeys in the running game)
   window.__cam = { follow: (c) => followCreature(c), release: releaseCamera };
   window.__sizes = () => window.__dbg.creatures.filter((c) => c.sizeInfo).map((c) => ({ id: c.id, name: c.name, group: +c.group.scale.x.toFixed(3), info: c.sizeInfo }));
+  window.render_game_to_text = () => {
+    const man = creatures.find(c => c.id === 'castaway');
+    return JSON.stringify({ axes: 'Y up; X/Z island metres', mode: castawayAI.paused ? 'survival' : 'observation',
+      activity: man?.sim.current?.act, position: man?.group.position.toArray(), needs: man?.sim.needs,
+      life: castawayAI.life?.summary(), wildlife: creatures.filter(c => c.id !== 'castaway').length });
+  };
+  if (location.search.includes('lifeReview')) {
+    window.advanceTime = ms => { const n = Math.max(1, Math.ceil(ms / (1000 / 60))); for (let i = 0; i < n; i++) step(ms / 1000 / n); composer.render(); };
+  }
   const DAWN = { tod: 5.0, speed: 0.4 };           // a slow sunrise: the sun clears the horizon in about a minute and a half
   const VIEW = { pos: [-230, 60, -20], tgt: [0, 30, -10] };   // over the western sea, facing east: the volcano and the falls, the sun coming up behind them
   const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
@@ -181,6 +190,10 @@ async function boot() {
   // browsers hold audio back until the visitor's first touch: the first click, key, wheel or touch unlocks it
   const unlock = () => { audio.unlock(); for (const ev of UNLOCK_EVENTS) window.removeEventListener(ev, unlock); };
   for (const ev of UNLOCK_EVENTS) window.addEventListener(ev, unlock, { passive: true });
+  if (location.search.includes('lifeReview')) {
+    env.tod = 10; env.speed = 1;
+    followCreature(creatures.find(c => c.id === 'castaway'));
+  }
   // the day runs at normal pace again once the sun is well up
   updaters.push(() => { if (env.tod >= 7.5 && env.speed < 1) env.speed = 1; });
   // Species review hooks are opt-in and never change the normal camera or timing.
@@ -234,12 +247,13 @@ function step(dt) {
 window.__step = step;
 function loop() {
   requestAnimationFrame(loop);
+  if (location.search.includes('lifeReview')) return; // Test stepping renders once per requested burst.
   const now = performance.now();
   const dt = Math.min((now - last) / 1000, 0.05);
   autoQuality((now - last) / 1000);
   last = now;
   if (perf.on) perf.begin();
-  step(dt);
+  if (!location.search.includes('lifeReview')) step(dt);
   if (perf.on) perf.mid();
   if (perf.render) perf.render(); else composer.render();
   if (perf.on) perf.end();
