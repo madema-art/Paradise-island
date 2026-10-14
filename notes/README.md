@@ -3,8 +3,13 @@
 The development notebook for Paradise Island. Notes are written in the game (the **Notebook** tab, the **Inspect** tab
 and the note boxes in the **Field guide**), and stored here so Claude Code can read them in every development session.
 
-**Every note is a request.** A note is just text and what it is about. It is either **open** (Claude implements it) or **done**
-(implemented and checked). There are no types, priorities, ideas or approval steps.
+A note is just text and what it is about. It has one of three statuses:
+
+- **open**: waiting for the owner's approval. Claude does not implement it, and does not change its status.
+- **ready** (shown as *Ready for Claude*): approved. Claude implements it, checks it in the game, then marks it done.
+- **done**: implemented and checked in the game.
+
+Only ready notes are implemented automatically. There are no types, priorities or ideas.
 
 ## Files
 
@@ -35,11 +40,11 @@ refuses an update whose timestamp no longer matches (so nothing is silently over
 - **subject.kind**: `object` (one specific object: a tree, rock, structure, water feature), `class` (every object of one
   kind, e.g. `class:palm`), `location` (a place: `pos` and `radius` in metres), `species` (`species:<name>`), `creature`
   (one individual: `creature:<id>`).
-- **status**: `open` or `done`. Set `done` only after the change is implemented and verified, and write what was done in `resolution`.
-  If a note cannot be finished, leave it `open` and say why in `blocker`.
+- **status**: `open`, `ready` or `done`. Claude sets `done` only after the change is implemented and verified, and writes what was done in `resolution`.
+  If a ready note cannot be finished, leave it `ready` and say why in `blocker`. Never move a note from `open` to `ready` yourself: that is the owner's approval.
 
 Stores written by the old system (six statuses plus type and priority) are migrated automatically on the next read: `completed` becomes
-`done`, everything else becomes `open`, and type and priority are dropped.
+`done`, everything else becomes `open` (waiting for approval), and type and priority are dropped.
 
 Object ids are stable: they come from the seeded world generator (the same object has the same id after every reload).
 Creature ids come from the registry (for example `gull3`, `north-ocean-pod-dolphin0`).

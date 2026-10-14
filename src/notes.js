@@ -3,7 +3,8 @@
 // so two windows or Claude Code can never silently overwrite each other. While the server is unreachable the notebook
 // is read-only: nothing is kept only in the browser.
 export const NOTE_STATUS = [
-  { id: 'open', label: 'Open', hint: 'Claude will implement this.' },
+  { id: 'open', label: 'Open', hint: 'Waiting for approval. Claude does not implement it until it is marked Ready for Claude.' },
+  { id: 'ready', label: 'Ready for Claude', hint: 'Approved. Claude implements it, checks it in the game, then marks it done.' },
   { id: 'done', label: 'Done', hint: 'Implemented and checked in the game.' },
 ];
 

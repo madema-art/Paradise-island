@@ -13,33 +13,33 @@ Paradise Island is a Three.js tropical island wildlife simulation. Source is in 
 
 ## Island Notes (read this first, every session)
 
-The owner keeps a development notebook in `notes/`: observations, bugs and wishes, written in the game. **Every note is a request.**
-There are no ideas, priorities or approval steps: the owner always wants their notes implemented. A note is either **open**
-(to be implemented) or **done**. The summary is `notes/ISLAND_NOTES.md` (regenerated on every save); the full store is
-`notes/island-notes.json`; the format and API are in `notes/README.md`.
+The owner keeps a development notebook in `notes/`: observations, bugs and wishes, written in the game. Each note has one of three statuses:
+
+- **open**: waiting for the owner's approval. Do not implement it, and do not change its status. Summarise it, that is all.
+- **ready** ("Ready for Claude"): approved. Only these are implemented automatically.
+- **done**: implemented and verified.
+
+The summary is `notes/ISLAND_NOTES.md` (regenerated on every save); the full store is `notes/island-notes.json`; the format and API are in `notes/README.md`.
 
 **At the start of every development session:**
 
 1. Read `notes/ISLAND_NOTES.md`. Notes arrive while you work, so read the store again before you finish.
-2. List the open notes.
+2. List the ready notes (implement these) and the open notes (summarise these; do not implement them).
 
 **On every development task:**
 
-- Do the owner's main request, **and implement every open note**. When there is no main request, the open notes are the task.
-  Do not wait to be told which ones; do not skip any because they look small, vague or large.
+- Do the owner's main request, **and implement every ready note**. When there is no main request, the ready notes are the task.
+- The owner can authorise specific open notes in chat; only then implement them, and say so in your summary.
 - A note may be vague or may duplicate another (the owner can enter one twice): do the sensible reading, resolve every copy, and say what you chose.
-- A note is **done** only after its change is implemented **and verified**: built, and checked in the game where it is visible (render it,
-  or measure it). Write what was done, and how it was checked, in `resolution`.
-- If a note truly cannot be finished (it needs a file you do not have, or a decision that is the owner's alone), leave it **open**, write why in
-  `blocker`, and say so in your final summary. Do not guess at a design that was supposed to come from elsewhere (a Codex asset, a reference
-  image): look for it first (`Documents/Codex/...`), and if it is not there, ask.
-- Never delete a note. Never silently overwrite one.
+- A note is **done** only after its change is implemented **and verified**: built, and checked in the game where it is visible (render it, or measure it). Write what was done, and how it was checked, in `resolution`.
+- If a ready note truly cannot be finished (it needs a file you do not have, or a decision that is the owner's alone), leave it **ready**, write why in `blocker`, and say so in your final summary. Do not guess at a design that was supposed to come from elsewhere (a Codex asset, a reference image): look for it first (`Documents/Codex/...`), and if it is not there, ask.
+- Never delete a note. Never silently overwrite one. Never change a note's status from open to ready: that is the owner's approval.
 - Do not break existing behaviour to satisfy a note, and do not use the notebook as a reason for unrelated rewrites.
-- Finish by summarising which notes you completed and which remain open.
+- Finish by summarising which ready notes you completed, which are blocked, and which open notes remain (not implemented).
 
 **Changing a note:** when the game server is running, use the API (it checks for conflicting edits; example in `notes/README.md`).
 If the server is not running, edit `notes/island-notes.json` carefully: read the latest file, change only the note in question, keep every
-other field, keep the file valid JSON, and set `"status": "done"` (the server also migrates files from the old six-status system).
+other field, keep the file valid JSON, and set the status as the rule above allows (`done` when verified; `ready` is only ever set by the owner).
 
 ## Architecture notes
 

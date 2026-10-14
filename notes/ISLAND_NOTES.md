@@ -4,7 +4,7 @@ This file is generated from `notes/island-notes.json` every time the notebook is
 
 Revision 48 · updated 2026-10-14T15:47:18.870Z · 2 open, 21 done.
 
-**Every open note is a request: implement it, verify it, then mark it done.** There are no ideas, priorities or approval steps. If a note cannot be done, leave it open and write why in its blocker.
+**Only notes marked Ready for Claude are implemented automatically.** An open note is waiting for the owner's approval: do not implement it, and do not change its status. Claude implements a ready note, checks it in the game, then marks it done. If a ready note cannot be finished, leave it ready and write why in its blocker.
 
 ## Open (2)
 

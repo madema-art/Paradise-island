@@ -14,7 +14,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const when = (iso) => { try { return new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; } };
 const GROUPS = [['creature', 'Creatures and species'], ['object', 'Objects'], ['class', 'Kinds of object'], ['location', 'Places']];
 const groupOf = (note) => (note.subject.kind === 'species' ? 'creature' : note.subject.kind);
-const STATUS_TAG = { open: 'st-ready', done: 'st-done' };
+const STATUS_TAG = { ready: 'st-ready', done: 'st-done' };
 const byAge = (a, b) => (S.isDone(a) - S.isDone(b)) || a.created.localeCompare(b.created);       // open notes first, oldest first
 
 /* ------------------------------------------------------------------------- shared note UI */
@@ -40,6 +40,7 @@ function noteCard(n, { showSubject = false } = {}) {
     ${n.resolution ? `<div class="dn-note-line"><b>Resolved:</b> ${esc(n.resolution)}</div>` : ''}
     <div class="dn-meta">${when(n.created)}${n.updated !== n.created ? ' · edited ' + when(n.updated) : ''}</div>
     <div class="dn-acts">
+      ${S.isDone(n) ? '' : `<button data-act="approve"${dis}>${n.status === 'ready' ? 'Withdraw approval' : 'Ready for Claude'}</button>`}
       <button data-act="toggle"${dis}>${S.isDone(n) ? 'Reopen' : 'Mark done'}</button>
       ${editing ? '' : `<button data-act="edit"${dis}>Edit</button>`}
       <button data-act="delete" class="danger"${dis}>Delete</button>
@@ -116,6 +117,7 @@ function wireCard(card, setMsg) {
     const btn = e.target.closest('button[data-act]');
     if (!btn) return;
     const act = btn.dataset.act;
+    if (act === 'approve') run(() => S.updateNote(note(), { status: note().status === 'ready' ? 'open' : 'ready' }));
     if (act === 'toggle') run(() => S.updateNote(note(), { status: S.isDone(note()) ? 'open' : 'done' }));
     if (act === 'edit') { openEditors.set(id, note().text); refreshBoxes(); }
     if (act === 'cancel') { openEditors.delete(id); refreshBoxes(); }

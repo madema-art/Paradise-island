@@ -22,8 +22,9 @@ const SCHEMA = 'paradise-island.island-notes/2';
 // A note is just text and what it is about. It is either open (to be implemented) or done. There is nothing in between.
 const STATUSES = ['open', 'done'];
 const SCOPES = ['creature', 'species', 'object', 'class', 'location'];
-// the old system had six statuses: only 'completed' (and 'done') mean finished; everything else was still wanted
-const normStatus = (s) => (s === 'done' || s === 'completed' ? 'done' : 'open');
+// three statuses: 'open' (waiting for the owner's approval, not implemented), 'ready' (Ready for Claude: approved, to be implemented)
+// and 'done'. The old six-status system's 'completed' is 'done'; everything else it had is 'open'.
+const normStatus = (s) => (s === 'done' || s === 'completed' ? 'done' : s === 'ready' ? 'ready' : 'open');
 const MAX_BODY = 256 * 1024;
 
 const LOCAL_ADDR = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
@@ -52,16 +53,17 @@ function migrate(doc) {
 }
 
 function summaryMarkdown(doc) {
-  const open = doc.notes.filter((n) => n.status !== 'done');
+  const ready = doc.notes.filter((n) => n.status === 'ready');
+  const open = doc.notes.filter((n) => n.status === 'open');
   const done = doc.notes.filter((n) => n.status === 'done');
   const lines = [
     '# Island Notes — Paradise Island development notebook',
     '',
     'This file is generated from `notes/island-notes.json` every time the notebook is saved. Edit notes in the game (Notebook tab), not here.',
     '',
-    `Revision ${doc.revision} · updated ${doc.updated} · ${open.length} open, ${done.length} done.`,
+    `Revision ${doc.revision} · updated ${doc.updated} · ${ready.length} ready for Claude, ${open.length} open (waiting for approval), ${done.length} done.`,
     '',
-    '**Every open note is a request: implement it, verify it, then mark it done.** There are no ideas, priorities or approval steps. If a note cannot be done, leave it open and write why in its blocker.',
+    '**Only notes marked Ready for Claude are implemented automatically.** An open note is waiting for the owner\'s approval: do not implement it, and do not change its status. Claude implements a ready note, checks it in the game, then marks it done. If a ready note cannot be finished, leave it ready and write why in its blocker.',
     '',
   ];
   const entry = (n) => {
@@ -72,7 +74,7 @@ function summaryMarkdown(doc) {
     if (n.resolution) lines.push(`  - Resolution: ${n.resolution}`);
     lines.push(`  - id \`${n.id}\`, created ${n.created}, updated ${n.updated}`);
   };
-  for (const [title, group] of [['Open', open], ['Done', done]]) {
+  for (const [title, group] of [['Ready for Claude', ready], ['Open (waiting for approval)', open], ['Done', done]]) {
     if (!group.length) continue;
     lines.push(`## ${title} (${group.length})`, '');
     for (const n of group.sort((a, b) => a.created.localeCompare(b.created))) entry(n);
