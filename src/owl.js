@@ -16,8 +16,8 @@ const FED = 3;                                           // rats an owl takes be
 function flap(b, phase, amp, glide = 0, fold = 0) {
   for (const w of b.wings) {
     const f = Math.sin(phase) * amp;
-    w.sh.rotation.z = lerp(w.sg * (f + 0.08 + glide * 0.12), w.sg * -0.75, fold);
-    w.el.rotation.z = lerp(w.sg * (Math.sin(phase - 0.9) * amp * 0.75 - 0.05), w.sg * 1.2, fold);
+    w.sh.rotation.z = lerp(w.sg * (f + 0.08 + glide * 0.12), w.sg * -1.3, fold);
+    w.el.rotation.z = lerp(w.sg * (Math.sin(phase - 0.9) * amp * 0.75 - 0.05), w.sg * 2.0, fold);
   }
 }
 
