@@ -1,0 +1,260 @@
+{
+  "note": "Phase 3 vegetation LOD, interleaved A/B on one page (1920x1080, high, automatic quality off, 3 rounds x 3 s per variant). The GPU was shared with other desktop apps during these runs (38% busy when idle, 88-97% during runs): compare within a scene, not across scenes or with earlier files.",
+  "final_lod_on_vs_off": {
+    "lagoon": [
+      {
+        "variant": "all LOD off",
+        "fps": 51.3,
+        "gpuMs": 18.81,
+        "renderCpuMs": 15.02,
+        "trianglesM": 11.81,
+        "drawCalls": 1423,
+        "fpsRounds": [
+          45.4,
+          53.6,
+          54.9
+        ]
+      },
+      {
+        "variant": "naupaka + hibiscus LOD on",
+        "fps": 52.93,
+        "gpuMs": 17.9,
+        "renderCpuMs": 14.35,
+        "trianglesM": 10.48,
+        "drawCalls": 1380,
+        "fpsRounds": [
+          49,
+          54.6,
+          55.2
+        ]
+      },
+      {
+        "variant": "+ bush LOD on",
+        "fps": 54,
+        "gpuMs": 17.47,
+        "renderCpuMs": 13.92,
+        "trianglesM": 10.04,
+        "drawCalls": 1313,
+        "fpsRounds": [
+          52.9,
+          54.1,
+          55
+        ]
+      }
+    ],
+    "wideIsland": [
+      {
+        "variant": "all LOD off",
+        "fps": 48.27,
+        "gpuMs": 20.19,
+        "renderCpuMs": 16.19,
+        "trianglesM": 12.3,
+        "drawCalls": 1797,
+        "fpsRounds": [
+          46.6,
+          48.8,
+          49.4
+        ]
+      },
+      {
+        "variant": "naupaka + hibiscus LOD on",
+        "fps": 48.33,
+        "gpuMs": 18.82,
+        "renderCpuMs": 16.08,
+        "trianglesM": 10.85,
+        "drawCalls": 1758,
+        "fpsRounds": [
+          47.4,
+          48.2,
+          49.4
+        ]
+      },
+      {
+        "variant": "+ bush LOD on",
+        "fps": 49.03,
+        "gpuMs": 18.43,
+        "renderCpuMs": 15.84,
+        "trianglesM": 10.47,
+        "drawCalls": 1767,
+        "fpsRounds": [
+          48.8,
+          48.6,
+          49.7
+        ]
+      }
+    ],
+    "jungle48": [
+      {
+        "variant": "all LOD off",
+        "fps": 57.1,
+        "gpuMs": 16.42,
+        "renderCpuMs": 11.65,
+        "trianglesM": 11.64,
+        "drawCalls": 805,
+        "fpsRounds": [
+          55.2,
+          56.3,
+          59.8
+        ]
+      },
+      {
+        "variant": "naupaka + hibiscus LOD on",
+        "fps": 59.77,
+        "gpuMs": 15.23,
+        "renderCpuMs": 11.2,
+        "trianglesM": 10.63,
+        "drawCalls": 814,
+        "fpsRounds": [
+          59.6,
+          59.5,
+          60.2
+        ]
+      },
+      {
+        "variant": "+ bush LOD on",
+        "fps": 59.77,
+        "gpuMs": 15.81,
+        "renderCpuMs": 11.15,
+        "trianglesM": 10.43,
+        "drawCalls": 832,
+        "fpsRounds": [
+          59.7,
+          60,
+          59.6
+        ]
+      }
+    ],
+    "castawayEye": [
+      {
+        "variant": "all LOD off",
+        "fps": 58.3,
+        "gpuMs": 13.86,
+        "renderCpuMs": 11.21,
+        "trianglesM": 11.14,
+        "drawCalls": 848,
+        "fpsRounds": [
+          56,
+          59.3,
+          59.6
+        ]
+      },
+      {
+        "variant": "naupaka + hibiscus LOD on",
+        "fps": 59.9,
+        "gpuMs": 12.78,
+        "renderCpuMs": 10.87,
+        "trianglesM": 10,
+        "drawCalls": 860,
+        "fpsRounds": [
+          60,
+          59.9,
+          59.8
+        ]
+      },
+      {
+        "variant": "+ bush LOD on",
+        "fps": 58.4,
+        "gpuMs": 12.72,
+        "renderCpuMs": 11.31,
+        "trianglesM": 9.79,
+        "drawCalls": 876,
+        "fpsRounds": [
+          55.9,
+          59.7,
+          59.6
+        ]
+      }
+    ],
+    "moving": [
+      {
+        "variant": "all LOD off",
+        "fps": 54.53,
+        "gpuMs": 17.39,
+        "renderCpuMs": 13.51,
+        "trianglesM": 11.92,
+        "drawCalls": 1139,
+        "fpsRounds": [
+          51.8,
+          54.7,
+          57.1
+        ]
+      },
+      {
+        "variant": "naupaka + hibiscus LOD on",
+        "fps": 58,
+        "gpuMs": 16.45,
+        "renderCpuMs": 12.48,
+        "trianglesM": 10.56,
+        "drawCalls": 1109,
+        "fpsRounds": [
+          58.2,
+          59.3,
+          56.5
+        ]
+      },
+      {
+        "variant": "+ bush LOD on",
+        "fps": 56.97,
+        "gpuMs": 16.55,
+        "renderCpuMs": 12.67,
+        "trianglesM": 10.33,
+        "drawCalls": 1130,
+        "fpsRounds": [
+          57.3,
+          58.7,
+          54.9
+        ]
+      }
+    ]
+  },
+  "ceiling_other_vegetation_hidden": {
+    "lagoon": [
+      {
+        "variant": "everything",
+        "fps": 48.23,
+        "gpuMs": 18.42,
+        "trianglesM": 11.1,
+        "drawCalls": 1605
+      },
+      {
+        "variant": "other vegetation hidden",
+        "fps": 49.63,
+        "gpuMs": 15.73,
+        "trianglesM": 6.22,
+        "drawCalls": 1482
+      }
+    ],
+    "wideIsland": [
+      {
+        "variant": "everything",
+        "fps": 47.23,
+        "gpuMs": 18.95,
+        "trianglesM": 11.32,
+        "drawCalls": 1811
+      },
+      {
+        "variant": "other vegetation hidden",
+        "fps": 49.03,
+        "gpuMs": 15.98,
+        "trianglesM": 6.41,
+        "drawCalls": 1676
+      }
+    ],
+    "jungle48": [
+      {
+        "variant": "everything",
+        "fps": 58.43,
+        "gpuMs": 15.41,
+        "trianglesM": 10.93,
+        "drawCalls": 787
+      },
+      {
+        "variant": "other vegetation hidden",
+        "fps": 59.47,
+        "gpuMs": 14.78,
+        "trianglesM": 5.6,
+        "drawCalls": 657
+      }
+    ]
+  }
+}

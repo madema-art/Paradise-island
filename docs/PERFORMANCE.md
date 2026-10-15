@@ -228,3 +228,101 @@ Measured in the lagoon view (the composition tool counts visible draws and trian
 
 Double-click **Run Performance Benchmark.bat**. The game opens with `?perf=1&bench=1&noauto=1`, runs its five scenes, and saves
 `paradise-island-benchmark.json` to Downloads. Keep the window at 1920 x 1080 and in front.
+
+---
+
+## Phase 3: vegetation level of detail
+
+Goal: fewer triangles for the procedural vegetation, with no visible loss of foliage. Done in three steps, each measured
+before it was kept. Raw summaries: `docs/performance/phase3-vegetation-lod-ab.json`.
+
+### What was built
+
+- **Three detail levels per shrub** (`src/naupaka.js`, `src/flora2.js` `bushWith`, `src/flora.js` `bush`). Level 0 is the
+  full shrub, unchanged (checked: identical vertices to the committed builder). Level 1 keeps every second leaf and flower
+  (naupaka also drops its berries), level 2 every fourth. A kept flower on a thinned bush grows by the square root of the
+  thinning, so the colour mass of the bush stays the same. The layout is the same plant at every level.
+- **Level of detail per instance** (`src/vegetation_lod.js`, `lodFamily`). The family keeps its full-detail `InstancedMesh`
+  hidden: it holds every matrix, the inspection tag, and the full geometry for picking. Three shared batches (one per
+  level) draw the instances. Each frame the on-screen radius of each shrub picks its level, with hysteresis: a shrub gets
+  coarser below 26 px (mid) and 10 px (far), and finer only past 20% over those thresholds. A batch is rewritten only when an
+  instance changes level, so the cost per frame is one pass over the family's instances.
+- **Replayed draws, one world stream** (`src/util.js` `recordDraws`, `replayDraws`; `lodLevels` in `vegetation_lod.js`). The
+  builders draw from the world's seeded random stream. The full level runs once with that stream, recording the values
+  it draws; the thinned levels replay the recorded values, so they make the same choices and do not spend the stream. Every
+  later placement is where it was before this phase. Checked: the placement of every tagged instanced family (meshes,
+  instance counts and positions, hashed) is identical to HEAD.
+- **Skipped parts still run** (`DRY` in `src/gfx.js`): a level that leaves a part out still runs that part's code into a
+  target that keeps nothing, so every draw matches the full level.
+- `static_cull.js` leaves the batches alone: their counts change, so a bounding sphere cached for them would go stale.
+
+### Triangles and cost
+
+| Shrub | Triangles per instance |
+|---|---|
+| Naupaka, full / mid / far | 7.5k to 8.1k / 4.4k / 2.3k |
+
+Triangles drawn per frame, all three families on vs off, same page, same camera (final build, `phase3-vegetation-lod-ab.json`):
+
+| Scene | Triangles off to on | GPU ms off to on | Average fps off to on |
+|---|---|---|---|
+| Lagoon | 11.8M to 10.0M | 18.8 to 17.5 | 51.3 to 54.0 |
+| Wide island | 12.3M to 10.5M | 20.2 to 18.4 | 48.3 to 49.0 |
+| Jungle (48 monkeys) | 11.6M to 10.4M | 16.4 to 15.8 | 57.1 to 59.8 |
+| Castaway, eye level | 11.1M to 9.8M | 13.9 to 12.7 | 58.3 to 58.4 |
+| Moving orbit | 11.9M to 10.3M | 17.4 to 16.6 | 54.5 to 57.0 |
+
+Draw calls are unchanged within the run-to-run noise (about 1,100 to 1,800 in these scenes, most of them unrelated to
+vegetation). The GPU numbers are high because the GPU was shared with other desktop applications during these runs (the
+idle load was about 38%, and 88 to 97% during runs). Compare within a row only. The earlier single-variant runs (naupaka
+alone) gave 0.2 to 0.5 ms of GPU in the quiet runs and 0.4 to 1.2 ms in the busy ones.
+
+Separate-page before and after benchmark runs were also taken, but the GPU load from other apps differed between them
+(the "after" run showed about 6 ms more GPU time in every scene), so they are not used here.
+
+### Where the vegetation cost sits (measured ceiling)
+
+Hiding every tagged vegetation family except naupaka (hibiscus, bush, palm, wildflower, banyan, pandanus, plumeria, fern,
+bougainvillea and the rest) before this phase, same page:
+
+| Scene | Triangles without that vegetation | GPU saved |
+|---|---|---|
+| Lagoon | about 4.9M | about 2.7 ms |
+| Wide island | about 4.9M | about 3.0 ms |
+| Jungle | about 5.3M | about 0.6 ms |
+
+So vegetation as a whole is worth roughly 0.5 ms of GPU per million triangles here. Both measurements were taken after the
+naupaka step and before the hibiscus and bush steps. Hibiscus and bush were about a quarter of the other vegetation (1.3M of
+about 4.9M); palms, wildflowers, banyans, pandanus and plumeria are the largest of the rest. The list below is triangles
+drawn per frame in the lagoon view at that point (the tag keys are the ones in `src/inspect.js`):
+
+- instanced creature parts 974k, hibiscus 688k, naupaka 620k with its level of detail on (1.43M at full detail), bush 591k, untagged instanced meshes
+  538k (31,724 instances, not yet identified), palm 471k, wildflower 412k, rock 396k, banyan 327k, coral 299k,
+  pandanus 291k, plumeria 289k, fern 139k
+
+### Verification
+
+- Placement: hash of tagged instanced families identical to HEAD (see above).
+- Geometry: level 0 vertices identical to HEAD for naupaka (three seeds, hashed).
+- Inspection: a ray against the hidden full-detail proxy hits the same instance index (tested on one shrub; the registry and
+  the Field Guide use the same proxy); the LOD batches are not tagged.
+- Look: crops of the same shrub at the switch distances (naupaka 46 m and 119 m; hibiscus 46 m), and full frames at the
+  castaway's eye level with the LOD on and off. No visible difference at the switch points; the hibiscus flower thinning
+  was visible at first (sparser red blossoms in the upper right of the castaway frame), and the flower size compensation
+  removed that. Checked by eye at 1920 x 1080; no pixel-difference measurement was made.
+- Cost of the change: the naupaka mid and far geometries add about 28 ms to startup and about 0.8 MB of memory per naupaka
+  family (both measured in Node, not in the browser). The hibiscus and bush levels add their own build time; it was not
+  separately timed.
+
+### Not done in this phase
+
+- **Other families.** Palms, banyans, wildflowers, pandanus, plumeria, ferns and bougainvillea still draw one geometry
+  at full detail. Palms and banyans are the big ones, and both would need their fronds or leaves thinned, which is more
+  visible on a large shape, so each needs its own look check before it is kept. The untagged instanced meshes (538k
+  triangles) have not been identified.
+- **Draw calls.** The frame is limited by the CPU side of drawing (render time about 10 to 15 ms, about 9 us per draw), not
+  by triangles. Vegetation LOD cannot reduce draws, and it adds a few (one batch per level per family). Merging static
+  vegetation by material is the lever for that.
+- **Phase 7 (animated creatures in motion)** and **Phase 8 (AI scheduling)** were not started in this phase.
+- **60 fps** is not claimed. The 1% lows and the frame-time percentiles from the five-scene benchmark were not re-run on
+  the final build, because the GPU load from other applications made separate runs unreliable.
