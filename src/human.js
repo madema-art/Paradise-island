@@ -1434,7 +1434,7 @@ export function buildCastaway() {
     observe_animal: 'watch; quest distraction', birdwatch: 'quest distraction; gesture', curious_reaction: 'gesture', look_curious: 'quest: noticing', track_animals: 'quest: investigate, track', contemplation: 'quest: looking over', look_up_sky: 'quest; gesture',
     high_lookout: 'quest: adventure', look_down_from_height: 'quest: adventure', excitement: 'quest: finds and ideas', celebrate: 'quest: adventure', clap: 'quest: creation', nod_yes: 'quest: creation, build', wave_hello: 'quest: adventure',
     head_scratch: 'quest: failed experiment; gesture', shout: 'quest: adventure summit', shrug: 'quest: failed experiment; gesture', play_kick_sand: 'quest: beach play', play_flex_pose: 'quest: beach play', play_skip: 'quest: beach play', laugh_hearty: 'quest: beach play',
-    stretch_standing: 'linger; gesture', yawn: 'linger; gesture', sigh: 'gesture', hum_sing: 'gesture', whistle: 'gesture',
+    stretch_standing: 'linger; gesture', prepare_food: 'angling: preparing the catch', yawn: 'linger; gesture', sigh: 'gesture', hum_sing: 'gesture', whistle: 'gesture',
     float_on_back: 'swim', swim_breaststroke: 'swim (unfinished clip, fallback)', chase_monkey: 'chase', laugh_after_chase: 'chase', catch_breath: 'flee',
     dance_sway: 'dance', dance_hop: 'dance', dance_stomp: 'dance', dance_hula: 'dance', dance_twist: 'dance',
   });
@@ -1608,6 +1608,17 @@ export function buildCastaway() {
     if (act !== 'sleep') asleepAt = -1;
     switch (act) {
       case 'quest': return qs && qs.clip ? [qs.clip, qs.ts || 1] : L();
+      case 'angling': {                          // Codex's fishing-to-dinner outing: equipment, a cast and a fight, a look at the catch, preparing, cooking and eating it
+        const f = life.fishing, j = f.job;
+        if (!j || Math.hypot(j.target.x - x, j.target.z - z) > 0.85) return L();
+        const st = f.session && f.session.stage;
+        if (j.kind === 'fish') return st === 'cast' ? ['fish_cast'] : st === 'bite' ? ['fish_bite_reaction'] : st === 'fight' ? ['fish_reel_in'] : ['fish_wait_stand'];
+        if (j.kind === 'inspect') return ['fish_inspect_catch'];
+        if (j.kind === 'prepare') return ['prepare_food'];
+        if (j.kind === 'cook') return ['tend_fire'];
+        if (j.kind === 'eat') return ['eat_food'];
+        return j.elapsed < 1.5 ? ['kneel_down'] : ['kneel_idle'];        // gathering and twisting rope
+      }
       case 'project': {
         const j = life.project.job; if (!j) return L();
         if (Math.hypot(j.target.x - x, j.target.z - z) > 0.85) return L();
