@@ -11,7 +11,8 @@ import crypto from 'node:crypto';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.argv[2]) || 5173;
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.md': 'text/markdown; charset=utf-8' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.flac': 'audio/flac', '.opus': 'audio/ogg', '.md': 'text/markdown; charset=utf-8' };
+const MUSIC_EXTS = new Set(['.mp3', '.ogg', '.wav', '.m4a', '.flac', '.opus']);
 
 /* ---------------------------------------------------------------- Island Notes store */
 const NOTES_DIR = path.join(root, 'notes');
@@ -204,6 +205,14 @@ http
         if (url === '/api/notes' && req.method === 'GET') {
           const doc = readDoc();
           sendJson(res, 200, { ok: true, storePath: 'notes/island-notes.json', doc });
+          return;
+        }
+        if (url === '/api/music/playlist' && req.method === 'GET') {
+          const items = fs.readdirSync(path.join(root, 'music'))
+            .filter((name) => MUSIC_EXTS.has(path.extname(name).toLowerCase()))
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+            .map((name) => ({ id: name, title: name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' '), src: 'music/' + encodeURIComponent(name) }));
+          sendJson(res, 200, { ok: true, items });
           return;
         }
         if (url === '/api/notes/op' && req.method === 'POST') {

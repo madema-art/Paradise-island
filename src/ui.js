@@ -76,6 +76,35 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
   $('#prevT').addEventListener('click', () => audio.prev());
   audio.onTrack((t) => { $('#trackname').textContent = '♪ ' + t; });
   if (!audio.hasMusic) { $('#trackname').textContent = '♪ add songs to /music'; }
+  const musicLibrary = $('#music-library');
+  audio.onPlaylist((tracks) => {
+    musicLibrary.replaceChildren();
+    const active = tracks.filter((track) => !track.removed).length;
+    $('#music-count').textContent = `Music library · ${active}/${tracks.length}`;
+    $('#music-restore').disabled = !tracks.some((track) => track.removed);
+    if (!tracks.length) {
+      const empty = document.createElement('div'); empty.className = 'music-note'; empty.textContent = 'No songs found in the music folder.'; musicLibrary.append(empty); return;
+    }
+    for (const track of tracks) {
+      const row = document.createElement('div');
+      row.className = `music-row${track.current ? ' current' : ''}${track.removed ? ' removed' : ''}`;
+      const title = document.createElement('span'); title.className = 'music-title';
+      title.textContent = `${track.current ? '♪ ' : ''}${track.title}${track.first ? ' · opening' : ''}`;
+      title.title = track.title;
+      const first = document.createElement('button');
+      first.type = 'button'; first.textContent = track.first ? 'Opening song' : 'Set opening'; first.title = 'Play this first when the game starts';
+      first.setAttribute('aria-label', track.first ? `${track.title} is the opening song` : `Set ${track.title} as the opening song`);
+      first.disabled = track.removed || track.first;
+      first.addEventListener('click', () => audio.setFirst(track.id));
+      const remove = document.createElement('button');
+      remove.type = 'button'; remove.textContent = track.removed ? '↶' : '🗑';
+      remove.setAttribute('aria-label', track.removed ? `Restore ${track.title}` : `Remove ${track.title} from the game`);
+      remove.title = track.removed ? 'Add this song back to the game library' : 'Remove from game library (keeps the audio file)';
+      remove.addEventListener('click', () => track.removed ? audio.restoreTrack(track.id) : audio.removeTrack(track.id));
+      row.append(title, first, remove); musicLibrary.append(row);
+    }
+  });
+  $('#music-restore').addEventListener('click', () => audio.restoreTracks());
   // little tick on every button press
   document.addEventListener('click', (e) => { if (e.target.closest('button')) audio.click(); });
   let muted = false, prevMaster = st.master;

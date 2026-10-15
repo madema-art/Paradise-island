@@ -53,6 +53,14 @@
   .pane { display: none; } .pane.on { display: block; }
   .ctl { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 9px 0; font-size: 12.5px; }
   .ctl label { color: var(--dim); }
+  #music-library { max-height: 190px; overflow-y: auto; border: 1px solid rgba(255,255,255,.1); border-radius: 9px; padding: 4px 7px; background: rgba(0,0,0,.12); }
+  .music-row { display: flex; align-items: center; gap: 5px; min-height: 32px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .music-row:last-child { border-bottom: 0; }
+  .music-row .music-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 11px; }
+  .music-row.current .music-title { color: var(--accent); }
+  .music-row.removed .music-title { opacity: .48; text-decoration: line-through; }
+  .music-row button { padding: 4px 6px; font-size: 10px; white-space: nowrap; }
+  .music-note { color: var(--dim); font-size: 10px; line-height: 1.4; margin: 5px 2px; }
   .switch { position: relative; width: 36px; height: 20px; flex: 0 0 auto; }
   .switch input { display: none; }
   .switch i { position: absolute; inset: 0; background: rgba(255,255,255,.18); border-radius: 20px; transition: .2s; cursor: pointer; }
@@ -379,6 +387,9 @@
         <div class="ctl"><label>Music</label><label class="switch"><input type="checkbox" id="music-t" checked><i></i></label></div>
         <div class="ctl"><label>Music volume</label><input type="range" id="music-v" min="0" max="1" step="0.01" value="0.5" style="width:110px" /></div>
         <div class="ctl"><label id="trackname" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">♪ —</label><span><button id="prevT">⏮</button> <button id="nextT">⏭</button></span></div>
+        <div class="ctl"><label id="music-count">Music library</label><button id="music-restore">Restore removed</button></div>
+        <div id="music-library" aria-label="Music library"></div>
+        <div class="music-note">Set one opening song; the rest play in a shuffled rotation. New supported files appear automatically while the local game server is running. Remove hides a song from the game but keeps its file in the music folder.</div>
         <div class="ctl"><label>Nature &amp; effects</label><label class="switch"><input type="checkbox" id="sfx-t" checked><i></i></label></div>
         <div class="ctl"><label>Effects volume</label><input type="range" id="sfx-v" min="0" max="1" step="0.01" value="0.85" style="width:110px" /></div>
         <div class="ctl"><label>Master volume</label><input type="range" id="master-v" min="0" max="1" step="0.01" value="0.9" style="width:110px" /></div>

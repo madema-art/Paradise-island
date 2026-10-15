@@ -3,38 +3,63 @@ import { camera, env, U, updaters, creatures, events } from './core.js';
 import { getHeight, falls, VOL, river, TEMPLE, SPRING, FAIRY, COVE, riverDist } from './world.js';
 import { clamp, lerp, rnd, rr, pick, smoothstep } from './util.js';
 import { wx } from './weather.js';
+import { MusicPlaylist } from './music_playlist.js';
 
 const KEY = 'paradise.audio.v1';
-const defaults = { master: 0.9, music: 0.5, sfx: 0.85, musicOn: false, sfxOn: true };   // the soundscape first; music is one click away in the View tab
+const defaults = { master: 0.9, music: 0.5, sfx: 0.85, musicOn: false, sfxOn: true, musicFirst: null, musicExcluded: [] };   // the soundscape first; music is one click away in the View tab
 
 export function createAudio(volcano) {
   const st = { ...defaults };
   try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* ignore */ }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { /* ignore */ } };
 
+  st.musicExcluded = Array.isArray(st.musicExcluded) ? st.musicExcluded : [];
   let ac = null, out, sfx, uw, verbIn, started = false;
   const noiseBufs = {};
   const N = {}; // named nodes
   const V3 = (x, y, z) => ({ x, y, z });
 
   /* ------------------------------------------------------------ music */
-  const list = (typeof window !== 'undefined' && window.MUSIC_PLAYLIST) || [];
-  let mEl = null, mIdx = Math.floor(Math.random() * Math.max(1, list.length)), mVol = 0, trackCb = null;
-  function loadTrack(i) {
-    if (!list.length) return;
-    mIdx = (i + list.length) % list.length;
-    if (!mEl) {
-      mEl = new Audio();
-      mEl.preload = 'auto';
-      mEl.addEventListener('ended', () => loadTrack(mIdx + 1));
-      mEl.addEventListener('error', () => { if (list.length > 1) setTimeout(() => loadTrack(mIdx + 1), 500); });
+  let mEl = null, mIdx = -1, mVol = 0, trackCb = null, playlistCb = null;
+  const rotation = new MusicPlaylist(Math.random, { first: st.musicFirst, removed: st.musicExcluded });
+  rotation.setTracks((typeof window !== 'undefined' && window.MUSIC_PLAYLIST) || []);
+  const saveMusic = () => { st.musicFirst = rotation.first; st.musicExcluded = [...rotation.removed]; save(); };
+  function playTrack(track) {
+    if (!track) {
+      if (mEl) { mEl.pause(); mEl.removeAttribute('src'); mEl.load(); }
+      mIdx = -1; if (trackCb) trackCb('No music in library'); if (playlistCb) playlistCb(rotation.library()); return;
     }
-    mEl.loop = list.length === 1;
-    mEl.src = list[mIdx].src;
-    mEl.volume = 0; mVol = 0;
-    const p = mEl.play();
-    if (p && p.catch) p.catch(() => {});
-    if (trackCb) trackCb(list[mIdx].title);
+    mIdx = rotation.tracks.findIndex((item) => item.id === track.id);
+    if (!mEl) {
+      mEl = new Audio(); mEl.preload = 'auto';
+      mEl.addEventListener('ended', () => playTrack(rotation.next()));
+      mEl.addEventListener('error', () => { if (rotation.available().length > 1) setTimeout(() => playTrack(rotation.next()), 500); });
+    }
+    mEl.loop = rotation.available().length === 1;
+    mEl.src = track.src; mEl.volume = 0; mVol = 0;
+    const p = mEl.play(); if (p && p.catch) p.catch(() => {});
+    if (trackCb) trackCb(track.title);
+    if (playlistCb) playlistCb(rotation.library());
+  }
+  function refreshPlaylist(items) {
+    const oldCurrent = rotation.current()?.id;
+    const before = rotation.tracks.map((t) => t.id + '|' + t.src).join('\n');
+    rotation.setTracks(items);
+    const after = rotation.tracks.map((t) => t.id + '|' + t.src).join('\n');
+    if (rotation.first !== st.musicFirst) saveMusic();
+    if (before !== after) {
+      if (playlistCb) playlistCb(rotation.library());
+      if (oldCurrent && !rotation.byId.has(oldCurrent)) playTrack(rotation.next());
+    }
+  }
+  if (typeof window !== 'undefined' && /^https?:$/.test(window.location?.protocol || '')) {
+    let polling = false;
+    window.setInterval(async () => {
+      if (polling || document.hidden) return;
+      polling = true;
+      try { const res = await fetch('/api/music/playlist', { cache: 'no-store' }); if (res.ok) { const data = await res.json(); refreshPlaylist(data.items); } } catch (_) { /* static hosting keeps the build-time playlist */ }
+      finally { polling = false; }
+    }, 8000);
   }
 
   /* ------------------------------------------------------------ graph */
@@ -530,7 +555,8 @@ export function createAudio(volcano) {
   }
   return {
     st,
-    hasMusic: list.length > 0,
+    get hasMusic() { return rotation.available().length > 0; },
+    get playlist() { return rotation.library(); },
     unlock() {
       // the browser holds audio until a gesture: resume the context and the music on the first touch
       if (ac && ac.state !== 'running') ac.resume();
@@ -542,13 +568,24 @@ export function createAudio(volcano) {
       started = true;
       ac.resume();
       applySettings();
-      loadTrack(mIdx);
+      playTrack(rotation.next());
     },
     set(k, v) { st[k] = v; save(); applySettings(); },
-    next() { loadTrack(mIdx + 1); },
-    prev() { loadTrack(mIdx - 1); },
-    title: () => (list[mIdx] ? list[mIdx].title : ''),
-    onTrack(cb) { trackCb = cb; if (list[mIdx]) cb(list[mIdx].title); },
+    next() { playTrack(rotation.next()); },
+    prev() { playTrack(rotation.previous()); },
+    setFirst(id) { rotation.setFirst(id); saveMusic(); if (playlistCb) playlistCb(rotation.library()); },
+    removeTrack(id) {
+      const current = rotation.current()?.id;
+      if (!rotation.remove(id)) return;
+      saveMusic();
+      if (current === String(id)) playTrack(rotation.next());
+      else if (playlistCb) playlistCb(rotation.library());
+    },
+    restoreTrack(id) { if (rotation.restore(id)) { saveMusic(); if (playlistCb) playlistCb(rotation.library()); } },
+    restoreTracks() { rotation.restoreAll(); saveMusic(); if (playlistCb) playlistCb(rotation.library()); },
+    title: () => rotation.current()?.title || '',
+    onTrack(cb) { trackCb = cb; if (rotation.current()) cb(rotation.current().title); },
+    onPlaylist(cb) { playlistCb = cb; cb(rotation.library()); },
     chime() {
       if (!ac || !started || !st.sfxOn) return;
       flat(2.5, (d, t) => [659, 880, 1175, 1568, 2093].forEach((f, i) => osc('triangle', f, null, t + i * 0.1, 1.4, 0.16, d, { attack: 0.01 })), 0.8);
