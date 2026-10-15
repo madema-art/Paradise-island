@@ -1,14 +1,16 @@
 @echo off
-rem Starts the island's local server (the notebook saves its notes through it) and opens the game in your browser.
-rem If node is installed, refresh the music playlist first so newly added songs are picked up.
+rem GitHub is the source of truth; startup.mjs checks, fast-forwards, builds and launches.
 cd /d "%~dp0"
 where node >nul 2>nul || goto nonode
-node build.mjs >nul 2>nul
-netstat -ano | findstr /R /C:":5173 .*LISTENING" >nul || start "Paradise Island server" /min node serve.mjs 5173
-timeout /t 2 /nobreak >nul
-start "" "http://localhost:5173/"
-goto end
+node startup.mjs
+if errorlevel 1 goto failed
+timeout /t 3 /nobreak >nul
+exit /b 0
 :nonode
-rem Without node the island still opens, but the notebook is read-only: it needs the local server.
-start "" "%~dp0index.html"
-:end
+echo Node.js is not installed or is missing from PATH. Install Node.js LTS, then launch again.
+echo The game was not opened because its version and build could not be verified.
+:failed
+echo.
+echo Startup stopped. Read the message above before closing this window.
+pause
+exit /b 1

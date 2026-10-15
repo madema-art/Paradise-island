@@ -11,6 +11,10 @@ import crypto from 'node:crypto';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.argv[2]) || 5173;
+// Captured once: a reused server must belong to this checkout and launched revision.
+const startupIdentity = { app: 'paradise-island', root: fs.realpathSync(root),
+  revision: process.env.PARADISE_ISLAND_REVISION || null,
+  serverHash: crypto.createHash('sha256').update(fs.readFileSync(fileURLToPath(import.meta.url))).digest('hex') };
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.flac': 'audio/flac', '.opus': 'audio/ogg', '.md': 'text/markdown; charset=utf-8' };
 const MUSIC_EXTS = new Set(['.mp3', '.ogg', '.wav', '.m4a', '.flac', '.opus']);
 
@@ -202,6 +206,9 @@ http
     if (url.startsWith('/api/')) {
       if (!localOnly(req)) { sendJson(res, 403, { ok: false, error: 'forbidden', message: 'The notebook API only accepts requests from this computer.' }); return; }
       try {
+        if (url === '/api/startup' && req.method === 'GET') {
+          sendJson(res, 200, startupIdentity); return;
+        }
         if (url === '/api/notes' && req.method === 'GET') {
           const doc = readDoc();
           sendJson(res, 200, { ok: true, storePath: 'notes/island-notes.json', doc });

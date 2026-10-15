@@ -13,3 +13,6 @@ music/playlist.js
 .DS_Store
 Thumbs.db
 .claude/settings.local.json
+
+# Local launcher build/install fingerprints (never source files)
+.paradise-startup/
