@@ -523,6 +523,7 @@ export function liveFacts(c, speed, pos) {
       sub('Drinking', m.drinking); sub('Energy', m.energy + ' (' + m.bars.energy + '%)');
       sub('Curiosity', m.curiosity); sub('Survival record', m.survived); sub('Closest to empty', m.lowest); sub('Current interests', m.interests);
       sub('Recent experiences', m.recent); sub('Notable memories', m.memories); sub('Developing preferences', m.preferences);
+      sub('Current goal', m.goal); sub('What stirs in him', m.drivesText); sub('His collection', m.collection); sub('What he has made', m.made); sub('Skills', m.skills); sub('Places he knows', m.knownPlaces);
     }
   } else if (c.name === 'Capuchin monkey') {
     sub('Doing', MONKEY_STATE[s.state] || 'Active');

@@ -19,6 +19,7 @@ import { eco } from './ecology.js';
 import { makeRatModel } from './rat_model.js';
 import { buildNewBody, coverage, clipMeta } from './castaway_new.js';
 import { createLife } from './castaway_life.js';
+import { findProjectPath } from './project_path.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const wrap = (a) => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
@@ -1389,6 +1390,19 @@ export function buildCastaway() {
   const wishFor = (text) => { for (const [re, names] of WISHES) if (re.test(text)) { layerWish = { name: names[Math.floor(Math.random() * names.length)], until: performance.now() + 9000 }; return; } };
   { const note0 = mind.note; mind.note = (text, a, j, g) => { note0(text, a, j, g); lf.onNote(text, a, j); wishFor(text); }; }
   castawayAI.lf = lf;
+  // what the Field Guide shows of his inner life
+  { const sum0 = mind.summary; mind.summary = (c) => {
+    const m = sum0(c), d = lf.debug(), pct = (v) => Math.round(v * 100) + '%';
+    const top = Object.entries(d.drives).sort((a, b) => b[1].appetite - a[1].appetite).slice(0, 3).map(([k, v]) => `${k} (${pct(v.appetite)})`).join(', ');
+    m.goal = d.quest ? `${d.quest.label || 'under way'}: ${d.quest.why}` : d.proposal ? `Not yet; thinking about it: ${d.proposal.why}` : d.content > 0 ? 'Content for now' : 'None just now';
+    m.drivesText = top;
+    const st = d.stored, parts = Object.entries(st).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k === 'curio' ? 'unusual stone' : k}${n > 1 && k !== 'driftwood' ? 's' : ''}`);
+    m.collection = parts.length ? parts.join(', ') + ` (${d.collectionTotal} found in all)` : 'Nothing yet';
+    const made = [...d.creations, ...d.built]; m.made = made.length ? made.map((k) => lf.DESIGNS[k].label).join('; ') : 'Nothing yet';
+    m.skills = Object.entries(d.skills).map(([k, v]) => `${k} ${pct(v)}`).join(', ');
+    m.knownPlaces = Object.entries(d.places).filter(([, v]) => v > 0).map(([k, v]) => `${k} (${v})`).join(', ') || 'Not yet';
+    return m;
+  }; }
   if (nb && window.__castaway) window.__castaway.life = lf;
   if (window.__castaway) window.__castaway.scores = () => ({ scores: mind.scores(ctx), needs: Object.fromEntries(Object.entries(mind.needs).map(([k, v]) => [k, +v.toFixed(2)])), act: mind.current && mind.current.act });
   if (window.__castaway) window.__castaway.state = () => ({ act, phase, sub, meal, x: +x.toFixed(1), z: +z.toFixed(1), y: +y.toFixed(2), stuck: +stuck.toFixed(1), speed: +speedNow.toFixed(2), caught: caught.length, hurry, sleepWake, logPos: { x: +logPos.x.toFixed(1), z: +logPos.z.toFixed(1) } });
@@ -1428,6 +1442,36 @@ export function buildCastaway() {
   const FACE = { curious: { brow_L: 0.55, brow_R: 0.15, squint: 0.2, eye_pitch: -0.2 }, friendly: 'friendly', grin: 'grin', laugh: 'laugh', surprise: 'surprise', neutral: 'neutral' };
   let qFace = null;
 
+  // Walking a quest leg: short hops along a route that goes round trees, boulders and steep ground (Codex's bounded local planner, one segment at a
+  // time, so no frame pays for a whole-island search). Where no route is found he walks straight at it and lets the usual obstacle-avoidance cope.
+  function standable(p) {
+    if (getHeight(p.x, p.z) < 0.15 || getSlope(p.x, p.z) > 0.55 || lavaDist(p.x, p.z) < 6) return false;
+    const t = { x: p.x, z: p.z }; resolveColliders(t, 0.42);
+    return Math.hypot(t.x - p.x, t.z - p.z) < 0.05;
+  }
+  function planSegment(from, goal) {
+    const d = Math.hypot(goal.x - from.x, goal.z - from.z);
+    if (d < 1.2) return [];
+    const last = d <= 26, dx = (goal.x - from.x) / d, dz = (goal.z - from.z) / d;
+    for (const off of last ? [0] : [0, 9, -9, 18, -18]) {
+      const t2 = last ? goal : { x: from.x + dx * 24 - dz * off, z: from.z + dz * 24 + dx * off };
+      if (!last && !standable(t2)) continue;
+      const seg = findProjectPath(from, t2, standable, getHeight);
+      if (seg) return seg;
+    }
+    return null;
+  }
+  function walkToward(gx, gz, spd, dt) {
+    if (!qs.route || !qs.route.length) {
+      const tp = performance.now();
+      const seg = planSegment({ x, z }, { x: gx, z: gz });
+      const tm = performance.now() - tp; cost.routeMaxMs = Math.max(cost.routeMaxMs || 0, tm); cost.routeCalls = (cost.routeCalls || 0) + 1; cost.routeMs = (cost.routeMs || 0) + tm;
+      qs.route = seg && seg.length ? seg.slice() : [{ x: gx, z: gz }];
+    }
+    const wp = qs.route[0];
+    step(wp.x, wp.z, spd, dt, false);
+    if (Math.hypot(wp.x - x, wp.z - z) < 1.0 && qs.route.length) qs.route.shift();
+  }
   function questEnd(ok, text) {
     showHeld(null); qFace = null; qs = null; staff.visible = false;
     lf.finish(ok, text);
@@ -1449,7 +1493,7 @@ export function buildCastaway() {
     settleY(dt);
     const s = q.steps[q.i];
     if (!s) { questEnd(true, q.madeText || (q.exp && q.exp.text) || `Finished: ${q.why}.`); return; }
-    if (qs.stepI !== q.i) { qs.stepI = q.i; qs.t = 0; qs.fired = false; qs.turnT = 0; qs.turnClip = null; qs.arrive = 0; qs.startFx = (s.t === 'goto' || s.t === 'skipwalk') && speedNow < 0.3 ? 1 : 0; qs.d0 = s.x !== undefined ? Math.hypot(s.x - x, s.z - z) : 0; qFace = s.face || null; if (s.hold !== undefined) qs.hold = s.hold; else if (s.t !== 'anim' && s.t !== 'look') qs.hold = null; }
+    if (qs.stepI !== q.i) { qs.stepI = q.i; qs.t = 0; qs.fired = false; qs.route = null; qs.turnT = 0; qs.turnClip = null; qs.arrive = 0; qs.startFx = (s.t === 'goto' || s.t === 'skipwalk') && speedNow < 0.3 ? 1 : 0; qs.d0 = s.x !== undefined ? Math.hypot(s.x - x, s.z - z) : 0; qFace = s.face || null; if (s.hold !== undefined) qs.hold = s.hold; else if (s.t !== 'anim' && s.t !== 'look') qs.hold = null; }
     qs.t += dt;
     sub = s.t + ':' + q.kind;
     const next = () => { q.i++; };
@@ -1475,7 +1519,7 @@ export function buildCastaway() {
         if (speedNow < 0.15 || qs.arrive > 0.8) next();
         return;
       }
-      step(s.x, s.z, spd, dt, false);
+      walkToward(s.x, s.z, spd, dt);
       if (s.t === 'skipwalk') { qs.clip = 'play_skip'; qs.ts = Math.max(0.6, speedNow / 1.8); }
       else if (qs.startFx > 0) { qs.startFx -= dt * 0.7; qs.clip = s.staff ? 'walk_staff_start' : 'walk_start'; }
       // on a long walk he stops now and then to watch what lives nearby
