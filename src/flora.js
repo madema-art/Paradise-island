@@ -4,7 +4,9 @@ import { ROCK_VARIANTS, ROCK_SETS, makeRockGeo } from './rocks.js';
 import { scene, updaters, U, env, events } from './core.js';
 import { MB, C, jit, shade, mat4, windify, tube, lumpy, M, DRY } from './gfx.js';
 import { addPerch, addCollider, resolveColliders, getHeight, getSlope, getNormal, riverDist, lavaDist, ascentDist, TEMPLE, SPRING, FAIRY, LAKE, COVE, VOL, falls } from './world.js';
-import { rnd, rr, pick, clamp, lerp, smoothstep, TAU, mulberry32 } from './util.js';
+import { burn, rnd, rr, pick, clamp, lerp, smoothstep, TAU, mulberry32 } from './util.js';
+import { newCoral } from './coral_new.js';
+import { chunkInstanced } from './chunk_instanced.js';
 import { fbm } from './noise.js';
 import * as F from './flowers.js';
 import { tagInstanced } from './inspect.js';
@@ -352,36 +354,6 @@ function bladeGeometry() {
 /** every coral head placed on the reef, as {x, z, y} (filled by buildFlora; the fish schools steer around them) */
 export const coralSpots = [];
 
-export function coralGeo(kind) {
-  const mb = new MB();
-  const white = C('#ffffff');
-  if (kind === 0) {
-    // branching (staghorn-like): a few thick-based branches that split into twigs, about 0.3 to 0.6 m tall
-    for (let b = 0; b < 5; b++) {
-      const a = (b / 5) * TAU + rnd() * 0.6, tilt = rr(0.15, 0.55), h = rr(0.3, 0.55);
-      const base = V(rr(-0.04, 0.04), 0, rr(-0.04, 0.04));
-      const cen = [base, V(Math.cos(a) * tilt * h * 0.4, h * 0.5, Math.sin(a) * tilt * h * 0.4), V(Math.cos(a) * tilt * h, h, Math.sin(a) * tilt * h)];
-      tube(mb, cen, [0.06, 0.04, 0.012], 6, () => shade(white, rr(0.85, 1.1)), () => 0.5);
-      for (let t = 0; t < 2; t++) {
-        const s = cen[1].clone().lerp(cen[2], rr(0.3, 0.7));
-        const ta = a + (t ? 0.9 : -0.9) + rr(-0.2, 0.2);
-        const tip = s.clone().add(V(Math.cos(ta) * 0.14, rr(0.1, 0.2), Math.sin(ta) * 0.14));
-        tube(mb, [s, tip], [0.03, 0.01], 5, () => shade(white, rr(0.85, 1.1)), () => 0.5);
-      }
-    }
-  } else if (kind === 1) {
-    // massive or brain coral: a low dome with shallow ridges, about 0.3 to 0.4 m across
-    const g = lumpy(new THREE.IcosahedronGeometry(1, 2), 0.06, 4);
-    mb.addGeo(g, mat4(0, 0.12, 0, 0.26, 0.17, 0.26), (v) => shade(white, 0.75 + 0.35 * Math.min(1, Math.max(0, v.y * 2 + 0.5))), 0.2);
-  } else {
-    // plate or fan coral: two crossed thin fans about 0.4 m across
-    const fan = new THREE.CircleGeometry(0.22, 10, 0, Math.PI);
-    mb.addGeo(fan, mat4(0, 0.02, 0, 1, 1, 1, 0, 0, 0), (v) => shade(white, 0.75 + 0.35 * v.y), 0.8);
-    mb.addGeo(fan, mat4(0, 0.02, 0, 1, 1, 1, 0, 1.57, 0), (v) => shade(white, 0.75 + 0.35 * v.y), 0.8);
-  }
-  return mb.build();
-}
-
 /* ============================================================ build */
 export function buildFlora() {
   const result = { palms, coconuts: null };
@@ -564,9 +536,11 @@ export function buildFlora() {
   tagInstanced(stackMesh, 'rock');
 
   /* ----- underwater life: coral + seagrass ----- */
-  const cMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, flatShading: true, side: THREE.DoubleSide, emissive: 0x111111 });
+  // the coral is smooth-shaded (coral_new.js); the old builder spent 75 draws on the branching head (the others draw none), burned here so nothing after moves
+  const cMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, flatShading: false, side: THREE.DoubleSide, emissive: 0x111111 });
   windify(cMat);
-  const coralG = [coralGeo(0), coralGeo(1), coralGeo(2)];
+  burn(75);
+  const coralG = [newCoral(0, 11), newCoral(1, 12), newCoral(2, 13)];
   const cSpots = coralSpots;   // the coral heads (kept for the fish schools to avoid)
   for (let t = 0; t < 70000 && cSpots.length < 900; t++) {
     const x = rr(-210, 210), z = rr(-190, 215), h = getHeight(x, z);
@@ -578,7 +552,8 @@ export function buildFlora() {
   const cBy = [[], [], []];
   cSpots.forEach((a) => cBy[Math.floor(rnd() * 3)].push(a));
   const coralCols = ['#ff6f91', '#ff9a3c', '#c05cff', '#ffd23f', '#59e0c8', '#ff5a5a', '#8ad14a'];
-  cBy.forEach((l, i) => instanced(coralG[i], cMat, l, { inspect: 'coral', scale: [0.8, 1.3], tilt: 0.25, color: () => C(pick(coralCols)) }));
+  // each kind is split into 60 m chunks, so the reef cells out of view are culled (chunk_instanced.js); the placed matrices are unchanged
+  cBy.forEach((l, i) => chunkInstanced(instanced(coralG[i], cMat, l, { scale: [0.8, 1.3], tilt: 0.25, color: () => C(pick(coralCols)) }), l, 60, { inspect: 'coral' }));
 
   const sgMat = new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide });
   windify(sgMat, { grass: true });

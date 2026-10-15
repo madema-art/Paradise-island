@@ -7,7 +7,9 @@ import { scene } from './core.js';
 import { MB, C, shade, mat4, tube, lumpy, windify, DRY } from './gfx.js';
 import { addCollider, getHeight, getSlope, riverDist, lavaDist, TEMPLE, COVE, LAKE, SPRING, FAIRY, VOL, MOTU, falls } from './world.js';
 import { burn, rnd, rr, pick, clamp, lerp, smoothstep, mulberry32, TAU } from './util.js';
-import { place, instanced, vegMat, canopyMat, distantCanopyMat, clearOf, jungleN, makePalm, coralGeo } from './flora.js';
+import { newCoral } from './coral_new.js';
+import { chunkInstanced } from './chunk_instanced.js';
+import { place, instanced, vegMat, canopyMat, distantCanopyMat, clearOf, jungleN, makePalm } from './flora.js';
 import * as F from './flowers.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -484,32 +486,6 @@ export function buildFlora2() {
 export const motuPalms = [];
 export const reef = { x: 0, z: 0, r: 16 };
 
-function coralTable() {
-  // a table coral about 0.7 to 1 m across on a short, slim stem
-  const mb = new MB(), W = C('#ffffff');
-  const R = rr(0.35, 0.5), h = rr(0.22, 0.34);
-  mb.addGeo(new THREE.CylinderGeometry(0.05, 0.08, h, 6), new THREE.Matrix4().makeTranslation(0, h / 2, 0), shade(W, 0.7), 0.3);
-  const n = 16;
-  for (let i = 0; i < n; i++) {
-    const a0 = (i / n) * TAU, a1 = ((i + 1) / n) * TAU;
-    for (const [r0, r1, y0, y1, k0, k1] of [[0, R * 0.55, h + 0.05, h + 0.02, 0.8, 1.0], [R * 0.55, R, h + 0.02, h - 0.02, 1.0, 0.92]]) {
-      const p0 = V(Math.cos(a0) * r0, y0, Math.sin(a0) * r0), p1 = V(Math.cos(a1) * r0, y0, Math.sin(a1) * r0);
-      const q0 = V(Math.cos(a0) * r1, y1, Math.sin(a0) * r1), q1 = V(Math.cos(a1) * r1, y1, Math.sin(a1) * r1);
-      const ck = shade(W, k0 * (0.92 + 0.1 * Math.sin(i * 2.1))), cj = shade(W, k1 * (0.92 + 0.1 * Math.sin(i * 2.1)));
-      mb.tri(p0, q0, p1, ck, cj, ck, 0.3, 0.5, 0.3); mb.tri(p1, q0, q1, ck, cj, cj, 0.3, 0.5, 0.5);
-    }
-  }
-  return mb.build();
-}
-function coralCauli() {
-  // a cauliflower cluster about 0.4 m across
-  const mb = new MB(), W = C('#ffffff');
-  for (let i = 0; i < 12; i++) {
-    const a = rnd() * TAU, r = rr(0, 0.3), R = rr(0.07, 0.14), c = V(Math.cos(a) * r, R + (0.3 - r) * 0.4 + rnd() * 0.05, Math.sin(a) * r);
-    mb.addGeo(lumpy(new THREE.IcosahedronGeometry(1, 1), 0.3, i), mat4(c.x, c.y, c.z, R), (v) => shade(W, 0.75 + 0.35 * clamp((v.y - c.y) / R * 0.5 + 0.5, 0, 1)), 0.4);
-  }
-  return mb.build();
-}
 function makeAnemone(col) {
   const mb = new MB(), k = new THREE.Color(col);
   mb.addGeo(new THREE.CylinderGeometry(0.2, 0.26, 0.2, 8), new THREE.Matrix4().makeTranslation(0, 0.1, 0), shade(k, 0.5), 0.2);
@@ -547,7 +523,11 @@ export function buildSouthSeas() {
     if (!best || n > best.n) best = { x, z, n };
   }
   reef.x = best.x; reef.z = best.z;
-  const geos = [coralTable(), coralGeo(0), coralCauli(), coralGeo(1), coralGeo(2)];
+  // the garden's coral shapes (coral_new.js). The old builders spent 2 + 75 + 48 draws (table, branching, cauliflower; the other two draw none): burned here
+  burn(125);
+  const geos = [newCoral('table', 21), newCoral(0, 22), newCoral('cauli', 23), newCoral(1, 24), newCoral(2, 25)];
+  const coralMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, flatShading: false, side: THREE.DoubleSide, emissive: 0x20100c });
+  windify(coralMat);
   const wts = [0.3, 0.27, 0.22, 0.13, 0.08];
   const by = geos.map(() => []);
   for (let t = 0, placed = 0; t < 9000 && placed < 520; t++) {
@@ -557,7 +537,7 @@ export function buildSouthSeas() {
     let u = rnd(), k = 0; while (k < wts.length - 1 && u > wts[k]) { u -= wts[k]; k++; }
     by[k].push({ x, z, y: h - 0.05 }); placed++;
   }
-  by.forEach((l, i) => instanced(geos[i], cMat, l, { inspect: 'coral', scale: [0.85, 1.2], tilt: 0.12, cast: false, color: () => new THREE.Color(pick(coralCols)) }));
+  by.forEach((l, i) => chunkInstanced(instanced(geos[i], coralMat, l, { scale: [0.85, 1.2], tilt: 0.12, cast: false, color: () => new THREE.Color(pick(coralCols)) }), l, 60, { inspect: 'coral' }));
   const anC = ['#ff3a8a', '#9a50e0', '#3ad88a'].map(makeAnemone);
   const anL = [[], [], []];
   for (let t = 0; t < 600 && anL.flat().length < 34; t++) { const a = rnd() * TAU, r = reef.r * Math.sqrt(rnd()), x = reef.x + Math.cos(a) * r, z = reef.z + Math.sin(a) * r, h = getHeight(x, z); if (h < -0.8 && h > -2.5) anL[Math.floor(rnd() * 3)].push({ x, z, y: h }); }
