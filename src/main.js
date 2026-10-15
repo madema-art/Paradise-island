@@ -27,6 +27,7 @@ import { buildFx, fx, buildGrotto, buildTemple, buildCove, buildPirate, buildFai
 import { buildLandFauna } from './fauna_land.js';
 import { buildSkyAndSeaFauna } from './fauna_sea.js';
 import { buildCastaway } from './human.js';
+import { loadNewCastaway, loadAnimationPacks } from './castaway_new.js';
 import { loadCastawayModel } from './castaway_model.js';
 import { loadCrabModel } from './crab_model.js';
 import { loadBoarModel } from './boar_model.js';
@@ -111,7 +112,9 @@ async function boot() {
   const seaFauna = buildSkyAndSeaFauna(flora);
   window.__bats = buildBats({ palms: palmList });
   await loadCastawayModel();
+  await loadNewCastaway(quality.level);
   buildCastaway();
+  loadAnimationPacks();
   msg('setting the scene…', 95); await frame();
 
   /* ---------- camera presets ---------- */

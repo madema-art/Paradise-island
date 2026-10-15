@@ -16,6 +16,7 @@ import { rr, rnd, pick, clamp, lerp, damp, TAU } from './util.js';
 import { makeMind } from './castaway_mind.js';
 import { eco } from './ecology.js';
 import { makeRatModel } from './rat_model.js';
+import { buildNewBody, coverage } from './castaway_new.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const wrap = (a) => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
@@ -96,6 +97,27 @@ export function buildCastaway() {
     const cooked = new THREE.Color('#9a6234');
     g.traverse((o) => { if (o.isMesh && !o.userData.noTint) { if (!o.userData.c0) o.userData.c0 = o.material.color.clone(); o.material.color.copy(o.userData.c0).lerp(cooked, k * 0.75); } });
   };
+
+  /* ================================================================ the new body: Blender castaway, driven by the existing logic */
+  // The old procedural rig stays as an invisible driver for now (its pose still runs, so everything that reads hands and head keeps working).
+  // The new character is shown instead, plays clips chosen from what the logic is doing (driveNew, below), and carries the props on its own bones.
+  const nb = buildNewBody();
+  if (nb) {
+    // development diagnostics, always cheap: window.__castaway.coverage.report() and window.__castaway.force('clip_name', seconds)
+    window.__castaway = { coverage, body: nb, force: (name, secs = 4) => { nb.forced = { name, until: performance.now() + secs * 1000 }; } };
+    me.group.add(nb.root);
+    me.root.visible = false;
+    const B = nb.bones, tip = nb.staff.getObjectByName('attach_tip');
+    const tipAt = tip ? tip.position : V(0, 2.1, 0);
+    nb.staff.add(rodTip); rodTip.position.copy(tipAt);
+    nb.staff.add(spearTip); spearTip.position.copy(tipAt);
+    nb.staff.add(fishSpeared); fishSpeared.position.set(0, tipAt.y - 0.12, 0); fishSpeared.rotation.set(0, 0, 0);
+    if (B.attach_hand_L) { B.attach_hand_L.add(coco); coco.position.set(0, 0, 0); coco.rotation.set(0, 0, 0); B.attach_hand_L.add(fishHeld); fishHeld.position.set(0, -0.05, 0.1); }
+    if (B.attach_hand_R) { B.attach_hand_R.add(stick); stick.position.set(0, 0, 0); stick.rotation.set(0, 0, 0); }
+    if (B.prop_aux) { B.prop_aux.add(paddle); paddle.position.set(0, 1.2, 0); paddle.rotation.set(0, 0, 0); }
+    // the props are shown, hidden and tinted by this code, so the performance passes that merge or instance a creature's rigid parts must leave them alone
+    for (const prop of [coco, fishHeld, fishSpeared, stick, paddle, staff, rod, spear]) prop.traverse((o) => { if (o.isMesh) o.userData.noMerge = true; });
+  }
 
   /* ================================================================ campfire kitchen: log seat + spit */
   const ux = hut.mat.x - camp.x, uz = hut.mat.z - camp.z, ul = Math.hypot(ux, uz) || 1;
@@ -1324,6 +1346,69 @@ export function buildCastaway() {
     apply(dt);
   }
 
+  // ---- which clip expresses what he is doing: act/phase/sub come from the activity code above; speed from the walker
+  const IDLES = ['idle_relaxed', 'idle_breathe', 'idle_weight_shift', 'idle_look_around'];
+  let idleI = 0, idleT = 0, gaitK = 0;
+  function loco(staffOn) {
+    const sp = speedNow, up = [0.2, 1.55, 3.1, 4.7], dn = [0.1, 1.35, 2.8, 4.4];
+    let k = gaitK;                             // hysteresis, so the gait does not flicker around a threshold
+    while (k < 4 && sp > up[k]) k++;
+    while (k > 0 && sp < dn[k - 1]) k--;
+    gaitK = k;
+    if (getHeight(x, z) < -0.1 && !inWater && k > 0) return ['wade', Math.max(0.5, sp / 0.95)];
+    if (k === 0) return [staffOn ? 'idle_staff' : IDLES[idleI], 1];
+    if (k === 1) return staffOn ? ['walk_staff', sp / 1.2] : ['walk', sp / 1.3];
+    if (k === 2) return staffOn ? ['walk_staff', Math.min(1.6, sp / 1.2)] : ['walk_brisk', sp / 1.9];
+    return k === 3 ? ['run', sp / 4.3] : ['sprint_away', sp / 5.4];
+  }
+  const LINGER = { stretching: 'stretch_standing', yawning: 'yawn', 'looking about': 'idle_look_around' };
+  const DANCES = ['dance_sway', 'dance_hop', 'dance_stomp', 'dance_hula', 'dance_twist'];
+  function clipFor() {
+    const staffOn = staff.visible;
+    const L = () => loco(staffOn);
+    if (sleepWake) return ['wake_up'];
+    switch (act) {
+      case 'sleep': return phase === 'asleep' ? ['sleep_loop'] : phase === 'lie' ? ['lie_down'] : L();
+      case 'camp': return phase === 'sit' ? ['sit_down'] : phase === 'drink' ? ['coconut_drink'] : phase === 'cook' ? ['tend_fire'] : phase === 'eat' ? ['eat_food'] : phase === 'rest' ? ['rest_by_fire'] : L();
+      case 'shelter': return phase === 'goto' ? L() : ['sit_watching_rain'];
+      case 'fish': {
+        if (phase === 'goto' || phase === 'init') return L();
+        if (spot && spot.method === 'spear') return sub === 'strike' ? ['spear_thrust'] : sub === 'lift' ? ['spear_catch_lift'] : ['spear_stance_idle'];
+        return sub === 'cast' ? ['fish_cast'] : sub === 'bite' ? ['fish_bite_reaction'] : sub === 'reel' ? ['fish_reel_in'] : sub === 'show' ? ['fish_inspect_catch'] : sub === 'release' ? ['fish_reset'] : phase === 'ready' ? ['fish_prepare_rod'] : ['fish_wait_stand'];
+      }
+      case 'canoe': {
+        if (phase === 'goto' || phase === 'init') return L();
+        if (phase === 'board') return ['canoe_board'];
+        if (phase === 'exit' || phase === 'dock') return ['canoe_exit'];
+        if (phase === 'work') return sub === 'bite' || sub === 'reel' ? ['canoe_reel_in'] : sub === 'show' ? ['fish_inspect_catch'] : ['canoe_fish_seated'];
+        if (phase === 'launch' || phase === 'settle' || phase === 'back') return ['canoe_paddle', Math.max(0.6, speedNow)];
+        return ['canoe_sit_idle'];
+      }
+      case 'watch': return phase === 'watch' ? ['observe_animal'] : L();
+      case 'linger': return rockUp ? ['sit_on_rock'] : lingerGest && LINGER[lingerGest] ? [LINGER[lingerGest]] : speedNow > 0.2 ? L() : ['idle_relaxed'];
+      case 'dance': return [DANCES[(danceStyle | 0) % DANCES.length]];
+      case 'swim': return phase === 'float' ? ['float_on_back'] : ['swim_breaststroke'];
+      case 'drink':
+        if (dKind === 'coconut') return phase === 'crack' ? ['coconut_crack'] : phase === 'sip' ? ['coconut_drink'] : phase === 'rise' ? ['wipe_mouth'] : L();
+        return phase === 'kneel' ? ['kneel_down'] : phase === 'drink' ? ['drink_cupped_hands'] : phase === 'rise' ? ['kneel_rise'] : L();
+      case 'hunt': return phase === 'strike' ? ['spear_thrust_ground'] : phase === 'show' ? ['spear_catch_lift'] : eco.stalking ? ['stalk_rat', Math.max(0.5, speedNow / 0.45)] : L();
+      case 'chase': return phase === 'laugh' ? ['laugh_after_chase'] : ['chase_monkey', Math.max(0.8, speedNow / 3.9)];
+      case 'flee': return phase === 'breath' ? ['catch_breath'] : ['sprint_away', Math.max(0.8, speedNow / 5.4)];
+      default: return L();
+    }
+  }
+  function driveNew(dt) {
+    idleT -= dt; if (idleT < 0) { idleT = 8 + Math.random() * 2; idleI = Math.floor(Math.random() * IDLES.length); }
+    if (nb.forced) {                           // development only: castaway_new.js coverage.force(name) plays a clip from the console (never counted as autonomous play)
+      if (performance.now() < nb.forced.until) { nb.play(nb.forced.name, { forced: true, loop: false }); nb.update(dt); return; }
+      nb.forced = null;
+    }
+    const [name, ts] = clipFor();
+    const why = act + '/' + (sub || phase);
+    if (!nb.play(name, { ts: ts || 1, why })) { const [fb, fts] = loco(false); nb.play(fb, { ts: fts, why: why + ' (fallback)' }); }
+    nb.update(dt);
+  }
+
   updaters.push((dt0, t) => {
     if (castawayAI.paused) { lastHours = env.hours; actors.castaway.on = false; return; }
     const dt = Math.min(dt0, 0.05);
@@ -1339,7 +1424,7 @@ export function buildCastaway() {
       else { mind.visit(placeName(w), w); begin(w); }
     }
     if (sleepWake) {
-      if (wakeUp(dt)) { me.group.position.set(x, y, z); me.group.rotation.y = heading; return; }
+      if (wakeUp(dt)) { me.group.position.set(x, y, z); me.group.rotation.y = heading; if (nb) driveNew(dt); return; }
       begin(w);
     }
     if (act === 'sleep') sleepUpdate(dt, t);
@@ -1357,6 +1442,7 @@ export function buildCastaway() {
     else if (act === 'chase') chaseUpdate(dt, t);
     else if (act === 'flee') fleeUpdate(dt, t);
     vocalUpdate(dt, t);
+    if (nb) driveNew(dt);
     if (act !== 'camp' && (spitFish[0].visible || spitRat[0].visible || spitRat[1].visible || spitRat[2].visible)) { spitFish.forEach((f) => (f.visible = false)); spitRat.forEach((r) => (r.visible = false)); }
     desc = describe() + (vocal && act !== 'sleep' && act !== 'flee' ? (vocal.kind === 'sing' ? ' He is singing to himself.' : ' He is whistling a tune.') : '');
     me.group.position.set(x, y, z);

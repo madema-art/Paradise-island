@@ -18,7 +18,7 @@ export const partStats = { kinds: 0, parts: 0, drawsBefore: 0, drawsAfter: 0 };
 let kinds = [];
 let on = false, pending = false, built = false;
 
-const candidate = (o) => o.isMesh && !o.isSkinnedMesh && !o.isInstancedMesh && !o.userData.creature && !o.userData.mergedInto && !o.children.length
+const candidate = (o) => o.isMesh && !o.userData.noMerge && !o.isSkinnedMesh && !o.isInstancedMesh && !o.userData.creature && !o.userData.mergedInto && !o.children.length
   && !Array.isArray(o.material) && o.geometry.groups.length === 0 && !o.userData.inspect && o.parent && o.name !== 'merged rigid parts' && o.name !== 'merged skin';
 
 // a part shows only while it is in the scene and every object above it is visible (a creature taken out of the scene shows nothing)

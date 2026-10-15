@@ -172,7 +172,7 @@ export function mergeCheck() {
 const rigidSnap = new Map();   // part -> matrix elements at the first snapshot
 let rigidState = 0, rigidT = 0;
 export const rigidStats = { candidates: 0, stable: 0, merged: 0, meshesBefore: 0, meshesAfter: 0, drawGroupsBefore: 0, drawGroupsAfter: 0 };
-const rigidCandidate = (o) => o.isMesh && !o.isSkinnedMesh && !o.isInstancedMesh && !o.userData.creature && !o.userData.mergedInto && !o.children.length && !Array.isArray(o.material) && o.geometry.groups.length === 0 && o.parent && !o.userData.inspect;
+const rigidCandidate = (o) => o.isMesh && !o.userData.noMerge && !o.isSkinnedMesh && !o.isInstancedMesh && !o.userData.creature && !o.userData.mergedInto && !o.children.length && !Array.isArray(o.material) && o.geometry.groups.length === 0 && o.parent && !o.userData.inspect;
 
 function rigidParts(group) {
   const out = [];
