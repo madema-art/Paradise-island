@@ -1,6 +1,7 @@
 // The player's castaway: the same sculpted man as the observation mode, driven by hand. Walk/run/swim cycles and a pose for
 // every job (picking up, chopping, shaking a palm, drinking, eating, crafting, fishing, spearing, sleeping), plus the tools he holds.
 import * as THREE from 'three';
+import { createCoconut, setCoconutState } from '../coconut.js';
 import { scene } from '../core.js';
 import { makeHuman, blob, seg, cone, at } from '../creatures.js';
 import { fx } from '../props.js';
@@ -52,8 +53,7 @@ export class Avatar {
     // canteen / coconut in the other hand
     const canteen = mk(off); canteen.position.set(0, -0.1, 0.07);
     at(blob(0.085, '#6b4a2a', 1, 1.1, 1, 10), 0, 0, 0, canteen); at(seg(0.02, 0.02, 0.06, '#d9c48e', 6), 0, 0.1, 0, canteen);
-    const coco = mk(off); coco.position.set(0, -0.1, 0.07);
-    at(blob(0.095, '#5a3a1e', 1, 1.05, 1, 12), 0, 0, 0, coco); at(blob(0.03, '#e8e0cc', 1.4, 0.4, 1.4, 8), 0, 0.09, 0.0, coco);
+    const coco = createCoconut(); coco.visible = false; off.add(coco); coco.position.set(0, -0.1, 0.07);
     // bobber + line for fishing
     const bobber = new THREE.Group(); bobber.visible = false; scene.add(bobber);
     at(blob(0.055, '#f4f1ea', 1, 1, 1, 10), 0, -0.02, 0, bobber); at(blob(0.05, '#e03a2a', 1, 0.7, 1, 10), 0, 0.04, 0, bobber);
@@ -144,6 +144,7 @@ export class Avatar {
         break;
       }
       case 'eat': {
+        if (this.props.coco.visible) setCoconutState(this.props.coco, p < .2 ? 'whole' : p < .62 ? 'opened' : 'half');
         const cyc = (p * 3) % 1;
         const up = cyc < 0.3 ? smooth(cyc / 0.3) : cyc < 0.7 ? 1 : 1 - smooth((cyc - 0.7) / 0.3);
         const bite = cyc > 0.35 && cyc < 0.6 ? Math.abs(Math.sin((cyc - 0.35) * 40)) : 0;

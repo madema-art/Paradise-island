@@ -209,6 +209,9 @@ async function boot() {
           position: m.pos.toArray(), speed: m.vel.length(), landings: m.landings, nectarVisits: m.visits })) })) });
     window.advanceTime = ms => { for (let n = Math.ceil(ms / (1000 / 60)); n > 0; n--) step(1 / 60); composer.render(); };
   }
+  if (new URLSearchParams(location.search).has('coconutReview')) {
+    const { startCoconutReview } = await import('./dev/coconut_review.js'); startCoconutReview(step);
+  }
   loop();
 }
 
@@ -249,6 +252,7 @@ window.__step = step;
 function loop() {
   requestAnimationFrame(loop);
   if (location.search.includes('lifeReview')) return; // Test stepping renders once per requested burst.
+  if (new URLSearchParams(location.search).has('coconutStep')) return; // Opt-in deterministic art review only.
   const now = performance.now();
   const dt = Math.min((now - last) / 1000, 0.05);
   autoQuality((now - last) / 1000);

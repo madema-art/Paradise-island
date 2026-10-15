@@ -49,6 +49,7 @@ function scan(monkeys, dt) {
 }
 
 function begin(h, c) {
+  c.rig.setNutState(h.rig.nutState); // The contested coconut keeps its opened/whole appearance.
   const k = { holder: h, ch: c, phase: 'approach', age: 0, abandonT: 1, bluffT: 0, slipT: 1, tugT: 0, tugDur: 0, tugStarted: false, placeT: 0, placeFrom: null, winner: null, loser: null, postT: 0, hClip: 'coconut_guard', cClip: 'scurry' };
   h.contest = k; c.contest = k;
   contests.push(k);

@@ -1,6 +1,7 @@
 // Things to find on the island: sticks, stones, plant fibre, driftwood logs, clams, fallen coconuts and washed-up crates.
 // Each kind is one instanced mesh; picking something up hides it, and most things grow back after a while (game hours).
 import * as THREE from 'three';
+import { coconutWholeGeometry, coconutHuskMaterial, COCONUT } from '../coconut.js';
 import { scene, env } from '../core.js';
 import { getHeight, getSlope, lavaDist, riverDist, VOL, COVE, falls } from '../world.js';
 import { poolLevel } from '../walk.js';
@@ -32,7 +33,7 @@ const sticks = () => {
 const stoneGeo = () => { const g = new THREE.IcosahedronGeometry(0.2, 0); g.scale(1.25, 0.72, 1); g.translate(0, 0.1, 0); return g; };
 const logGeo = () => { const g = new THREE.CylinderGeometry(0.17, 0.2, 2.1, 7); g.rotateZ(Math.PI / 2); g.translate(0, 0.19, 0); return g; };
 const clamGeo = () => { const g = new THREE.SphereGeometry(0.17, 8, 5, 0, TAU, 0, Math.PI / 2); g.scale(1.1, 0.55, 1); g.translate(0, 0.0, 0); return g; };
-const nutGeo = () => { const g = new THREE.IcosahedronGeometry(0.2, 1); g.scale(1, 0.95, 1); g.translate(0, 0.2, 0); return g; };
+const nutGeo = () => coconutWholeGeometry().clone().translate(0, COCONUT.restHeight, 0);
 
 /** kinds: where they lie and how fast they regrow (game hours). */
 export const KINDS = {
@@ -41,7 +42,7 @@ export const KINDS = {
   fiber: { count: 110, regrow: 14, color: [0xa9d44c, 0x8fc13f, 0xc6dc58], geo: tuft, rough: 0.8, glow: 0x223300 },
   log: { count: 30, regrow: 36, color: [0xb4a58a, 0x9d8f76, 0xc0b296], geo: logGeo, rough: 0.95 },
   clam: { count: 52, regrow: 22, color: [0xe8d6c0, 0xf2c8b6, 0xdcc8e0], geo: clamGeo, rough: 0.55 },
-  coconut: { count: 70, regrow: 1e9, color: [0x5a3a1e, 0x6b4526, 0x4c3018], geo: nutGeo, rough: 0.8, dynamic: true },
+  coconut: { count: 70, regrow: 1e9, color: [0xfff6eb, 0xffffff, 0xe8d9c8], geo: nutGeo, rough: 0.8, dynamic: true },
 };
 
 /** where each kind may lie */
@@ -75,7 +76,7 @@ export class Resources {
     const sc = new THREE.Color();
     for (const [kind, K] of Object.entries(KINDS)) {
       const geo = K.geo();
-      const mat = new THREE.MeshStandardMaterial({ roughness: K.rough, metalness: 0, flatShading: true, emissive: K.glow || 0x000000 });
+      const mat = kind === 'coconut' ? coconutHuskMaterial() : new THREE.MeshStandardMaterial({ roughness: K.rough, metalness: 0, flatShading: true, emissive: K.glow || 0x000000 });
       const im = new THREE.InstancedMesh(geo, mat, K.count);
       im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
       this.meshes[kind] = im; this.root.add(im);
@@ -83,6 +84,7 @@ export class Resources {
       const list = this.byKind[kind];
       const place = (x, z, h) => {
         const n = { kind, x, z, y: h, rot: rnd() * TAU, sc: 0.85 + rnd() * 0.5, alive: true, back: 0, i: list.length, tint: K.color[Math.floor(rnd() * K.color.length)] };
+        if (kind === 'coconut') n.sc = .96 + (n.sc - .85) * .16; // Reuse existing random draw; restrained size variation.
         if (kind === 'clam') n.y = Math.max(h, env.tide - 0.08);
         list.push(n); this.nodes.push(n);
         return n;
@@ -145,7 +147,7 @@ export class Resources {
     const n = this.byKind.coconut.find((q) => q.free);
     if (!n) return;
     const a = Math.random() * TAU, r = 0.9 + Math.random() * 1.6;
-    n.x = x + Math.cos(a) * r; n.z = z + Math.sin(a) * r; n.free = false; n.alive = true; n.sc = 1.2;
+    n.x = x + Math.cos(a) * r; n.z = z + Math.sin(a) * r; n.free = false; n.alive = true; n.sc = .98 + (n.i % 3) * .02;
     n.ground = getHeight(n.x, n.z);
     if (n.ground < 0.5) { n.free = true; n.alive = false; this.write(n); return; }
     n.y = fromY; n.vy = 0; n.fall = true; n.back = hours + 40;   // despawns after a while

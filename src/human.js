@@ -4,6 +4,7 @@
 // He keeps fed and rested while pursuing comfort and accomplishment. He runs from
 // boars, chases monkeys for fun, and when he is happy he dances, whistles and sings.
 import * as THREE from 'three';
+import { createCoconut, setCoconutState } from './coconut.js';
 import { scene, env, camera, updaters, creatures, events } from './core.js';
 import { makeHuman, blob, seg, cone, at } from './creatures.js';
 import { fauna, register, actors } from './fauna_common.js';
@@ -87,9 +88,7 @@ export function buildCastaway() {
     return g;
   };
   const stickRat = mkRat(); stickRat.visible = false; stickRat.position.set(0, -0.42, 0.0); stickRat.rotation.x = Math.PI / 2; stick.add(stickRat);
-  const coco = new THREE.Group(); coco.visible = false; me.armL.hand.add(coco);
-  at(blob(0.095, '#5a3a1e', 1, 1.05, 1, 12), 0, -0.1, 0.05, coco);
-  at(blob(0.03, '#e8e0cc', 1.4, 0.4, 1.4, 8), 0, -0.02, 0.05, coco);
+  const coco = createCoconut(); coco.visible = false; coco.position.set(0, -.1, .05); me.armL.hand.add(coco);
   const bobber = new THREE.Group(); bobber.visible = false; scene.add(bobber);
   at(blob(0.055, '#f4f1ea', 1, 1, 1, 10), 0, -0.02, 0, bobber); at(blob(0.05, '#e03a2a', 1, 0.7, 1, 10), 0, 0.04, 0, bobber);
   const linePts = Array.from({ length: 10 }, () => V());
@@ -866,7 +865,7 @@ export function buildCastaway() {
       setPose({ ...sit, py: lerp(0.5, 0.12, smooth(clamp(pt / 1.2, 0, 1))), aPs: -0.5, aNs: -0.5 });
       if (pt > 1.3) { phase = meal === 'breakfast' ? 'drink' : 'cook'; pt = 0; }
     } else if (phase === 'drink') {
-      coco.visible = true;
+      coco.visible = true; setCoconutState(coco, pt < 10 ? 'opened' : 'half');
       const cyc = (pt % 6) / 6;
       const up = cyc < 0.15 ? smooth(cyc / 0.15) : cyc < 0.7 ? 1 : 1 - smooth((cyc - 0.7) / 0.3);
       setPose({ ...sit, aNs: lerp(-0.4, -1.55, up), aNe: lerp(-0.9, -2.1, up), aPs: -0.45, aPe: -0.8, hdX: -0.55 * up, nkX: -0.15 * up, spX: 0.1 - 0.05 * up });
@@ -999,7 +998,7 @@ export function buildCastaway() {
       const d = step(p.x, p.z, d0(p) > 6 ? 5.2 : 3.4, dt, false);
       if (d > 5) run(dt, Math.max(speedNow, 3)); else gait(dt, speedNow);
       if (d < 0.9) {
-        if (eco.coconuts.take(dNut)) { phase = 'crack'; pt = 0; coco.visible = true; hurry = false; stuck = 0; }
+        if (eco.coconuts.take(dNut)) { phase = 'crack'; pt = 0; coco.visible = true; setCoconutState(coco, 'whole'); hurry = false; stuck = 0; }
         else { dNut = nextNut(); if (!dNut) { mind.note('A monkey snatched the coconut he was after.', null, -0.04); if (!toFresh()) mind.finish(); return; } }
       }
       if (walkT > 22 || stuck > 6) { if (!toFresh()) { mind.memory.lastKind = 'coconut'; mind.finish(); } return; }
@@ -1010,7 +1009,7 @@ export function buildCastaway() {
     if (phase === 'crack') {
       const hit = Math.max(0, Math.sin(pt * 8));
       setPose({ py: 0.84, spX: 0.28, hdX: 0.45, lPh: -0.15, lNh: 0.1, lPk: 0.2, lNk: 0.2, aPs: -1.2 - 0.5 * hit, aPe: -1.2, aNs: -1.0, aNe: -1.5 });
-      if (pt > 2.4) { phase = 'sip'; pt = 0; }
+      if (pt > 2.4) { phase = 'sip'; pt = 0; setCoconutState(coco, 'opened'); }
     } else if (phase === 'sip') {
       const cyc = (pt % 5) / 5;
       const up = cyc < 0.18 ? smooth(cyc / 0.18) : cyc < 0.72 ? 1 : 1 - smooth((cyc - 0.72) / 0.28);

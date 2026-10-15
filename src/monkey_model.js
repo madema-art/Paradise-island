@@ -3,18 +3,19 @@
 // distant build (Monkey_lod1.glb, no clips, same bone names) when it is far. Clips come from the hero file and bind by bone name.
 // Until the models load, or with ?monkey=old, the procedural monkey in creatures.js is used.
 import * as THREE from 'three';
+import { createCoconut, setCoconutState } from './coconut.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 export const NEW_MONKEY = new URLSearchParams(location.search).get('monkey') !== 'old';
 
 const BASE = 'assets/monkey/';
-const URLS = { hero: BASE + 'Monkey.glb', lite: BASE + 'Monkey_lite.glb', lod1: BASE + 'Monkey_lod1.glb', coconut: BASE + 'coconut.glb', clips: BASE + 'monkey_clips.json' };
+const URLS = { hero: BASE + 'Monkey.glb', lite: BASE + 'Monkey_lite.glb', lod1: BASE + 'Monkey_lod1.glb', clips: BASE + 'monkey_clips.json' };
 // the monkey's size: the asset is built at real scale (workshop docs: 0.46 m head-body length, Sapajus apella). The game target
 // is 1.5x real (docs/WILDLIFE_SCALE_RESEARCH.md): 0.46 x 1.5 = 0.69 m head-body.
 export const MONKEY_SCALE = 1.5;
 const loader = new GLTFLoader();
-const store = { ready: false, tier: null, scenes: {}, lod1: null, coconut: null, clips: [], meta: null, loading: null };
+const store = { ready: false, tier: null, scenes: {}, lod1: null, clips: [], meta: null, loading: null };
 
 export const monkeyReady = () => NEW_MONKEY && store.ready;
 export const monkeyMeta = (name) => (store.meta && store.meta[name]) || null;
@@ -36,8 +37,8 @@ async function loadTier(tier) {
 export async function loadMonkeyModels(level = 'high') {
   if (!NEW_MONKEY) return false;
   try {
-    const [lod1, coconut, meta] = await Promise.all([loader.loadAsync(URLS.lod1), loader.loadAsync(URLS.coconut), fetch(URLS.clips).then((r) => r.json())]);
-    store.lod1 = lod1.scene; store.coconut = coconut.scene; store.meta = meta;
+    const [lod1, meta] = await Promise.all([loader.loadAsync(URLS.lod1), fetch(URLS.clips).then((r) => r.json())]);
+    store.lod1 = lod1.scene; store.meta = meta;
     store.lod1.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; o.castShadow = true; } });
     store.tier = tierFor(level);
     await loadTier(store.tier);
@@ -67,7 +68,7 @@ export class MonkeyRig {
     this.group.scale.setScalar(MONKEY_SCALE);
     this.near = null; this.far = null; this.isFar = false;
     this.current = ''; this.next = null; this.loop = true; this.timeScale = 1; this.clipLen = 1;
-    this.usesCoconut = false;
+    this.usesCoconut = false; this.nutState = 'whole';
     this.mixT = 0;
     this.buildNear(store.tier);
     this.buildFar();
@@ -76,8 +77,9 @@ export class MonkeyRig {
     const mixer = new THREE.AnimationMixer(root);
     const bones = {}; root.traverse((o) => { if (o.isBone) bones[o.name] = o; });
     const side = { root, mixer, actions: new Map(), tier, nut: null, attach: bones.coconut_attach || null };
-    if (side.attach && store.coconut) {
-      side.nut = store.coconut.clone(true);
+    if (side.attach) {
+      side.nut = createCoconut({ state: this.nutState });
+      side.nut.scale.setScalar(1 / MONKEY_SCALE); // Cancel rig enlargement: one coconut size for every actor.
       side.nut.visible = false; side.nut.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       side.attach.add(side.nut);
     }
@@ -165,6 +167,10 @@ export class MonkeyRig {
   setNut(visible) {
     this.usesCoconut = visible;
     for (const side of [this.near, this.far]) if (side && side.nut) side.nut.visible = visible && side === this.active();
+  }
+  setNutState(state) {
+    this.nutState = state;
+    for (const side of [this.near, this.far]) if (side?.nut) setCoconutState(side.nut, state);
   }
   /** whether the current one-shot has run out */
   finished() {

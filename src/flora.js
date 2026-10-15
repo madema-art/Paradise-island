@@ -1,8 +1,9 @@
 import * as THREE from 'three';
+import { coconutWholeGeometry, coconutCrownGeometry, coconutHuskMaterial, COCONUT } from './coconut.js';
 import { ROCK_VARIANTS, ROCK_SETS, makeRockGeo } from './rocks.js';
 import { scene, updaters, U, env, events } from './core.js';
 import { MB, C, jit, shade, mat4, windify, tube, lumpy, M, DRY } from './gfx.js';
-import { addPerch, addCollider, getHeight, getSlope, getNormal, riverDist, lavaDist, ascentDist, TEMPLE, SPRING, FAIRY, LAKE, COVE, VOL, falls } from './world.js';
+import { addPerch, addCollider, resolveColliders, getHeight, getSlope, getNormal, riverDist, lavaDist, ascentDist, TEMPLE, SPRING, FAIRY, LAKE, COVE, VOL, falls } from './world.js';
 import { rnd, rr, pick, clamp, lerp, smoothstep, TAU, mulberry32 } from './util.js';
 import { fbm } from './noise.js';
 import * as F from './flowers.js';
@@ -57,7 +58,7 @@ export function makePalm(H, bx, bz, nF) {
       }
     }
   }
-  const nut = lumpy(new THREE.IcosahedronGeometry(1, 1), 0.06, 3);
+  const nut = coconutCrownGeometry();
   for (let k = 0; k < 3; k++) {                           // dead brown fronds hanging below the crown
     const az = rnd() * TAU, dir = V(Math.cos(az), 0, Math.sin(az)), side = V(-Math.sin(az), 0, Math.cos(az)), L = rr(3.4, 4.6), R = [];
     for (let q = 0; q <= 8; q++) { const u = q / 8; R.push(top.clone().addScaledVector(dir, L * u * 0.55).add(V(0, -L * u * u * 0.9 + 0.1, 0))); }
@@ -67,7 +68,7 @@ export function makePalm(H, bx, bz, nF) {
   for (let i = 0; i < nuts; i++) {
     const a = (i / nuts) * TAU + rnd();
     const c = rnd() < 0.55 ? C('#6b8a2c') : C('#5c3d1e');
-    mb.addGeo(nut, mat4(top.x + Math.cos(a) * 0.4 + rr(-0.12, 0.12), top.y - 0.4 - (i % 3) * 0.2, top.z + Math.sin(a) * 0.4 + rr(-0.12, 0.12), 0.27), c, 1.1);
+    mb.addGeo(nut, mat4(top.x + Math.cos(a) * 0.4 + rr(-0.12, 0.12), top.y - 0.4 - (i % 3) * 0.2, top.z + Math.sin(a) * 0.4 + rr(-0.12, 0.12), 1.06), c, 1.1);
   }
   const pt = trunkAt;
   return { geo: mb.build(), pt, H, perchPoints };
@@ -595,25 +596,31 @@ export function buildFlora() {
   dw.castShadow = true; scene.add(dw);
 
   /* ----- lying coconuts + falling system ----- */
-  const nutGeo = lumpy(new THREE.IcosahedronGeometry(1, 1), 0.05, 2);
-  const nutMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1e, roughness: 0.8, flatShading: true });
+  const nutGeo = coconutWholeGeometry();
+  const nutMat = coconutHuskMaterial();
   const lying = [];
   for (const p of palms) {
     if (rnd() < 0.55 && p.y < 5) {
       const a = rnd() * TAU, r = rr(1, 4.5);
       const x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r, h = getHeight(x, z);
-      if (h > 0.9) lying.push({ x, z, y: h + 0.24 });
+      if (h > 0.9) lying.push({ x, z, y: h + COCONUT.restHeight });
     }
+  }
+  // Nudge resting fruit out of existing rocks/trunks without drawing from the placement RNG.
+  for (const nut of lying) {
+    const p = { x: nut.x, z: nut.z }; resolveColliders(p, .13);
+    const h = getHeight(p.x, p.z); if (h > .9) { nut.x = p.x; nut.z = p.z; nut.y = h + COCONUT.restHeight; }
   }
   const ly = new THREE.InstancedMesh(nutGeo, nutMat, lying.length);
   const zeroNut = new THREE.Matrix4().makeScale(0, 0, 0);
-  lying.forEach((a, i) => { a.i = i; a.taken = false; a.mat = new THREE.Matrix4().compose(new THREE.Vector3(a.x, a.y, a.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd() * 3, rnd() * 3, 0)), new THREE.Vector3(0.26, 0.24, 0.26)); ly.setMatrixAt(i, a.mat); });
-  ly.castShadow = true; scene.add(ly);
+  lying.forEach((a, i) => { a.i = i; a.taken = false; a.mat = new THREE.Matrix4().compose(new THREE.Vector3(a.x, a.y, a.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd() * 3, rnd() * 3, 0)), new THREE.Vector3(1, .96 + (i % 3) * .035, .98 + (i % 2) * .04)); ly.setMatrixAt(i, a.mat); });
+  lying.forEach((a, i) => ly.setColorAt(i, new THREE.Color(['#fff6eb', '#ffffff', '#e8d9c8'][i % 3])));
+  ly.name = 'Coconut_ground_instances'; ly.castShadow = true; scene.add(ly); tagInstanced(ly, 'coconut');
 
   const pool = [];
   for (let i = 0; i < 16; i++) {
     const m = new THREE.Mesh(nutGeo, nutMat);
-    m.scale.set(0.27, 0.25, 0.27);
+    m.scale.setScalar(1); m.name = 'Coconut_falling';
     m.castShadow = true; m.visible = false;
     scene.add(m);
     pool.push({ m, active: false, v: new THREE.Vector3(), rest: 0, bounces: 0, splash: false });
@@ -649,7 +656,7 @@ export function buildFlora() {
     onSplash: (f) => { splashHook.fn = f; },
     drop(x, y, z, vx = 0, vz = 0) {
       const c = pool.find((q) => !q.active) || pool[0];
-      c.active = true; c.rest = 0; c.bounces = 0; c.splash = false; c.m.visible = true; c.m.scale.set(0.27, 0.25, 0.27);
+      c.active = true; c.rest = 0; c.bounces = 0; c.splash = false; c.m.visible = true; c.m.scale.setScalar(1);
       c.m.position.set(x, y, z);
       c.v.set(vx + rr(-0.6, 0.6), 0, vz + rr(-0.6, 0.6));
     },
@@ -676,15 +683,15 @@ export function buildFlora() {
           if (c.ripT < 0) { c.ripT = 2.2 + rnd() * 2; ripple(p.x, p.z, { amp: 0.1, speed: 0.5, width: 0.07, life: 1.5, foam: 0.05, minor: true }); }
           if (c.rest > 25) { c.active = false; c.m.visible = false; }
         }
-      } else if (p.y < g + 0.25) {
-        p.y = g + 0.25;
+      } else if (p.y < g + COCONUT.restHeight) {
+        p.y = g + COCONUT.restHeight;
         if (v.y < -2 && c.bounces < 4) { events.emit('thud', p.x, p.y, p.z, Math.min(1, -v.y / 14)); v.y = -v.y * 0.38; v.x *= 0.75; v.z *= 0.75; c.bounces++; } else v.y = 0;
         getNormal(p.x, p.z, nrm);
         v.x += nrm.x * 14 * dt; v.z += nrm.z * 14 * dt;
         const k = Math.exp(-1.4 * dt); v.x *= k; v.z *= k;
         const sp = Math.hypot(v.x, v.z);
-        c.m.rotation.x += (v.z * dt) / 0.26; c.m.rotation.z -= (v.x * dt) / 0.26;
-        if (sp < 0.2) { c.rest += dt; if (c.rest > 30) { const s = Math.max(0, 1 - (c.rest - 30) / 3); c.m.scale.setScalar(0.26 * s); if (s <= 0) { c.active = false; c.m.visible = false; } } } else c.rest = 0;
+        c.m.rotation.x += (v.z * dt) / .11; c.m.rotation.z -= (v.x * dt) / .11;
+        if (sp < 0.2) { c.rest += dt; if (c.rest > 30) { const s = Math.max(0, 1 - (c.rest - 30) / 3); c.m.scale.setScalar(s); if (s <= 0) { c.active = false; c.m.visible = false; } } } else c.rest = 0;
       }
     }
   });
