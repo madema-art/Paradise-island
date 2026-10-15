@@ -162,6 +162,7 @@ async function boot() {
   // development only: ?inspect= holds the camera on one school (src/dev/school_inspect.js); normal play never loads it
   if (/[?&]inspect=/.test(location.search)) import('./dev/school_inspect.js').then((m) => m.startSchoolInspect());
   import('./dev/display_diag.js').then((m) => m.startDisplayDiag());
+  if (/[?&]sim=1/.test(location.search)) import('./dev/life_sim.js').then((m) => m.startLifeSim());
   if (/[?&]perf=1/.test(location.search)) import('./dev/perf_bench.js').then((m) => m.startPerfBench());
   window.__goto = (p, t) => cam.goto(p, t);
   // review hook: the game's own follow camera on any creature (used to inspect the monkeys in the running game)

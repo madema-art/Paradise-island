@@ -11,20 +11,20 @@
 import { rnd, rr, clamp } from './util.js';
 
 export const ACTIVITY_LABEL = {
-  project: 'Making a personal evening fire', sleep: 'Sleeping in his lean-to', camp: 'At the campfire', hike: 'Exploring on foot', swim: 'Swimming in the lagoon',
+  project: 'Making a personal evening fire', quest: 'Following his own interests', sleep: 'Sleeping in his lean-to', camp: 'At the campfire', hike: 'Exploring on foot', swim: 'Swimming in the lagoon',
   fish: 'Fishing from the shore', canoe: 'Fishing from his canoe', shelter: 'Sheltering from the rain',
   watch: 'Watching wildlife', linger: 'Resting and taking in the view', dance: 'Dancing',
   drink: 'Taking a drink', hunt: 'Hunting rats', chase: 'Chasing a monkey', flee: 'Running from a boar',
 };
 // how long an activity may run, in game hours (about 25 real seconds per game hour at normal speed)
 const BUDGET = {
-  project: [6, 8], sleep: [4, 8], camp: [2.2, 2.8], hike: [2, 3.5], swim: [0.6, 1.2], fish: [1.2, 2.2], canoe: [1.8, 2.8],
+  project: [6, 8], quest: [5, 9], sleep: [4, 8], camp: [2.2, 2.8], hike: [2, 3.5], swim: [0.6, 1.2], fish: [1.2, 2.2], canoe: [1.8, 2.8],
   shelter: [0.6, 1.5], watch: [0.5, 1.6], linger: [1.0, 2.2], dance: [0.5, 0.8],
   drink: [0.6, 1.0], hunt: [0.5, 1.0], chase: [0.4, 0.7], flee: [0.5, 0.9],
 };
 // what each activity does to his body per game hour: fatigue and boredom (negative values recover)
 const BODY = {
-  project: { fatigue: 0.025, boredom: -0.25 }, sleep: { fatigue: -0.45, boredom: -0.2 }, camp: { fatigue: -0.05, boredom: -0.1 }, hike: { fatigue: 0.07, boredom: -0.25 },
+  project: { fatigue: 0.025, boredom: -0.25 }, quest: { fatigue: 0.04, boredom: -0.3 }, sleep: { fatigue: -0.45, boredom: -0.2 }, camp: { fatigue: -0.05, boredom: -0.1 }, hike: { fatigue: 0.07, boredom: -0.25 },
   swim: { fatigue: 0.12, boredom: -0.3 }, fish: { fatigue: 0.04, boredom: -0.15 }, canoe: { fatigue: 0.06, boredom: -0.2 },
   shelter: { fatigue: -0.04, boredom: 0.05 }, watch: { fatigue: 0.01, boredom: -0.35 }, linger: { fatigue: -0.08, boredom: -0.1 },
   dance: { fatigue: 0.35, boredom: -0.5 }, drink: { fatigue: -0.02, boredom: -0.05 }, hunt: { fatigue: 0.1, boredom: -0.3 }, chase: { fatigue: 0.3, boredom: -0.6 },
@@ -32,13 +32,13 @@ const BODY = {
 };
 // how much each activity lifts his spirits, per game hour
 const JOY = {
-  project: 0.04, sleep: 0.0, camp: 0.05, hike: 0.05, swim: 0.1, fish: 0.03, canoe: 0.07, shelter: -0.03, watch: 0.08, linger: 0.04,
+  project: 0.04, quest: 0.05, sleep: 0.0, camp: 0.05, hike: 0.05, swim: 0.1, fish: 0.03, canoe: 0.07, shelter: -0.03, watch: 0.08, linger: 0.04,
   dance: 0.3, drink: 0.05, hunt: 0.06, chase: 0.28, flee: -0.3,
 };
 // the survival rates (per game hour, as a fraction of a full bar): about the same as survival mode itself
 const RATE = { hunger: 0.022 }; // Observation: meals remain visible without dominating island life.
 // how many game hours he goes between drinks (water is a habit, not a need)
-const DRINK_EVERY = 3.4;
+const DRINK_EVERY = 5.5;
 const ACTS = Object.keys(ACTIVITY_LABEL);
 
 const word = (v, names) => { for (const [limit, label] of names) if (v < limit) return label; return names[names.length - 1][1]; };
@@ -124,6 +124,7 @@ export function makeMind(traits = TRAITS) {
     const fine = N.hunger < 0.55 && N.fatigue < 0.65;       // the basics are covered, so he can go looking for joy
     const seek = fine ? 1 - N.happy : 0;
     switch (a) {
+      case 'quest': return ctx.quest && fine && ctx.rain < 0.25 && !night ? 0.5 + ctx.quest.value * 1.0 + (ctx.quest.resume ? 0.4 : 0) - N.fatigue * 0.4 - justDone(a) * 0.2 : -1;
       case 'project': return ctx.projectOK && fine && !night && ctx.rain < .25 ? 1 + (1 - N.comfort) * .2 + N.boredom * .3 + seek * .3 - N.fatigue * .3 : -1;
       case 'sleep': return 0.04 + N.fatigue * 0.7 + Math.max(0, N.fatigue - 0.55) * 2.0 + (night ? 0.55 : -0.1) - justDone(a) - (night && N.hunger > 0.6 ? 0.45 : 0);
       case 'drink': {                    // a habit: every few hours, more readily in the cool of the morning and evening
@@ -134,7 +135,7 @@ export function makeMind(traits = TRAITS) {
       }
       case 'hunt': {                     // rats come out at dusk and night; they are another meal, and a hard one to catch
         if (!ctx.ratC || ctx.rain > 0.3) return -1;
-        return 0.12 + N.hunger * 0.9 + (ctx.caught === 0 && N.hunger > 0.3 ? 0.15 : 0) + N.boredom * 0.15 + T.boldness * 0.15 + (dusk || night ? 0.12 : 0) + practice(a) * 0.3 - N.fatigue * 0.4 - (ctx.caught >= 3 ? 0.7 : 0) - (N.hunger < 0.3 ? 0.3 : 0) - justDone(a) * 0.6;
+        return 0.12 + N.hunger * 0.9 + (ctx.caught === 0 && N.hunger > 0.3 ? 0.15 : 0) + N.boredom * 0.15 + T.boldness * 0.15 + (dusk || night ? 0.12 : 0) + practice(a) * 0.3 - N.fatigue * 0.4 - (ctx.caught >= 3 ? 0.7 : 0) - (N.hunger < 0.3 ? 0.3 : 0) - justDone(a) * 0.6 + (ctx.drives ? ctx.drives.hunting * 0.55 : 0) + (ctx.huntBoost ? 0.5 : 0);
       }
       case 'camp': {
         if (ctx.caught > 0) return 0.2 + Math.max(0, N.hunger - 0.15) * 3.0 - (ctx.caught < 2 && N.hunger < 0.65 ? 0.7 : 0) + (dusk && N.hunger > 0.3 ? 0.25 : 0) + (N.fatigue > 0.5 ? 0.1 : 0) - justDone(a);
@@ -142,8 +143,8 @@ export function makeMind(traits = TRAITS) {
       }
       case 'fish': return ctx.fishOK ? 0.25 + N.hunger * 0.7 + (ctx.caught === 0 && N.hunger > 0.35 ? 0.3 : 0) + N.boredom * 0.15 + practice(a) * 0.4 + ((morning || lateAfternoon) ? 0.2 : 0) - N.fatigue * 0.4 - (night ? 0.2 : 0) - (ctx.caught > 0 ? 0.3 : 0) - (ctx.caught >= 3 ? 0.4 : 0) - justDone(a) * 0.3 : -1;
       case 'canoe': return ctx.canoeOK ? 0.15 + N.boredom * 0.3 + T.boldness * 0.15 + ((h >= 12 && h < 17) ? 0.2 : 0) + N.hunger * 0.3 + seek * 0.25 - N.fatigue * 0.45 + practice(a) * 0.3 - justDone(a) * 0.3 : -1;
-      case 'hike': return 0.1 + T.curiosity * 0.4 + N.boredom * 0.55 + seek * 0.6 + (ctx.calm ? 0.08 : 0) + (ctx.novel ? 0.15 : 0) - N.fatigue * 0.6 - Math.max(0, N.hunger - 0.5) * 2 - justDone(a) * 0.25 + (morning ? 0.05 : 0) - (night ? 0.25 : 0);
-      case 'swim': return ctx.rain > 0.2 || night ? -1 : 0.05 + ((h >= 10 && h < 16) ? 0.3 : 0) + N.boredom * 0.25 + seek * 0.4 - N.fatigue * 0.2 + practice(a) * 0.2 - justDone(a) * 0.3;
+      case 'hike': return 0.1 + T.curiosity * 0.4 + N.boredom * 0.55 + seek * 0.6 + (ctx.calm ? 0.08 : 0) + (ctx.novel ? 0.15 : 0) - N.fatigue * 0.6 - Math.max(0, N.hunger - 0.5) * 2 - justDone(a) * 0.25 + (morning ? 0.05 : 0) - (night ? 0.25 : 0) + (ctx.drives ? ctx.drives.adventure * 0.25 + ctx.drives.curiosity * 0.15 : 0);
+      case 'swim': return ctx.rain > 0.2 || night ? -1 : 0.05 + ((h >= 10 && h < 16) ? 0.3 : 0) + N.boredom * 0.25 + seek * 0.4 - N.fatigue * 0.2 + practice(a) * 0.2 - justDone(a) * 0.3 + (ctx.drives ? ctx.drives.play * 0.25 : 0);
       case 'shelter': return ctx.rain > 0.25 ? 0.6 + ctx.rain : -1;
       case 'watch': {
         if (!ctx.watchable) return -1;
@@ -166,6 +167,7 @@ export function makeMind(traits = TRAITS) {
   // what he is allowed to do right now (the hard limits: a canoe he does not have, rain, no fishing water)
   const available = (a, ctx) => {
     if (a === 'project') return !!ctx.projectOK;
+    if (a === 'quest') return !!ctx.quest;
     if (a === 'flee') return false;
     if (a === 'camp') return !ctx.unsafeCamp;           // a boar is loitering there: wait it out
     if (a === 'sleep') return !ctx.unsafeHut;
