@@ -923,10 +923,18 @@ export function buildCastaway() {
   }
   const _aw = { x: 0, z: 0 }, _nw = V();
   let walkT = 0;
-  const nextNut = () => (eco.coconuts ? eco.coconuts.free(x, z, 80, true) : null);
+  const nextNut = () => (eco.coconuts ? eco.coconuts.free(x, z, 45, true) : null);
+  // a coconut he cannot get (a monkey was faster, or it is too far) is not worth a long chase: he drinks fresh water instead
+  const toFresh = () => { if (!(ctx && ctx.freshOK)) return false; dKind = 'fresh'; dNut = null; dSpot = nearestFresh(); phase = 'goto'; walkT = 0; sips = 0; stuck = 0; mind.memory.lastKind = 'coconut'; return true; };
+  let drinkT = 0;
   function drinkUpdate(dt, t) {
+    // a drink he cannot get to (every spot he tries is out of reach) is given up after a while and tried again later, never repeated without end
+    if (phase !== 'init') {
+      drinkT += dt;
+      if (drinkT > 70 && (phase === 'goto' || phase === 'edge')) { mind.memory.lastDrink = mind.clock - 0.55 * 5.5; mind.note('Could not reach water for a drink; he will try again later.', null, -0.02); mind.finish(); return; }
+    }
     if (phase === 'init') {
-      dKind = mind.drinkKind(ctx); dNut = null; dSpot = null; sips = 0; walkT = 0;
+      dKind = mind.drinkKind(ctx); dNut = null; dSpot = null; sips = 0; walkT = 0; drinkT = 0;
       if (dKind === 'coconut') { dNut = nextNut(); if (!dNut) dKind = ctx.freshOK ? 'fresh' : 'none'; }
       if (dKind === 'none') { mind.memory.lastDrink = mind.clock - 1.5; mind.finish(); return; }          // nothing to drink just now: ask again later
       if (dKind === 'fresh') dSpot = nearestFresh();
@@ -982,18 +990,18 @@ export function buildCastaway() {
       let p = eco.coconuts.where(dNut, _nw);
       if (!p) {                                                  // a monkey (or the wind) got it first
         dNut = nextNut(); mind.memory.lastKind = 'coconut';       // next time it will be fresh water
-        if (!dNut) { mind.note('A monkey snatched the coconut he was after.', null, -0.04); mind.finish(); return; }
+        if (!dNut) { mind.note('A monkey snatched the coconut he was after.', null, -0.04); if (!toFresh()) mind.finish(); return; }
         p = eco.coconuts.where(dNut, _nw);
-        if (!p) { mind.finish(); return; }
+        if (!p) { if (!toFresh()) mind.finish(); return; }
       }
       walkT += dt;
       const d = step(p.x, p.z, d0(p) > 6 ? 5.2 : 3.4, dt, false);
       if (d > 5) run(dt, Math.max(speedNow, 3)); else gait(dt, speedNow);
       if (d < 0.9) {
         if (eco.coconuts.take(dNut)) { phase = 'crack'; pt = 0; coco.visible = true; hurry = false; stuck = 0; }
-        else { dNut = nextNut(); if (!dNut) { mind.note('A monkey snatched the coconut he was after.', null, -0.04); mind.memory.lastKind = 'coconut'; mind.finish(); return; } }
+        else { dNut = nextNut(); if (!dNut) { mind.note('A monkey snatched the coconut he was after.', null, -0.04); if (!toFresh()) mind.finish(); return; } }
       }
-      if (walkT > 40 || stuck > 6) { mind.memory.lastKind = 'coconut'; mind.finish(); return; }
+      if (walkT > 22 || stuck > 6) { if (!toFresh()) { mind.memory.lastKind = 'coconut'; mind.finish(); } return; }
       apply(dt); return;
     }
     settleY(dt); pt += dt;
@@ -1365,9 +1373,24 @@ export function buildCastaway() {
     camp, hut, mind, pois: () => pois, fire: () => life.actor.structs[0] || null, pos: () => ({ x, z }), ctxNow: () => ctx,
     safe: (p) => !unsafeAt(p.x, p.z, 22) && getHeight(p.x, p.z) > -0.3 && Math.hypot(p.x - VOL.x, p.z - VOL.z) > 40 && lavaDist(p.x, p.z) > 18,
   });
-  { const note0 = mind.note; mind.note = (text, a, j, g) => { note0(text, a, j, g); lf.onNote(text, a, j); }; }
+  // what has just happened shows in his upper body for a few seconds, if he is on his feet: a gesture over the walk or the idle
+  let layerWish = null;
+  const WISHES = [
+    [/No bites|too quick|stayed down|Turned back|Could not (get|reach|find)/, ['disappointment', 'frustration', 'sigh']],
+    [/Tinkered|Gave up/, ['head_scratch', 'confusion', 'shrug']],
+    [/Landed a|Speared a rat|Caught a rat|Worked out|Delighted/, ['excitement', 'laugh_quiet', 'laugh_hearty']],
+    [/Finished|Made |Built |Added d|Added 1/, ['nod_yes', 'laugh_quiet']],
+    [/Outran a boar|frightening/, ['surprise', 'shake_no']],
+    [/Noticed:/, ['look_curious', 'curious_reaction']],
+    [/Set out:/, ['nod_yes']],
+    [/Drank|Had a drink/, ['wipe_mouth']],
+    [/Had a good laugh|laugh/, ['laugh_hearty']],
+  ];
+  const wishFor = (text) => { for (const [re, names] of WISHES) if (re.test(text)) { layerWish = { name: names[Math.floor(Math.random() * names.length)], until: performance.now() + 9000 }; return; } };
+  { const note0 = mind.note; mind.note = (text, a, j, g) => { note0(text, a, j, g); lf.onNote(text, a, j); wishFor(text); }; }
   castawayAI.lf = lf;
   if (nb && window.__castaway) window.__castaway.life = lf;
+  if (window.__castaway) window.__castaway.scores = () => ({ scores: mind.scores(ctx), needs: Object.fromEntries(Object.entries(mind.needs).map(([k, v]) => [k, +v.toFixed(2)])), act: mind.current && mind.current.act });
   if (window.__castaway) window.__castaway.state = () => ({ act, phase, sub, meal, x: +x.toFixed(1), z: +z.toFixed(1), y: +y.toFixed(2), stuck: +stuck.toFixed(1), speed: +speedNow.toFixed(2), caught: caught.length, hurry, sleepWake, logPos: { x: +logPos.x.toFixed(1), z: +logPos.z.toFixed(1) } });
   // every clip that a behaviour is wired to (the coverage report compares this with what has actually played)
   coverage.declare({
@@ -1383,10 +1406,16 @@ export function buildCastaway() {
     canoe_board: 'canoe', canoe_exit: 'canoe', canoe_paddle: 'canoe', canoe_fish_seated: 'canoe', canoe_reel_in: 'canoe', canoe_sit_idle: 'canoe',
     observe_animal: 'watch; quest distraction', birdwatch: 'quest distraction; gesture', curious_reaction: 'gesture', look_curious: 'quest: noticing', track_animals: 'quest: investigate, track', contemplation: 'quest: looking over', look_up_sky: 'quest; gesture',
     high_lookout: 'quest: adventure', look_down_from_height: 'quest: adventure', excitement: 'quest: finds and ideas', celebrate: 'quest: adventure', clap: 'quest: creation', nod_yes: 'quest: creation, build', wave_hello: 'quest: adventure',
-    head_scratch: 'quest: failed experiment; gesture', shrug: 'quest: failed experiment; gesture', play_kick_sand: 'quest: beach play', play_flex_pose: 'quest: beach play', play_skip: 'quest: beach play', laugh_hearty: 'quest: beach play',
+    head_scratch: 'quest: failed experiment; gesture', shout: 'quest: adventure summit', shrug: 'quest: failed experiment; gesture', play_kick_sand: 'quest: beach play', play_flex_pose: 'quest: beach play', play_skip: 'quest: beach play', laugh_hearty: 'quest: beach play',
     stretch_standing: 'linger; gesture', yawn: 'linger; gesture', sigh: 'gesture', hum_sing: 'gesture', whistle: 'gesture',
     float_on_back: 'swim', swim_breaststroke: 'swim (unfinished clip, fallback)', chase_monkey: 'chase', laugh_after_chase: 'chase', catch_breath: 'flee',
     dance_sway: 'dance', dance_hop: 'dance', dance_stomp: 'dance', dance_hula: 'dance', dance_twist: 'dance',
+  });
+  coverage.declareUpper({
+    whistle: 'gesture: whistling', hum_sing: 'gesture: singing, content', yawn: 'gesture: tired', sigh: 'gesture: tired; disappointment', shrug: 'gesture: hungry; failed attempt', head_scratch: 'gesture: restless; failed attempt',
+    stretch_standing: 'gesture: content', talk_to_self: 'gesture: restless', look_up_sky: 'gesture: sunset hike', birdwatch: 'gesture: bird nearby', observe_animal: 'gesture: animal nearby', curious_reaction: 'gesture: animal nearby; noticed something',
+    wave_hello: 'gesture: friendly monkey nearby', look_curious: 'event: noticed something', surprise: 'event: boar scare', shake_no: 'event: boar scare', laugh_quiet: 'event: success', laugh_hearty: 'event: success; good laugh', excitement: 'event: success',
+    nod_yes: 'event: finished something; set out', disappointment: 'event: failure', frustration: 'event: failure', confusion: 'event: could not find a way', wipe_mouth: 'event: drink',
   });
   let huntBoostUntil = 0, qs = null, lastDistract = -9;
   // a small object in his right hand while he examines something he picked up
@@ -1420,7 +1449,7 @@ export function buildCastaway() {
     settleY(dt);
     const s = q.steps[q.i];
     if (!s) { questEnd(true, q.madeText || (q.exp && q.exp.text) || `Finished: ${q.why}.`); return; }
-    if (qs.stepI !== q.i) { qs.stepI = q.i; qs.t = 0; qs.fired = false; qs.turnT = 0; qs.turnClip = null; qs.arrive = 0; qs.startFx = (s.t === 'goto' || s.t === 'skipwalk') && speedNow < 0.3 ? 1 : 0; qFace = s.face || null; if (s.hold !== undefined) qs.hold = s.hold; else if (s.t !== 'anim' && s.t !== 'look') qs.hold = null; }
+    if (qs.stepI !== q.i) { qs.stepI = q.i; qs.t = 0; qs.fired = false; qs.turnT = 0; qs.turnClip = null; qs.arrive = 0; qs.startFx = (s.t === 'goto' || s.t === 'skipwalk') && speedNow < 0.3 ? 1 : 0; qs.d0 = s.x !== undefined ? Math.hypot(s.x - x, s.z - z) : 0; qFace = s.face || null; if (s.hold !== undefined) qs.hold = s.hold; else if (s.t !== 'anim' && s.t !== 'look') qs.hold = null; }
     qs.t += dt;
     sub = s.t + ':' + q.kind;
     const next = () => { q.i++; };
@@ -1435,8 +1464,8 @@ export function buildCastaway() {
     if (s.t === 'goto' || s.t === 'skipwalk') {
       const spd = s.t === 'skipwalk' ? 1.8 : s.speed || (s.staff ? 2.3 : 2.6);
       const d = Math.hypot(s.x - x, s.z - z);
-      if (qs.t > (s.wander ? 170 : 100) || stuck > 7) {
-        if (s.wander) { lf.S.stats.blocked = (lf.S.stats.blocked || 0) + 1; stuck = 0; next(); return; }      // a long walk that hits rough ground carries on from where he got to
+      if (qs.t > qs.d0 / 1.6 + 20 || stuck > 7) {
+        if (s.wander) { lf.S.stats.blocked = (lf.S.stats.blocked || 0) + 1; lf.blockedPlace(s.poi); stuck = 0; next(); return; }      // a long walk that hits rough ground carries on from where he got to
         questEnd(false, `Could not get to ${s.label || 'where he was going'}.`); return;
       }
       if (s.staff) staff.visible = true;
@@ -1561,6 +1590,10 @@ export function buildCastaway() {
     }
   }
   function driveNew(dt) {
+    const dn0 = performance.now();
+    try { driveNew0(dt); } finally { cost.driveMs += (performance.now() - dn0 - cost.driveMs) * 0.02; }
+  }
+  function driveNew0(dt) {
     idleT -= dt; if (idleT < 0) { idleT = 8 + Math.random() * 2; idleI = Math.floor(Math.random() * IDLES.length); }
     if (nb.forced) {                           // development only: castaway_new.js coverage.force(name) plays a clip from the console (never counted as autonomous play)
       if (performance.now() < nb.forced.until) { nb.play(nb.forced.name, { forced: true, loop: false }); nb.update(dt); return; }
@@ -1597,6 +1630,10 @@ export function buildCastaway() {
   function expressionTick(dt, why) {
     faceT -= dt;
     if (faceT < 0) { faceT = 0.25; const [f, s] = faceNow(); nb.setFace(f, s); }
+    if (layerWish && !nb.layerName) {
+      if (performance.now() > layerWish.until) layerWish = null;
+      else if (nb.layer(layerWish.name, 0.85, { why: act + '/event' })) { nb.lastLayerAt = performance.now(); layerWish = null; return; }
+    }
     layerT -= dt;
     if (layerT > 0 || nb.layerName) return;
     layerT = 3 + Math.random() * 3;
@@ -1607,11 +1644,11 @@ export function buildCastaway() {
     if (vocal && (vocal.kind === 'whistle' || vocal.kind === 'sing')) { pick = vocal.kind === 'sing' ? 'hum_sing' : 'whistle'; reason = 'vocal'; }
     else if (ctx && ctx.watchC && act !== 'sleep' && act !== 'flee' && Math.random() < 0.35 && lf.drivesNow().curiosity > 0.3) {
       const g = ctx.watchC.group.position, d = Math.hypot(g.x - x, g.z - z);
-      if (d < 26 && d > 4) { pick = ctx.watchC.cat === 'Birds' ? 'birdwatch' : Math.random() < 0.5 ? 'observe_animal' : 'curious_reaction'; reason = 'wildlife'; }
+      if (d < 26 && d > 4) { pick = ctx.watchC.cat === 'Birds' ? 'birdwatch' : ctx.watchC.name === 'Capuchin monkey' && m.happy > 0.6 && Math.random() < 0.3 ? 'wave_hello' : Math.random() < 0.5 ? 'observe_animal' : 'curious_reaction'; reason = 'wildlife'; }
     } else if (m.fatigue > 0.6 && Math.random() < 0.4) { pick = Math.random() < 0.5 ? 'yawn' : 'sigh'; reason = 'tired'; }
     else if (m.hunger > 0.55 && Math.random() < 0.15) { pick = 'shrug'; reason = 'hungry'; }
     else if (m.happy > 0.72 && Math.random() < 0.2) { pick = Math.random() < 0.5 ? 'hum_sing' : 'stretch_standing'; reason = 'content'; }
-    else if (m.boredom > 0.6 && Math.random() < 0.2) { pick = 'head_scratch'; reason = 'restless'; }
+    else if (m.boredom > 0.6 && Math.random() < 0.2) { pick = Math.random() < 0.5 ? 'head_scratch' : 'talk_to_self'; reason = 'restless'; }
     else if (env.tod > 17 && env.tod < 19.5 && Math.random() < 0.15 && act === 'hike') { pick = 'look_up_sky'; reason = 'sunset'; }
     if (pick && nb.layer(pick, 0.85, { why: act + '/' + reason })) nb.lastLayerAt = performance.now();
   }
@@ -1637,7 +1674,7 @@ export function buildCastaway() {
     if (result?.completed) mind.finish();
   }
 
-  updaters.push((dt0, t) => {
+  const castawayStep = (dt0, t) => {
     if (castawayAI.paused) { life.update(0, 0, t, { x, z }, true); lastHours = env.hours; actors.castaway.on = false; return; }
     if (env.paused) return;
     const dt = Math.min(dt0, 0.05);
@@ -1681,6 +1718,10 @@ export function buildCastaway() {
     me.group.position.set(x, y, z);
     me.group.rotation.y = heading;
     const ac = actors.castaway; ac.on = true; ac.x = x; ac.y = y; ac.z = z;
-  });
+  };
+  // the whole castaway update, timed (a running average in milliseconds, for the performance notes: window.__castaway.cost)
+  const cost = { ms: 0, driveMs: 0, frames: 0 };
+  if (window.__castaway) window.__castaway.cost = cost;
+  updaters.push((dt0, t) => { const t0 = performance.now(); castawayStep(dt0, t); cost.ms += (performance.now() - t0 - cost.ms) * 0.02; cost.frames++; });
   return me;
 }

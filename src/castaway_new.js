@@ -15,6 +15,7 @@ const PACKS = ['locomotion', 'staff', 'posture', 'survival', 'fishing', 'canoe',
 
 let gltf = null, staffGltf = null, meta = null, faceData = null;
 const clips = new Map();
+let packsDone = false;
 export const newCastawayReady = () => !!gltf && !/[?&]castaway=old/.test(location.search);
 
 export async function loadNewCastaway(level = 'high') {
@@ -39,6 +40,7 @@ export async function loadAnimationPacks() {
   for (const p of PACKS) {
     try { const g = await loader.loadAsync(`${DIR}Castaway_anim_${p}.glb`); g.animations.forEach((c) => clips.set(c.name, c)); } catch (e) { console.warn('animation pack failed', p, e); }
   }
+  packsDone = true;
 }
 
 /**
@@ -49,10 +51,12 @@ export const coverage = {
   played: {},      // name -> { auto, forced, behaviours: {why: n} }
   upper: {},       // variant name -> { auto, forced, behaviours }
   declared: {},    // clip name -> behaviour it is wired to
+  declaredUpper: {}, // upper-body variant name -> behaviour it is wired to
   failures: [],
   current: { clip: '', behaviour: '', upper: '', face: '' },
   transitions: [], // the last 24 base-clip changes
   declare(map) { Object.assign(this.declared, map); },
+  declareUpper(map) { Object.assign(this.declaredUpper, map); },
   report() {
     const all = meta ? Object.keys(meta) : [], loaded = all.filter((n) => clips.has(n));
     const auto = all.filter((n) => this.played[n] && this.played[n].auto > 0);
@@ -65,6 +69,7 @@ export const coverage = {
       neverPlayed: all.filter((n) => !this.played[n]),
       blockedByAssetWork: all.filter((n) => meta[n].status !== 'verified'),
       blockedByUnbuiltGameplay: all.filter((n) => !this.declared[n] && meta[n].status === 'verified'),
+      upperConnected: uppers.filter((n) => this.declaredUpper[n]).length, upperNeverUsed: uppers.filter((n) => this.declaredUpper[n] && !(this.upper[n] && this.upper[n].auto > 0)),
       upperVariants: uppers.length, upperLoaded: uppers.filter((n) => clips.has(meta[n].upper_body_variant)).length,
       upperUsedAutonomously: uppers.filter((n) => this.upper[n] && this.upper[n].auto > 0),
       failures: this.failures.slice(-20), current: this.current, recentTransitions: this.transitions.slice(-24),
@@ -108,7 +113,7 @@ export function buildNewBody() {
     /** play a base clip with a cross-fade (no-op if it is already playing); returns false if the clip is not loaded yet */
     play(name, { fade, loop, ts = 1, why = '', forced = false } = {}) {
       const clip = clips.get(name);
-      if (!clip) { if (coverage.failures.length < 200 && !coverage.failures.some((f) => f.clip === name)) coverage.failures.push({ clip: name, why }); return false; }
+      if (!clip) { if (packsDone && coverage.failures.length < 200 && !coverage.failures.some((f) => f.clip === name)) coverage.failures.push({ clip: name, why }); return false; }
       const m = meta && meta[name];
       if (this.name === name) { if (this.action) this.action.timeScale = ts; return true; }
       const rec = coverage.played[name] || (coverage.played[name] = { auto: 0, forced: 0, behaviours: {} });

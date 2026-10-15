@@ -90,6 +90,7 @@ export function makeMind(traits = TRAITS) {
   // advance his body and mind by game hours spent in the current activity
   mind.tick = (dh) => {
     mind.clock += dh;
+    if (memory.lastDrink === -1.5) memory.lastDrink = mind.clock - 1.5;      // a fresh session (the clock may have been restored from a save): he drank not long ago
     const act = mind.current ? mind.current.act : null;
     const b = act ? BODY[act] : { fatigue: 0.02, boredom: 0.12 };
     const ex = mind.exertion;
@@ -124,7 +125,7 @@ export function makeMind(traits = TRAITS) {
     const fine = N.hunger < 0.55 && N.fatigue < 0.65;       // the basics are covered, so he can go looking for joy
     const seek = fine ? 1 - N.happy : 0;
     switch (a) {
-      case 'quest': return ctx.quest && fine && ctx.rain < 0.25 && !night ? 0.5 + ctx.quest.value * 1.0 + (ctx.quest.resume ? 0.4 : 0) - N.fatigue * 0.4 - justDone(a) * 0.2 : -1;
+      case 'quest': return ctx.quest && N.hunger < 0.7 && N.fatigue < 0.78 && ctx.rain < 0.25 && !night ? 0.72 + ctx.quest.value * 0.95 + (ctx.quest.resume ? 0.4 : 0) - N.fatigue * 0.4 - justDone(a) * 0.2 : -1;
       case 'project': return ctx.projectOK && fine && !night && ctx.rain < .25 ? 1 + (1 - N.comfort) * .2 + N.boredom * .3 + seek * .3 - N.fatigue * .3 : -1;
       case 'sleep': return 0.04 + N.fatigue * 0.7 + Math.max(0, N.fatigue - 0.55) * 2.0 + (night ? 0.55 : -0.1) - justDone(a) - (night && N.hunger > 0.6 ? 0.45 : 0);
       case 'drink': {                    // a habit: every few hours, more readily in the cool of the morning and evening
@@ -228,6 +229,9 @@ export function makeMind(traits = TRAITS) {
     }
     return start(best || 'linger');
   };
+
+  /** development: what each activity is worth to him right now (and whether it is allowed) */
+  mind.scores = (ctx) => Object.fromEntries(ACTS.map((a) => [a, available(a, ctx) ? +score(a, ctx).toFixed(2) : null]));
 
   // a dance sets a cooldown, so he does not dance again straight away
   mind.danced = () => { memory.danceUntil = mind.clock + 1.2; };

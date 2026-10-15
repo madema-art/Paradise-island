@@ -19,7 +19,7 @@ import { eco } from './ecology.js';
 
 export const LIFE_KEY = 'paradise.castaway.life.v2';
 export const DRIVES = ['adventure', 'curiosity', 'creativity', 'play', 'hunting', 'collecting', 'building', 'creating'];
-const TASTE = { adventure: 0.62, curiosity: 0.78, creativity: 0.5, play: 0.58, hunting: 0.45, collecting: 0.58, building: 0.48, creating: 0.45 };
+const TASTE = { adventure: 0.62, curiosity: 0.78, creativity: 0.5, play: 0.66, hunting: 0.45, collecting: 0.58, building: 0.48, creating: 0.45 };
 
 /* ------------------------------------------------------------------ keepsakes: small things lying about the island */
 const KINDS = {
@@ -83,8 +83,8 @@ function setInst(im, i, x, y, z, rx, ry, rz, sx, sy, sz, hex) {
 /* ------------------------------------------------------------------ designs: what he can arrange or build from what he has collected */
 // each returns parts: [kind, dx, dy, dz, rx, ry, rz, scale xyz]
 const DESIGNS = {
-  spiral: { label: 'a spiral of shells', cost: { shell: 7 }, base: true, parts: () => Array.from({ length: 7 }, (_, i) => ['shell', Math.cos(i * 2.4) * (0.12 + i * 0.09), 0, Math.sin(i * 2.4) * (0.12 + i * 0.09), 0, i * 2.4 + 1.2, 0, [1, 1, 1]]) },
-  cairn: { label: 'a small cairn of smooth stones', cost: { pebble: 4 }, base: true, parts: () => [0, 1, 2, 3].map((i) => ['pebble', 0, 0.05 + i * 0.075, 0, 0, i * 1.3, 0, [1.5 - i * 0.27, 1.5 - i * 0.27, 1.5 - i * 0.27]]) },
+  spiral: { label: 'a spiral of shells', cost: { shell: 5 }, base: true, parts: () => Array.from({ length: 5 }, (_, i) => ['shell', Math.cos(i * 2.4) * (0.12 + i * 0.09), 0, Math.sin(i * 2.4) * (0.12 + i * 0.09), 0, i * 2.4 + 1.2, 0, [1, 1, 1]]) },
+  cairn: { label: 'a small cairn of smooth stones', cost: { pebble: 3 }, base: true, parts: () => [0, 1, 2].map((i) => ['pebble', 0, 0.05 + i * 0.075, 0, 0, i * 1.3, 0, [1.5 - i * 0.27, 1.5 - i * 0.27, 1.5 - i * 0.27]]) },
   arch: { label: 'a leaning driftwood arch with a feather', cost: { driftwood: 2, feather: 1 }, unlock: 'leaning',
     parts: () => [['driftwood', -0.26, 0.31, 0, 0, 0, -1.15, [0.95, 1, 1]], ['driftwood', 0.26, 0.31, 0, 0, 0, 1.15, [0.95, 1, 1]], ['feather', 0, 0.66, 0, 0.3, 0.4, 0, [1.5, 1.5, 1.5]]] },
   chime: { label: 'a driftwood wind chime of shells and feathers', cost: { driftwood: 3, shell: 3, feather: 2 }, unlock: 'hanging',
@@ -114,9 +114,9 @@ export function createLife(api) {
     v: 1, drives: Object.fromEntries(DRIVES.map((d) => [d, { a: 0.3, cool: 0, taste: TASTE[d], done: 0 }])),
     stored: { shell: 0, pebble: 0, driftwood: 0, feather: 0, curio: 0 }, carried: { shell: 0, pebble: 0, driftwood: 0, feather: 0, curio: 0 },
     collection: { total: 0, firsts: [] }, creations: [], built: [], designs: ['spiral', 'cairn'], taken: {},
-    places: {}, discoveries: [], fears: [], prefs: {}, skills: { hunt: 0.1, create: 0.1, build: 0.1, explore: 0.1, collect: 0.1 }, stats: { quests: 0, completed: 0, abandoned: 0, byKind: {} },
+    lastKind: {}, places: {}, discoveries: [], fears: [], prefs: {}, skills: { hunt: 0.1, create: 0.1, build: 0.1, explore: 0.1, collect: 0.1 }, stats: { quests: 0, completed: 0, abandoned: 0, byKind: {} },
   };
-  let forced = null;
+  let forced = null, lastCands = [];
   let content = 0, saveT = 0, dirty = false, propT = 0, proposal = null, quest = null, lastDistract = -9;
   const recent = [];
   const log = (text) => { recent.push({ at: +mind.clock.toFixed(2), text }); if (recent.length > 14) recent.shift(); };
@@ -151,6 +151,7 @@ export function createLife(api) {
       S.designs = Array.from(new Set(['spiral', 'cairn', ...(raw.designs || []).filter((d) => DESIGNS[d])]));
       S.taken = typeof raw.taken === 'object' && raw.taken ? raw.taken : {};
       S.places = raw.places && typeof raw.places === 'object' ? raw.places : {};
+      S.lastKind = raw.lastKind && typeof raw.lastKind === 'object' ? raw.lastKind : {};
       S.discoveries = (raw.discoveries || []).slice(-30); S.fears = (raw.fears || []).slice(-6);
       S.prefs = raw.prefs || {}; Object.assign(S.skills, raw.skills || {}); Object.assign(S.stats, raw.stats || {});
       for (const it of items) { const back = S.taken[it.id]; if (back !== undefined && back > mind.clock) { it.alive = false; it.back = back; writeItem(it); } }
@@ -179,7 +180,8 @@ export function createLife(api) {
   const learn = (kind, drive, joy) => { S.prefs[kind] = clamp((S.prefs[kind] ?? 0.5) + 0.08 * (joy - 0.45), 0.2, 1); const D = S.drives[drive]; D.taste = clamp(D.taste + 0.015 * (joy - 0.45), 0.2, 0.95); touch(); };
 
   /* ================================================================== opportunities and drive dynamics (cheap; every few seconds, never per frame) */
-  const unvisited = () => api.pois().filter((p) => (S.places[p.name]?.visits || 0) === 0);
+  const blocked = (p) => (S.places[p.name]?.blocked || 0) >= 2;        // somewhere he has twice failed to get to is left alone
+  const unvisited = () => api.pois().filter((p) => (S.places[p.name]?.visits || 0) === 0 && !blocked(p));
   function nearestKeepsake(x, z, max, filter) {
     let best = null, bd = max;
     for (const it of items) { if (!it.alive || (filter && !filter(it))) continue; const d = Math.hypot(it.x - x, it.z - z); if (d < bd && api.safe(it) && fearAt(it.x, it.z) < 0.4) { bd = d; best = it; } }
@@ -192,14 +194,14 @@ export function createLife(api) {
   function opportunities(pos, ctx) {
     const night = ctx.hour >= 20.5 || ctx.hour < 6;
     const uv = unvisited().length, total = Math.max(1, api.pois().length);
-    const far = api.pois().some((p) => Math.hypot(p.x - camp.x, p.z - camp.z) > 90 && (S.places[p.name]?.visits || 0) < 2 + (mind.clock > 72 ? 1 : 0));
+    const far = api.pois().some((p) => !blocked(p) && p.name !== 'a quiet corner of the island' && Math.hypot(p.x - camp.x, p.z - camp.z) > 60 && (S.places[p.name]?.visits || 0) < 2 + (mind.clock > 72 ? 1 : 0));
     const near = nearestKeepsake(pos.x, pos.z, 120);
     const pending = S.discoveries.filter((d) => !d.used).length;
     return {
       adventure: far ? 1 : 0.3, curiosity: clamp(0.3 + 0.3 * Math.min(2, pending) + 0.4 * uv / total, 0, 1),
       collecting: near ? clamp(1 - Math.hypot(near.x - pos.x, near.z - pos.z) / 140, 0.3, 1) : 0.1,
       building: buildableDesigns().length ? 1 : 0.08, creating: creatableDesigns().length && S.creations.length < 8 ? 1 : 0.08,
-      creativity: storedKinds() >= 2 ? (S.designs.length < 4 ? 1 : 0.4) : 0.2, play: 0.45 + 0.55 * (mind.needs.boredom || 0),
+      creativity: storedKinds() >= 2 ? (S.designs.length < 4 ? 1 : 0.4) : 0.2, play: 0.5 + 0.5 * Math.max(mind.needs.boredom || 0, (mind.needs.happy || 0) - 0.5),
       hunting: (night || (ctx.hour >= 17 && ctx.hour < 21) ? 0.8 : 0.3) + (ctx.ratC ? 0.2 : 0),
     };
   }
@@ -232,7 +234,7 @@ export function createLife(api) {
   function propose(ctx) {
     const pos = api.pos(), out = [];
     if (forced) return forced;
-    const ok = (d) => { const D = S.drives[d]; return mind.clock >= D.cool && D.a > 0.32; };
+    const ok = (d) => { const D = S.drives[d]; return mind.clock >= D.cool && D.a > 0.3; };
     const pref = (k) => S.prefs[k] ?? 0.5;
     if (quest && mind.clock - quest.touched < 16) return { resume: true, kind: quest.kind, drive: quest.drive, why: quest.why, value: 0.7 + 0.2 * S.drives[quest.drive].a, expected: 'finish what he started', quest };
     if (quest) { S.stats.abandoned++; log('Let go of what he had set out to do.'); D(quest.drive).cool = mind.clock + 1; quest = null; touch(); }
@@ -248,7 +250,8 @@ export function createLife(api) {
       else if (uv && fearAt(uv.x, uv.z) < 0.4) out.push(candidate('investigate', 'curiosity', `has never been to ${uv.name}`, S.drives.curiosity.a * (0.6 + pref('investigate')), 'a new place, remembered', () => planInvestigate(null, uv)));
     }
     if (ok('adventure')) {
-      const far = api.pois().filter((p) => Math.hypot(p.x - camp.x, p.z - camp.z) > 90 && fearAt(p.x, p.z) < 0.4).sort((a, b) => ((S.places[a.name]?.visits || 0) - (S.places[b.name]?.visits || 0)) || (Math.hypot(b.x - camp.x, b.z - camp.z) - Math.hypot(a.x - camp.x, a.z - camp.z)))[0];
+      // a named place a good walk away (not the farthest corner: the island is big and a day is ten minutes), the one he knows least
+      const far = api.pois().filter((p) => !blocked(p) && p.name !== 'a quiet corner of the island' && Math.hypot(p.x - camp.x, p.z - camp.z) > 60 && Math.hypot(p.x - camp.x, p.z - camp.z) < 190 && fearAt(p.x, p.z) < 0.4).sort((a, b) => ((S.places[a.name]?.visits || 0) - (S.places[b.name]?.visits || 0)) || (Math.hypot(a.x - camp.x, a.z - camp.z) - Math.hypot(b.x - camp.x, b.z - camp.z)))[0];
       if (far) out.push(candidate('adventure', 'adventure', `feels like a long trip to ${far.name}`, S.drives.adventure.a * (0.6 + pref('adventure')), 'the view from somewhere far, and a story to remember', () => planAdventure(far)));
     }
     if (ok('creating') && S.creations.length < 8) {
@@ -271,7 +274,10 @@ export function createLife(api) {
       if (b) out.push(candidate('track', 'hunting', 'wants to practise reading tracks and stalking rats', S.drives.hunting.a * (0.6 + pref('track')), 'better hunting skill', () => planTrack(b)));
     }
     if (!out.length) return null;
-    out.sort((a, b) => b.value - a.value);
+    // variety: what he has not done for a while is more attractive than what he did recently, and no two days are the same
+    const score = (c) => c.value * (0.4 + 0.6 * clamp((mind.clock - (S.lastKind[c.kind] ?? -99)) / 12, 0, 1)) * (0.88 + 0.24 * Math.random());
+    out.sort((a, b) => score(b) - score(a));
+    lastCands = out.map((c) => c.kind + ":" + c.value.toFixed(2));
     return out[0];
   }
 
@@ -289,8 +295,12 @@ export function createLife(api) {
       steps.push({ t: 'anim', clip: 'fish_inspect_catch', secs: 2.6, hold: it.kind, face: it.kind === 'curio' ? 'surprise' : 'friendly', label: `turning ${KINDS[it.kind].label} over in his fingers` });
     };
     pick(first);
-    const second = nearestKeepsake(first.x, first.z, 22, (i) => i !== first && (i.kind === first.kind || Math.random() < 0.4));
-    if (second && Math.random() < 0.75) pick(second);
+    const got = [first];                       // finds tend to lie together: he usually picks up a few before heading back
+    for (let k = 0; k < 3; k++) {
+      const last = got[got.length - 1], more = nearestKeepsake(last.x, last.z, 24, (i) => !got.includes(i) && (i.kind === first.kind || Math.random() < 0.5));
+      if (!more || Math.random() > 0.85) break;
+      got.push(more); pick(more);
+    }
     const s = campSpot();
     steps.push(goto(s.x, s.z, 'carrying his finds back to camp'));
     steps.push({ t: 'anim', clip: 'kneel_down', once: true, label: 'kneeling at his collection' });
@@ -301,7 +311,7 @@ export function createLife(api) {
   }
   function planInvestigate(disc, poi) {
     const tx = disc ? disc.x : poi.x, tz = disc ? disc.z : poi.z, name = disc ? nearestPoi(disc.x, disc.z).name : poi.name;
-    const steps = [{ t: 'anim', clip: 'idle_look_around', secs: 2, face: 'curious', label: `thinking about ${disc ? 'what he noticed' : name}` }, goto(tx, tz, `making his way to ${name}`, { wander: true })];
+    const steps = [{ t: 'anim', clip: 'idle_look_around', secs: 2, face: 'curious', label: `thinking about ${disc ? 'what he noticed' : name}` }, goto(tx, tz, `making his way to ${name}`, { wander: true, poi: name })];
     steps.push({ t: 'look', secs: 1.5, clip: 'look_curious', at: { x: tx, z: tz }, face: 'curious', label: `taking in ${name}` });
     if (disc) {
       const near = nearestKeepsake(tx, tz, 14, (i) => i.kind === 'curio');
@@ -323,9 +333,10 @@ export function createLife(api) {
   function planAdventure(poi) {
     const a = { x: camp.x, z: camp.z }, mid = { x: (a.x + poi.x) / 2 + (poi.z - a.z) * 0.12, z: (a.z + poi.z) / 2 - (poi.x - a.x) * 0.12 };
     const high = getHeight(poi.x, poi.z) > 6;
-    const steps = [{ t: 'anim', clip: 'staff_pickup', once: true, label: 'taking up his staff for a long walk' }, goto(poi.x, poi.z, 'setting out for ' + poi.name, { wander: true, staff: true }), goto(poi.x, poi.z, `still walking toward ${poi.name}`, { wander: true, staff: true })];
+    const steps = [{ t: 'anim', clip: 'staff_pickup', once: true, label: 'taking up his staff for a long walk' }, goto(poi.x, poi.z, 'setting out for ' + poi.name, { wander: true, staff: true, poi: poi.name })];
     steps.push({ t: 'anim', clip: high ? 'high_lookout' : 'contemplation', secs: 6, face: 'friendly', label: `taking in the view at ${poi.name}` });
     if (high) steps.push({ t: 'anim', clip: 'look_down_from_height', secs: 3, face: 'surprise', label: 'looking down from the height' });
+    if (high && Math.random() < 0.6) steps.push({ t: 'anim', clip: 'shout', once: true, face: 'laugh', label: 'shouting out over the island' });
     const e = { x: poi.x + (Math.random() - 0.5) * 30, z: poi.z + (Math.random() - 0.5) * 30 };
     steps.push(goto(e.x, e.z, `exploring around ${poi.name}`, { wander: true, staff: true }));
     steps.push({ t: 'look', secs: 2, clip: 'look_curious', at: { x: e.x + 8, z: e.z + 8 }, face: 'curious', label: 'peering around' });
@@ -411,7 +422,7 @@ export function createLife(api) {
   function pause(why) { if (quest) { quest.touched = mind.clock; log('Put aside what he was doing (' + why + ').'); } }
   function finish(ok, text) {
     if (!quest) return;
-    const q = quest; quest = null; content = mind.clock + 0.6 + Math.random() * 1.2;
+    const q = quest; quest = null; content = mind.clock + 0.6 + Math.random() * 1.2; S.lastKind[q.kind] = mind.clock;
     if (ok) {
       S.stats.completed++;
       const enjoy = { collect: 0.55, investigate: 0.6, adventure: 0.75, create: 0.8, experiment: 0.55, build: 0.8, beachplay: 0.85, track: 0.5 }[q.kind] ?? 0.5;
@@ -480,6 +491,7 @@ export function createLife(api) {
     if (r.ok) { S.designs.push(r.design); skill('create', 0.12); log(`Worked out how to make ${DESIGNS[r.design].label}.`); touch(); return { ok: true, text: `Worked out how to make ${DESIGNS[r.design].label}.`, clip: 'excitement', face: 'grin' }; }
     skill('create', 0.04); return { ok: false, text: 'Tinkered for a while and learned a little.', clip: Math.random() < 0.5 ? 'head_scratch' : 'shrug', face: 'neutral' };
   }
+  function blockedPlace(name) { if (!name) return; place(name).blocked = (place(name).blocked || 0) + 1; log(`Could not find a way to ${name}.`); touch(); }
   function scare(x, z) { S.fears.push({ x, z, level: 0.9, t: mind.clock }); if (S.fears.length > 6) S.fears.shift(); log('A frightening encounter keeps him wary of that ground.'); touch(); }
   function onNote(text, act, joy) {
     if (/Speared a rat/.test(text)) { skill('hunt', 0.12); satisfy('hunting', 0.5, 3); learn('track', 'hunting', 0.8); log('Caught a rat: his hunting is improving.'); }
@@ -495,7 +507,7 @@ export function createLife(api) {
   }
   const debug = () => ({
     drives: Object.fromEntries(DRIVES.map((d) => [d, { appetite: +S.drives[d].a.toFixed(2), taste: +S.drives[d].taste.toFixed(2), restUntil: +Math.max(0, S.drives[d].cool - mind.clock).toFixed(1), done: S.drives[d].done }])),
-    opportunities: life.opp || null, content: +Math.max(0, content - mind.clock).toFixed(2),
+    opportunities: life.opp || null, candidates: lastCands, content: +Math.max(0, content - mind.clock).toFixed(2),
     proposal: proposal && { kind: proposal.kind, drive: proposal.drive, why: proposal.why, value: +proposal.value.toFixed(2), expected: proposal.expected, resume: !!proposal.resume },
     quest: quest && { kind: quest.kind, why: quest.why, step: quest.i + '/' + quest.steps.length, label: quest.steps[quest.i] && quest.steps[quest.i].label, ageHours: +(mind.clock - quest.started).toFixed(2) },
     stored: { ...S.stored }, carried: { ...S.carried }, collectionTotal: S.collection.total, creations: S.creations.map((c) => c.design), built: S.built.map((c) => c.design), designs: S.designs.slice(),
@@ -526,7 +538,7 @@ export function createLife(api) {
   };
   const carriedTotalNow = () => Object.values(S.carried).reduce((a, b) => a + b, 0);
   const life = {
-    S, items, dev, update, propose: () => proposal, start, resume, pause, finish, runEvent, stageProgress, discover, experimentResult, scare, onNote, debug, save,
+    S, items, dev, update, blockedPlace, propose: () => proposal, start, resume, pause, finish, runEvent, stageProgress, discover, experimentResult, scare, onNote, debug, save,
     get quest() { return quest; }, get content() { return content; }, opp: null, proposal: null, KINDS, DESIGNS,
     heldColor: (kind) => COLOR_OF[kind], carriedTotal: () => Object.values(S.carried).reduce((a, b) => a + b, 0),
     drivesNow: () => Object.fromEntries(DRIVES.map((d) => [d, S.drives[d].a])), skillOf: (k) => S.skills[k] || 0.1,

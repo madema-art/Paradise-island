@@ -20,9 +20,10 @@ export function startLifeSim() {
           const a = mind.current && mind.current.act; S.hist[a] = (S.hist[a] || 0) + 1;
           S.hungerMin = Math.min(S.hungerMin, 1 - mind.needs.hunger); S.happyMin = Math.min(S.happyMin, mind.needs.happy);
           if (S.steps % 100 === 0) {
-            const st = window.__castaway.state(), key = st.act + '/' + st.phase;
-            if (key !== S.key) { S.key = key; S.keyAt = S.steps; S.timeline.push([+mind.clock.toFixed(1), key]); if (S.timeline.length > 80) S.timeline.shift(); }
-            else if (S.steps - S.keyAt === 1500) S.stalls.push({ clock: +mind.clock.toFixed(1), st, desc: c.desc.slice(0, 70) });
+            const st = window.__castaway.state(), key = st.act + '/' + st.phase + '/' + st.sub;
+            const moved = S.pos ? Math.hypot(st.x - S.pos.x, st.z - S.pos.z) : 99;
+            if (key !== S.key || moved > 3) { S.key = key; S.keyAt = S.steps; S.pos = { x: st.x, z: st.z }; if (key !== S.tlKey) { S.tlKey = key; S.timeline.push([+mind.clock.toFixed(1), key]); if (S.timeline.length > 80) S.timeline.shift(); } }
+            else if (S.steps - S.keyAt === 1500) S.stalls.push({ clock: +mind.clock.toFixed(1), st, desc: c.desc.slice(0, 70) });   // same activity and place for 3 game hours
           }
           if (S.steps % 20 === 0) {
             const q = lf.quest, k = q ? q.kind + '#' + q.id : '';
