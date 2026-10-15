@@ -594,8 +594,10 @@ class Dolphin {
     const lpA = this.leap, ph = lpA ? clamp(this.jumpTime / lpA.air, 0, 1) : 0;
     const archT = lpA ? (lpA.low ? 0.5 : 1.15) * Math.pow(Math.sin(Math.PI * Math.min(1, ph * 1.05)), 0.7) : 0;
     this.arch = damp(this.arch, archT, 12, dt);
+    // take last frame's arch back off first: a clip does not rewrite every spine bone every frame, so an arch left on would build up and the body would stay bent
+    for (const sp of this.spine) if (sp.applied) { sp.b.quaternion.multiply(sp.applied.invert()); sp.applied = null; }
     if (this.mixer) this.mixer.update(dt);
-    if (this.arch > 0.01) for (const { b, w } of this.spine) b.quaternion.multiply(_archQ.setFromAxisAngle(_archX, -this.arch * w));
+    if (this.arch > 0.01) for (const sp of this.spine) { sp.applied = new THREE.Quaternion().setFromAxisAngle(_archX, -this.arch * sp.w); sp.b.quaternion.multiply(sp.applied); sp.applied = sp.applied.clone(); }
   }
 }
 const _archQ = new THREE.Quaternion(), _archX = new THREE.Vector3(1, 0, 0);
