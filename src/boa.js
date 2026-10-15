@@ -26,11 +26,11 @@ export class PacificBoa {
     this.state = 'rest'; this.t = rr(3, 30); this.prey = null; this.cool = 0; this.fed = 0; this.scanT = 0; this.way = { x: home.x, z: home.z };
     this.yaw = new Float32Array(N); this.pit = new Float32Array(N); this.coil = 1; this.neck = 0; this.wind = 0; this.swallowP = 0; this.lump = 0; this.lumpAt = 12;
     this.jaw = 0; this.tongue = 0; this.look = 0; this.bulge = new Float32Array(N);
+    this.pose(0.016, 0);                              // coiled first, so the registry records the boa at rest
     register({
       id: 'boa' + i, name: 'Pacific boa', cat: 'Reptiles', group: this.group, sim: this, viewDist: 1.4, pickR: 0.8, pickY: 0.05,
       desc: 'A stout Pacific boa that lies coiled under cover by day and slips out at night to ambush the island rats, which it swallows whole.',
     });
-    this.pose(0.016, 0);
   }
   awake() { return this.state === 'search' || this.state === 'stalk' || this.state === 'strike' || this.state === 'wake'; }
   /** where a captured rat is held: in the mouth */

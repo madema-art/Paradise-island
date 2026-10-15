@@ -29,6 +29,7 @@ export class BarnOwl {
     this.mode = 'roost'; this.t = 0; this.fed = 0; this.catches = 0; this.prey = null; this.way = V(); this.cool = 0; this.scanT = 0;
     this.wake = 18.3 + i * 0.6; this.ph = rng() * 6; this.upright = 1; this.perch = this.roost.clone(); this.after = 'roost';
     this.group.position.copy(this.pos);
+    this.sit(1, 0, true);                                              // roosting pose first, so the registry records the owl at rest (wings folded)
     register({
       id: 'owl' + i, name: 'Barn owl', cat: 'Birds', group: this.group, sim: this, viewDist: 3.4, pickR: 1.1, pickY: 0,
       desc: 'A barn owl of the palm crowns. She sleeps by day and hunts the lowlands at night, hovering over a rustle in the leaf litter and dropping on it feet first.',

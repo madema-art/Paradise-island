@@ -11,10 +11,16 @@ const STRIP = (root) => {
   root.traverse((o) => { if ((o.userData && o.userData.creature) || (o.isMesh && o.material && o.material.visible === false)) dead.push(o); });
   for (const o of dead) o.removeFromParent();
   // the live game draws a creature's rigid parts through instanced copies and keeps the originals on a layer no camera shows (part_instancing.js); this viewer draws the originals themselves
-  root.traverse((o) => { o.layers.set(0); });
+  root.traverse((o) => {
+    o.layers.set(0);
+    const r = o.userData && o.userData.rest;
+    if (r && o !== root) { o.position.set(r.p[0], r.p[1], r.p[2]); o.quaternion.set(r.q[0], r.q[1], r.q[2], r.q[3]); o.scale.set(r.s[0], r.s[1], r.s[2]); }
+  });
+  root.visible = true;                         // a creature hidden in the game (a rat in its burrow) is still shown here
+  root.updateMatrixWorld(true);
 };
 
-export class SpecimenViewer {
+export class SpecimenViewer {   // (also reachable as window.__SpecimenViewer, for testing the Field Guide model by hand)
   constructor(host) {
     this.host = host;
     this.canvas = document.createElement('canvas');
@@ -197,3 +203,4 @@ export class SpecimenViewer {
     else if (this.host.requestFullscreen) this.host.requestFullscreen().catch(() => {});
   }
 }
+if (typeof window !== "undefined") window.__SpecimenViewer = SpecimenViewer;

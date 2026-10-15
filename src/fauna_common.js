@@ -26,6 +26,8 @@ const proxyGeo = new THREE.SphereGeometry(1, 6, 4);
 export function register(c) {
   c.viewDist = c.viewDist || 9;
   c.focus = c.focus || ((out) => c.group.getWorldPosition(out || new THREE.Vector3()));
+  // remember every part's rest pose as the rig was built (the Field Guide shows the animal at rest, not in whatever it is doing: asleep with its legs folded, hidden in a burrow)
+  c.group.traverse((o) => { if (o !== c.group) o.userData.rest = { p: [o.position.x, o.position.y, o.position.z], q: [o.quaternion.x, o.quaternion.y, o.quaternion.z, o.quaternion.w], s: [o.scale.x, o.scale.y, o.scale.z] }; });
   sizeCreature(c);                                  // the species size (docs/WILDLIFE_SCALE_RESEARCH.md), before the pick proxy is added
   const p = new THREE.Mesh(proxyGeo, proxyMat);
   p.scale.setScalar((c.pickR || 1.4) / c.group.scale.x);   // the selection radius is in world metres, whatever the creature's size
