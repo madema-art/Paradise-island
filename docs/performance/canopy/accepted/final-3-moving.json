@@ -1,0 +1,707 @@
+{
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/148.0.7778.96 Safari/537.36",
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 SUPER (0x00001E84) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "gpuTimerQueries": true,
+    "drawingBuffer": [
+      1920,
+      1080
+    ],
+    "canvasCss": [
+      1920,
+      1080
+    ],
+    "dpr": 1,
+    "screen": [
+      1920,
+      1080
+    ],
+    "visibility": "visible",
+    "focused": true,
+    "hardwareAcceleration": true
+  },
+  "result": {
+    "scenario": "moving",
+    "quality": "high",
+    "seconds": 16,
+    "frames": 587,
+    "fpsAverage": 36.6,
+    "fpsOnePercentLow": 32.5,
+    "frameMsMedian": 27.4,
+    "frameMsP95": 29.7,
+    "frameMsP99": 30.8,
+    "updateMsMean": 3.78,
+    "renderMsMean": 23.18,
+    "renderMsP95": 25.3,
+    "gpuMsMean": 14.72,
+    "gpuMsP95": 20.3,
+    "gpuSamples": 587,
+    "drawCallsMean": 1788.43,
+    "trianglesMean": 10925274.06,
+    "memoryMB": 527.4,
+    "longTasks": 13,
+    "sceneFish": 608,
+    "monkeys": 48,
+    "creatures": 230,
+    "canvas": [
+      1920,
+      1080
+    ],
+    "pixelRatio": 1,
+    "dpr": 1,
+    "innerSize": [
+      1920,
+      1080
+    ],
+    "frameMsMeanFromFps": 27.322
+  },
+  "counts": {
+    "shadows": 2177,
+    "instances": 9799,
+    "families": 113,
+    "lod": [
+      {
+        "key": "treeA",
+        "instances": 71,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1632,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 552,
+            "castShadow": true
+          },
+          {
+            "count": 71,
+            "triangles": 264,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeA",
+        "instances": 55,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1372,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 472,
+            "castShadow": true
+          },
+          {
+            "count": 55,
+            "triangles": 232,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeA",
+        "instances": 60,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1632,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 552,
+            "castShadow": true
+          },
+          {
+            "count": 60,
+            "triangles": 264,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeA",
+        "instances": 64,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1632,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 552,
+            "castShadow": true
+          },
+          {
+            "count": 64,
+            "triangles": 264,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 8,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 8,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 4,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 4,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 6,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 6,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 2,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 2,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 8,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 8,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 9,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 9,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 3,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 3,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "bush",
+        "instances": 170,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1680,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 968,
+            "castShadow": false
+          },
+          {
+            "count": 170,
+            "triangles": 644,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "bush",
+        "instances": 171,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1532,
+            "castShadow": false
+          },
+          {
+            "count": 1,
+            "triangles": 1040,
+            "castShadow": false
+          },
+          {
+            "count": 170,
+            "triangles": 640,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "banyan",
+        "instances": 5,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 9032,
+            "castShadow": true
+          },
+          {
+            "count": 5,
+            "triangles": 3812,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 2420,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "banyan",
+        "instances": 1,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 9008,
+            "castShadow": true
+          },
+          {
+            "count": 1,
+            "triangles": 3788,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 2396,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "banyan",
+        "instances": 4,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 8888,
+            "castShadow": true
+          },
+          {
+            "count": 4,
+            "triangles": 3668,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 2276,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "naupaka",
+        "instances": 77,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 8054,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 4398,
+            "castShadow": false
+          },
+          {
+            "count": 77,
+            "triangles": 2280,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "naupaka",
+        "instances": 93,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 7459,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 4503,
+            "castShadow": false
+          },
+          {
+            "count": 93,
+            "triangles": 2280,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 43,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 3940,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2130,
+            "castShadow": false
+          },
+          {
+            "count": 43,
+            "triangles": 1284,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 29,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 3940,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2130,
+            "castShadow": false
+          },
+          {
+            "count": 29,
+            "triangles": 1284,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 30,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 3940,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2130,
+            "castShadow": false
+          },
+          {
+            "count": 30,
+            "triangles": 1284,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 48,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 3940,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2130,
+            "castShadow": false
+          },
+          {
+            "count": 48,
+            "triangles": 1284,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "naupaka",
+        "instances": 14,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 8159,
+            "castShadow": false
+          },
+          {
+            "count": 1,
+            "triangles": 4467,
+            "castShadow": false
+          },
+          {
+            "count": 13,
+            "triangles": 2292,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 6,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 4404,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2362,
+            "castShadow": false
+          },
+          {
+            "count": 6,
+            "triangles": 1400,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 6,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 4404,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2362,
+            "castShadow": false
+          },
+          {
+            "count": 6,
+            "triangles": 1400,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 5,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 4404,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2362,
+            "castShadow": false
+          },
+          {
+            "count": 5,
+            "triangles": 1400,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 5,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 4404,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2362,
+            "castShadow": false
+          },
+          {
+            "count": 5,
+            "triangles": 1400,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      }
+    ],
+    "rigs": {
+      "count": 5709,
+      "roots": 230,
+      "maxBuildStepMs": 1,
+      "buildMs": 8.100000023841858
+    },
+    "occlusion": {
+      "debugOn": false,
+      "last": [],
+      "built": true,
+      "instances": 4050,
+      "checks": 107,
+      "msPerCheck": 0.06551356153056143,
+      "candidates": 43,
+      "active": 0,
+      "buildMs": 37,
+      "buildMaxStepMs": 1.6
+    },
+    "placementSha256": "9331c6ee3cb0e7fc961ab383d0b667edc1020be9256e6c1af8b951379415f8c2"
+  },
+  "errors": []
+}

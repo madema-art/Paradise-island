@@ -10,6 +10,7 @@ import * as F from './flowers.js';
 import { tagInstanced } from './inspect.js';
 import { waterAt, ripple } from './ripples.js';
 import { lodFamily, lodLevels } from './vegetation_lod.js';
+import { canopyLobe, canopyTube } from './canopy.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 export const palms = [];
@@ -74,7 +75,7 @@ export function makePalm(H, bx, bz, nF) {
   return { geo: mb.build(), pt, H, perchPoints };
 }
 
-function treeA() {
+function treeA(detail = 0) {
   const mb = new MB(), H = rr(7, 11);
   const lean = V(rr(-1, 1), 0, rr(-1, 1));
   const cen = [], rad = [];
@@ -83,7 +84,7 @@ function treeA() {
     cen.push(V(lean.x * t * t * 1.6, H * t, lean.z * t * t * 1.6));
     rad.push(lerp(0.5, 0.2, t) + 0.25 * Math.exp(-t * 10));
   }
-  tube(mb, cen, rad, 6, () => shade(C('#6b5238'), rr(0.85, 1.1)), (i) => (i / 6) ** 2 * 0.5);
+  canopyTube(mb, cen, rad, 6, () => shade(C('#6b5238'), rr(0.85, 1.1)), (i) => (i / 6) ** 2 * 0.5);
   const top = cen[6];
   const greens = ['#2f7a2b', '#3d8c33', '#276a2a', '#4f9c38', '#35822f'];
   const n = 5 + Math.floor(rnd() * 2);
@@ -92,14 +93,14 @@ function treeA() {
     const r0 = i === 0 ? 0 : rr(1.6, 2.6);
     const c = V(top.x + Math.cos(a) * r0, top.y + rr(-0.8, 1.4) + (i === 0 ? 1.3 : 0), top.z + Math.sin(a) * r0);
     const R = rr(2.1, 3.3);
-    const g = lumpy(new THREE.IcosahedronGeometry(1, 1), 0.28, i * 3.1);
     const base = C(pick(greens));
-    mb.addGeo(g, mat4(c.x, c.y, c.z, R, R * rr(0.65, 0.85), R), (v) => shade(base, 0.78 + 0.45 * clamp(((v.y - c.y) / R) * 0.5 + 0.5, 0, 1)), 0.9 + 0.2 * rnd());
+    const flat = rr(0.65, 0.85), wind = 0.9 + 0.2 * rnd(); // exactly the original world draws
+    canopyLobe(mb, c, R, flat, base, i + Math.round(H * 100), detail, wind);
   }
   return mb.build();
 }
 
-function treeB(flame) {
+function treeB(flame, detail = 0) {
   const mb = new MB(), H = rr(17, 25);
   const cen = [], rad = [];
   for (let i = 0; i <= 9; i++) {
@@ -107,7 +108,7 @@ function treeB(flame) {
     cen.push(V(Math.sin(t * 3) * 0.5, H * t, Math.cos(t * 2.4) * 0.5));
     rad.push(lerp(0.95, 0.42, t) + 0.5 * Math.exp(-t * 14));
   }
-  tube(mb, cen, rad, 7, (i) => shade(C('#6d5a48'), rr(0.85, 1.1)), (i) => (i / 9) ** 2 * 0.4);
+  canopyTube(mb, cen, rad, 7, (i) => shade(C('#6d5a48'), rr(0.85, 1.1)), (i) => (i / 9) ** 2 * 0.4);
   const bc = C('#5e4a38');
   for (let k = 0; k < 4; k++) {
     const a = (k / 4) * TAU + rr(-0.3, 0.3);
@@ -124,9 +125,9 @@ function treeB(flame) {
     const r0 = i === 0 ? 0 : rr(3.5, 6);
     const c = V(top.x + Math.cos(a) * r0, top.y + rr(-1.2, 1.4), top.z + Math.sin(a) * r0);
     const R = rr(4.2, 6.2);
-    const g = lumpy(new THREE.IcosahedronGeometry(1, 1), 0.3, i * 1.7);
     const base = C(pick(greens));
-    mb.addGeo(g, mat4(c.x, c.y, c.z, R, R * 0.55, R), (v) => shade(base, 0.78 + 0.4 * clamp(((v.y - c.y) / R) * 0.9 + 0.5, 0, 1)), 0.9 + 0.2 * rnd());
+    const wind = 0.9 + 0.2 * rnd(); // original world draw retained
+    canopyLobe(mb, c, R, .55, base, i + Math.round(H * 100), detail, wind);
   }
   // hanging vines
   const vc = C('#2e6f2c');
@@ -135,6 +136,7 @@ function treeB(flame) {
     const x = top.x + Math.cos(a) * r, z = top.z + Math.sin(a) * r, y0 = top.y - 1.2, len = rr(5, 10);
     const dx = Math.cos(a + 1.57) * 0.1, dz = Math.sin(a + 1.57) * 0.1;
     mb.tri(V(x - dx, y0, z - dz), V(x + dx, y0, z + dz), V(x, y0 - len, z), vc, vc, shade(vc, 1.3), 0.7, 0.7, 1.6);
+    mb.tri(V(x + dx, y0, z + dz), V(x - dx, y0, z - dz), V(x, y0 - len, z), vc, vc, shade(vc, 1.3), 0.7, 0.7, 1.6);
   }
   return mb.build();
 }
@@ -285,6 +287,11 @@ export function instanced(geo, mat, list, { cast = true, receive = true, scale =
 
 export const vegMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, side: THREE.DoubleSide, flatShading: true });
 windify(vegMat);
+// Opt in only the new tree meshes. Other flora/props retain their deliberately flat material.
+export const canopyMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .88, metalness: 0, side: THREE.FrontSide });
+windify(canopyMat);
+export const distantCanopyMat = canopyMat.clone();
+windify(distantCanopyMat, { distant: true });
 
 /* grass blade texture */
 function grassTexture() {
@@ -429,17 +436,17 @@ export function buildFlora() {
     if (Math.hypot(x - FAIRY.x, z - FAIRY.z) < 14) return false;
     return smoothstep(-0.18, 0.2, n3) * 0.9 + 0.12;
   };
-  const tA = [treeA(), treeA(), treeA(), treeA()];
+  const tA = Array.from({ length: 4 }, () => lodLevels(d => treeA(d)));
   const tAList = place(250, (x, z, h, s) => jungleOK(x, z, h, s, 3.5, 40), 250 * 60);
   const bucketA = tA.map(() => []);
   tAList.forEach((a) => bucketA[Math.floor(rnd() * 4)].push(a));
-  tA.forEach((g, i) => instanced(g, vegMat, bucketA[i], { inspect: 'treeA', scale: [0.8, 1.35] }));
+  tA.forEach((g, i) => lodFamily(instanced(g[0], canopyMat, bucketA[i], { inspect: 'treeA', scale: [0.8, 1.35] }), g, bucketA[i], { tree: true, distantMaterial: distantCanopyMat }));
   tAList.forEach((a) => addCollider(a.x, a.z, 0.5 * a.sc));
-  const tB = [treeB(false), treeB(false), treeB(false), treeB(false), treeB(false), treeB(false), treeB(true)];
+  const tB = Array.from({ length: 7 }, (_, i) => lodLevels(d => treeB(i === 6, d)));
   const tBList = place(40, (x, z, h, s) => jungleOK(x, z, h, s, 6, 36) && riverDist(x, z) > 9 && rnd() < 0.5, 40 * 150);
   const bucketB = tB.map(() => []);
   tBList.forEach((a) => bucketB[Math.floor(rnd() * 7)].push(a));
-  tB.forEach((g, i) => instanced(g, vegMat, bucketB[i], { inspect: 'treeB', scale: [0.85, 1.25] }));
+  tB.forEach((g, i) => lodFamily(instanced(g[0], canopyMat, bucketB[i], { inspect: 'treeB', scale: [0.85, 1.25] }), g, bucketB[i], { tree: true, distantMaterial: distantCanopyMat }));
   tBList.forEach((a) => addCollider(a.x, a.z, 1.5 * a.sc));
 
   const bam = [bamboo(), bamboo()];

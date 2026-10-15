@@ -1,0 +1,30 @@
+import { build } from 'esbuild';
+import fs from 'node:fs';
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+await build({ entryPoints:['src/main.js'], bundle:true, format:'iife', target:'es2020', minify:false, outfile:'work/profile.js', loader:{'.glb':'binary'} });
+const b = await chromium.launch({headless:true,args:['--use-angle=d3d11','--ignore-gpu-blocklist','--disable-frame-rate-limit']});
+try {
+  const p = await b.newPage({viewport:{width:1920,height:1080}});
+  await p.route('**/dist/island.js',r=>r.fulfill({path:'work/profile.js',contentType:'text/javascript'}));
+  await p.goto('http://127.0.0.1:8772/?perf=1&noauto');
+  await p.waitForFunction(()=>window.__perfScenarios && __dbg.creatures.length>100,{timeout:180000});
+  await p.evaluate(()=> {__dbg.env.tod=10;__dbg.WX.wx.forced='clear';__dbg.updaters.splice(1,0,()=>{__dbg.env.tod=10;__dbg.env.paused=false;});});
+  await p.waitForTimeout(12000);
+  const cdp = await p.context().newCDPSession(p);
+  await cdp.send('Profiler.enable');
+  await cdp.send('Profiler.setSamplingInterval',{interval:1000});
+  const running = p.evaluate(()=>__perfScenarios.run(['wideIsland']));
+  await p.waitForTimeout(6500);
+  await cdp.send('Profiler.start');
+  await p.waitForTimeout(7000);
+  const {profile}=await cdp.send('Profiler.stop');
+  await running;
+  fs.writeFileSync('work/canopy-cpu.cpuprofile',JSON.stringify(profile));
+  const count=new Map(), inclusive=new Map();
+  for(let i=0;i<profile.samples.length;i++)count.set(profile.samples[i],(count.get(profile.samples[i])||0)+profile.timeDeltas[i]/1000);
+  const nodes=new Map(profile.nodes.map(n=>[n.id,n]));
+  const sum=id=>{const n=nodes.get(id);const total=(count.get(id)||0)+(n.children||[]).reduce((v,c)=>v+sum(c),0);inclusive.set(id,total);return total;};sum(profile.nodes[0].id);
+  const rows=profile.nodes.map(n=>({name:n.callFrame.functionName||'(anonymous)',selfMs:+(count.get(n.id)||0).toFixed(1),inclusiveMs:+inclusive.get(n.id).toFixed(1),line:n.callFrame.lineNumber})).sort((a,b)=>b.selfMs-a.selfMs).slice(0,35);
+  console.log(JSON.stringify(rows,null,2));
+  fs.writeFileSync('work/canopy-cpu-summary.json',JSON.stringify(rows,null,2));
+}finally{await b.close();}

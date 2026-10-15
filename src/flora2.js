@@ -2,11 +2,12 @@
 import * as THREE from 'three';
 import { makeNaupakaGeo } from './naupaka.js';
 import { lodFamily, lodLevels } from './vegetation_lod.js';
+import { canopyLobe, canopyTube } from './canopy.js';
 import { scene } from './core.js';
 import { MB, C, shade, mat4, tube, lumpy, windify, DRY } from './gfx.js';
 import { addCollider, getHeight, getSlope, riverDist, lavaDist, TEMPLE, COVE, LAKE, SPRING, FAIRY, VOL, MOTU, falls } from './world.js';
 import { burn, rnd, rr, pick, clamp, lerp, smoothstep, mulberry32, TAU } from './util.js';
-import { place, instanced, vegMat, clearOf, jungleN, makePalm, coralGeo } from './flora.js';
+import { place, instanced, vegMat, canopyMat, distantCanopyMat, clearOf, jungleN, makePalm, coralGeo } from './flora.js';
 import * as F from './flowers.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -136,32 +137,9 @@ function makePandanus() {
 }
 
 /* ---------------------------------------------------------------- BANYAN (strangler fig) */
-// The crown is a mass of smooth lobes covered in glossy fig leaves, so the top reads as foliage and not as a faceted ball. The leaves use their
-// own seeded generator (the island's random sequence is untouched).
-let banyanSeed = 0;
-function ficusLeaves(mb, g, c, R, flat, n, base, rng) {
-  // leaves grow from the surface of the lobe as it actually is (after the lumps), standing out along its normal and drooping a little
-  const pos = g.attributes.position, nor = g.attributes.normal, Ry = R * flat;
-  for (let k = 0, tries = 0; k < n && tries < n * 6; tries++) {
-    const iv = Math.floor(rng() * pos.count);
-    const nx = nor.getX(iv), ny = nor.getY(iv), nz = nor.getZ(iv);
-    if (ny < -0.3) continue;                                          // none under the crown's belly
-    k++;
-    const p = V(c.x + pos.getX(iv) * R + (rng() - 0.5) * 0.5, c.y + pos.getY(iv) * Ry, c.z + pos.getZ(iv) * R + (rng() - 0.5) * 0.5);
-    const dir = V(nx, ny, nz).normalize().add(V((rng() - 0.5) * 0.5, -0.2 - 0.25 * rng(), (rng() - 0.5) * 0.5)).normalize();
-    const side = new THREE.Vector3().crossVectors(dir, UP); if (side.lengthSq() < 1e-4) side.set(1, 0, 0); side.normalize();
-    const sz = 0.7 + 0.6 * rng(), hw = sz * 0.3;
-    const m = p.clone().addScaledVector(dir, sz * 0.5), mL = m.clone().addScaledVector(side, -hw).add(V(0, sz * 0.05, 0)), mR = m.clone().addScaledVector(side, hw).add(V(0, sz * 0.05, 0));
-    const mM = m.clone().add(V(0, sz * 0.08, 0)), tip = p.clone().addScaledVector(dir, sz).add(V(0, -sz * 0.16, 0));
-    const lit = 0.78 + 0.55 * clamp(ny * 0.6 + 0.35 + (rng() - 0.5) * 0.5, 0, 1);
-    const c0 = shade(base, lit * 0.8), c1 = shade(base, lit * 1.15);
-    mb.tri(p, mL, mM, c0, c1, c1, 0.9); mb.tri(p, mM, mR, c0, c1, c1, 0.9);
-    mb.tri(mL, tip, mM, c1, c1, c1, 0.9); mb.tri(mM, tip, mR, c1, c1, c1, 0.9);
-  }
-}
-function makeBanyan() {
-  const lr = mulberry32(7919 + 131 * (banyanSeed++));
-  const mb = new MB(), cols = [];
+// Closed foliage clumps replace the old cut-paper leaf cards. Roots and RNG are unchanged.
+function makeBanyan(detail = 0) {
+  const mb = new MB();
   const bark = C('#6b5e50'), bark2 = C('#7a6c5c'), rootC = C('#807060');
   const leaf = [C('#245e2a'), C('#2f7030'), C('#1d5226'), C('#3a7c34')];
   const trunks = [];
@@ -171,7 +149,7 @@ function makeBanyan() {
     const ox = Math.cos(a) * r0, oz = Math.sin(a) * r0, H = rr(5.5, 7);
     const cen = [], rad = [];
     for (let k = 0; k <= 6; k++) { const t = k / 6; const tw = a + t * 1.4; cen.push(V(ox * (1 - t * 0.5) + Math.cos(tw) * 0.35 * t, -0.5 + (H + 0.5) * t, oz * (1 - t * 0.5) + Math.sin(tw) * 0.35 * t)); rad.push(lerp(1.15, 0.55, t) + 0.35 * Math.exp(-t * 9)); }
-    tube(mb, cen, rad, 9, barkRing(bark, bark2), (k) => (k / 6) ** 2 * 0.15);
+    canopyTube(mb, cen, rad, 9, barkRing(bark, bark2), (k) => (k / 6) ** 2 * 0.15);
     trunks.push(cen);
   }
   for (let k = 0; k < 9; k++) {                       // buttress flanges
@@ -184,22 +162,25 @@ function makeBanyan() {
   for (let i = 0; i < nL; i++) {                      // great spreading limbs
     const a = (i / nL) * TAU + rr(-0.25, 0.25), L = rr(6.5, 10.5), d = V(Math.cos(a), 0, Math.sin(a)), y0 = rr(5.4, 7);
     const pts = [V(d.x * 0.5, y0, d.z * 0.5), V(d.x * L * 0.3, y0 + 1.0, d.z * L * 0.3), V(d.x * L * 0.65, y0 + 1.6, d.z * L * 0.65), V(d.x * L, y0 + 1.6 + rr(-0.4, 0.6), d.z * L)];
-    tube(mb, pts, [0.7, 0.55, 0.38, 0.24], 7, barkRing(bark, bark2), (k) => 0.15 + k * 0.2);
+    canopyTube(mb, pts, [0.7, 0.55, 0.38, 0.24], 7, barkRing(bark, bark2), (k) => 0.15 + k * 0.2);
     limbs.push(pts);
     // canopy over each limb
     for (let q = 0; q < 3; q++) {
       const t = 0.45 + q * 0.28, p = pts[Math.min(3, Math.floor(t * 3.4))].clone().lerp(pts[3], q * 0.2);
-      const R = rr(3.3, 5.2) * (q === 2 ? 0.85 : 1), g = lumpy(new THREE.IcosahedronGeometry(1, 2), 0.3, rnd() * 20), base = pick(leaf);
+      const R = rr(3.3, 5.2) * (q === 2 ? 0.85 : 1);
+      rnd(); // original lobe noise-seed draw
+      const base = pick(leaf);
       const cy = p.y + 1.7;
-      mb.addGeo(g, mat4(p.x, cy, p.z, R, R * 0.68, R), (v) => shade(base, 0.74 + 0.4 * clamp((v.y - cy) / (R * 0.68) * 0.5 + 0.5, 0, 1)), 0.9 + 0.2 * rnd());
-      ficusLeaves(mb, g, V(p.x, cy, p.z), R, 0.68, Math.round(R * 50), base, lr);
+      const wind = .9 + .2 * rnd();
+      canopyLobe(mb, V(p.x, cy, p.z), R, .68, base, 400 + i * 3 + q, detail, wind);
     }
   }
   for (let q = 0; q < 8; q++) {                       // dense crown
     const a = rnd() * TAU, r = rr(0, 4.5) * (q < 4 ? 1 : 0.3), R = rr(4, 5.8), base = pick(leaf), cy = (q < 4 ? 9.2 : 11.4) + rr(-0.6, 0.8);
-    const g = lumpy(new THREE.IcosahedronGeometry(1, 2), 0.3, rnd() * 20), x = Math.cos(a) * r, z = Math.sin(a) * r;
-    mb.addGeo(g, mat4(x, cy, z, R, R * 0.68, R), (v) => shade(base, 0.74 + 0.4 * clamp((v.y - cy) / (R * 0.68) * 0.5 + 0.5, 0, 1)), 0.9 + 0.2 * rnd());
-    ficusLeaves(mb, g, V(x, cy, z), R, 0.68, Math.round(R * 56), base, lr);
+    rnd(); // original lobe noise-seed draw
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const wind = .9 + .2 * rnd();
+    canopyLobe(mb, V(x, cy, z), R, .68, base, 500 + q, detail, wind);
   }
   for (let k = 0; k < 34; k++) {                      // aerial roots: thin curtains + thick pillar roots reaching the ground
     const limb = pick(limbs), t = rr(0.25, 0.97), i0 = Math.min(2, Math.floor(t * 3)), p = limb[i0].clone().lerp(limb[i0 + 1], (t * 3) % 1);
@@ -207,7 +188,7 @@ function makeBanyan() {
     const dx = rr(-0.4, 0.4), dz = rr(-0.4, 0.4), end = V(p.x + dx, pillar ? -0.3 : p.y - rr(2.5, p.y - 0.5), p.z + dz);
     const mid = p.clone().lerp(end, 0.5).add(V(rr(-0.25, 0.25), 0, rr(-0.25, 0.25)));
     const r0 = pillar ? 0.2 : 0.045, r1 = pillar ? 0.34 : 0.028;
-    tube(mb, [p, mid, end], [r0, (r0 + r1) / 2, r1], pillar ? 7 : 4, () => shade(rootC, rr(0.9, 1.1)), (i) => (pillar ? 0.0 : (i / 2) * 1.2 + 0.3));
+    canopyTube(mb, [p, mid, end], [r0, (r0 + r1) / 2, r1], pillar ? 7 : 4, () => shade(rootC, rr(0.9, 1.1)), (i) => (pillar ? 0.0 : (i / 2) * 1.2 + 0.3));
     if (pillar) pillars.push({ x: end.x, z: end.z });
   }
   return { geo: mb.build(), pillars };
@@ -382,7 +363,7 @@ export function buildFlora2() {
   panList.forEach((a) => addCollider(a.x, a.z, 0.85 * a.sc));
 
   /* banyans: ancient giants in the interior */
-  const ban = [makeBanyan(), makeBanyan(), makeBanyan()];
+  const ban = Array.from({ length: 3 }, () => lodLevels(d => makeBanyan(d)));
   const banList = [];
   for (let k = 0; k < 1400 && banList.length < 8; k++) {
     const x = rr(-170, 170), z = rr(-150, 150), h = getHeight(x, z);
@@ -409,10 +390,10 @@ export function buildFlora2() {
   }
   const banB = ban.map(() => []);
   banList.forEach((a) => { a.v = Math.floor(rnd() * 3); banB[a.v].push(a); });
-  ban.forEach((b, i) => instanced(b.geo, vegMat, banB[i], { inspect: 'banyan', scale: [1.05, 1.55], tilt: 0.0 }));
+  ban.forEach((b, i) => lodFamily(instanced(b[0].geo, canopyMat, banB[i], { inspect: 'banyan', scale: [1.05, 1.55], tilt: 0.0 }), b.map(x => x.geo), banB[i], { tree: true, distantMaterial: distantCanopyMat }));
   banList.forEach((a) => {
     addCollider(a.x, a.z, 1.9 * a.sc);
-    for (const p of ban[a.v].pillars) {
+    for (const p of ban[a.v][0].pillars) {
       const c = Math.cos(a.rot), s = Math.sin(a.rot);
       addCollider(a.x + (p.x * c + p.z * s) * a.sc, a.z + (-p.x * s + p.z * c) * a.sc, 0.45 * a.sc);
     }

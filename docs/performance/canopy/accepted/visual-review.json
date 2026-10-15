@@ -1,0 +1,2341 @@
+{
+  "baseline": {
+    "inventory": [
+      {
+        "key": "palm",
+        "count": 46,
+        "triangles": 1518,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 49,
+        "triangles": 1870,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 51,
+        "triangles": 1692,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 46,
+        "triangles": 1744,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 57,
+        "triangles": 1666,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 51,
+        "triangles": 1796,
+        "shadows": true
+      },
+      {
+        "key": "treeA",
+        "count": 71,
+        "triangles": 552,
+        "shadows": true
+      },
+      {
+        "key": "treeA",
+        "count": 55,
+        "triangles": 472,
+        "shadows": true
+      },
+      {
+        "key": "treeA",
+        "count": 60,
+        "triangles": 552,
+        "shadows": true
+      },
+      {
+        "key": "treeA",
+        "count": 64,
+        "triangles": 552,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 8,
+        "triangles": 703,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 4,
+        "triangles": 703,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 6,
+        "triangles": 703,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 2,
+        "triangles": 703,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 8,
+        "triangles": 703,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 9,
+        "triangles": 703,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 3,
+        "triangles": 703,
+        "shadows": true
+      },
+      {
+        "key": "bamboo",
+        "count": 12,
+        "triangles": 603,
+        "shadows": true
+      },
+      {
+        "key": "bamboo",
+        "count": 14,
+        "triangles": 603,
+        "shadows": true
+      },
+      {
+        "key": "banana",
+        "count": 34,
+        "triangles": 176,
+        "shadows": true
+      },
+      {
+        "key": "banana",
+        "count": 36,
+        "triangles": 176,
+        "shadows": true
+      },
+      {
+        "key": "fern",
+        "count": 564,
+        "triangles": 126,
+        "shadows": false
+      },
+      {
+        "key": "fern",
+        "count": 536,
+        "triangles": 126,
+        "shadows": false
+      },
+      {
+        "key": "bush",
+        "count": 170,
+        "triangles": 1680,
+        "shadows": false
+      },
+      {
+        "key": "bush",
+        "count": 171,
+        "triangles": 1532,
+        "shadows": false
+      },
+      {
+        "key": "bush",
+        "count": 179,
+        "triangles": 240,
+        "shadows": false
+      },
+      {
+        "key": "rock",
+        "count": 59,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 30,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 52,
+        "triangles": 320,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 101,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 61,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 55,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 44,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 64,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 84,
+        "triangles": 2000,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 8,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "coral",
+        "count": 310,
+        "triangles": 220,
+        "shadows": true
+      },
+      {
+        "key": "coral",
+        "count": 311,
+        "triangles": 180,
+        "shadows": true
+      },
+      {
+        "key": "coral",
+        "count": 279,
+        "triangles": 20,
+        "shadows": true
+      },
+      {
+        "key": "seagrass",
+        "count": 3500,
+        "triangles": 2,
+        "shadows": false
+      },
+      {
+        "key": "coconut",
+        "count": 129,
+        "triangles": 584,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 17,
+        "triangles": 3266,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 19,
+        "triangles": 3738,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 20,
+        "triangles": 4458,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 24,
+        "triangles": 2434,
+        "shadows": true
+      },
+      {
+        "key": "banyan",
+        "count": 5,
+        "triangles": 32832,
+        "shadows": true
+      },
+      {
+        "key": "banyan",
+        "count": 1,
+        "triangles": 31996,
+        "shadows": true
+      },
+      {
+        "key": "banyan",
+        "count": 4,
+        "triangles": 32632,
+        "shadows": true
+      },
+      {
+        "key": "breadfruit",
+        "count": 12,
+        "triangles": 1620,
+        "shadows": true
+      },
+      {
+        "key": "breadfruit",
+        "count": 17,
+        "triangles": 1620,
+        "shadows": true
+      },
+      {
+        "key": "breadfruit",
+        "count": 17,
+        "triangles": 1620,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 18,
+        "triangles": 2760,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 16,
+        "triangles": 3556,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 19,
+        "triangles": 4192,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 17,
+        "triangles": 3436,
+        "shadows": true
+      },
+      {
+        "key": "naupaka",
+        "count": 77,
+        "triangles": 8054,
+        "shadows": false
+      },
+      {
+        "key": "naupaka",
+        "count": 93,
+        "triangles": 7459,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 43,
+        "triangles": 3940,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 29,
+        "triangles": 3940,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 30,
+        "triangles": 3940,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 48,
+        "triangles": 3940,
+        "shadows": false
+      },
+      {
+        "key": "bougainvillea",
+        "count": 15,
+        "triangles": 2780,
+        "shadows": false
+      },
+      {
+        "key": "bougainvillea",
+        "count": 13,
+        "triangles": 2780,
+        "shadows": false
+      },
+      {
+        "key": "bougainvillea",
+        "count": 9,
+        "triangles": 2780,
+        "shadows": false
+      },
+      {
+        "key": "bougainvillea",
+        "count": 9,
+        "triangles": 2780,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 19,
+        "triangles": 316,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 15,
+        "triangles": 316,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 11,
+        "triangles": 304,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 27,
+        "triangles": 304,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 22,
+        "triangles": 804,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 16,
+        "triangles": 804,
+        "shadows": false
+      },
+      {
+        "key": "taro",
+        "count": 39,
+        "triangles": 288,
+        "shadows": false
+      },
+      {
+        "key": "taro",
+        "count": 41,
+        "triangles": 288,
+        "shadows": false
+      },
+      {
+        "key": "ti",
+        "count": 19,
+        "triangles": 450,
+        "shadows": false
+      },
+      {
+        "key": "ti",
+        "count": 21,
+        "triangles": 450,
+        "shadows": false
+      },
+      {
+        "key": "ti",
+        "count": 30,
+        "triangles": 450,
+        "shadows": false
+      },
+      {
+        "key": "glory",
+        "count": 160,
+        "triangles": 372,
+        "shadows": false
+      },
+      {
+        "key": "orchid",
+        "count": 17,
+        "triangles": 600,
+        "shadows": false
+      },
+      {
+        "key": "orchid",
+        "count": 23,
+        "triangles": 600,
+        "shadows": false
+      },
+      {
+        "key": "orchid",
+        "count": 20,
+        "triangles": 600,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 107,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 96,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 100,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 96,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 121,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 142,
+        "triangles": 88,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 150,
+        "triangles": 220,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 116,
+        "triangles": 960,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 65,
+        "triangles": 180,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 47,
+        "triangles": 20,
+        "shadows": false
+      },
+      {
+        "key": "anemone",
+        "count": 10,
+        "triangles": 1112,
+        "shadows": false
+      },
+      {
+        "key": "anemone",
+        "count": 13,
+        "triangles": 1112,
+        "shadows": false
+      },
+      {
+        "key": "anemone",
+        "count": 11,
+        "triangles": 1112,
+        "shadows": false
+      },
+      {
+        "key": "starfish",
+        "count": 46,
+        "triangles": 10,
+        "shadows": false
+      },
+      {
+        "key": "urchin",
+        "count": 40,
+        "triangles": 496,
+        "shadows": false
+      },
+      {
+        "key": "palm",
+        "count": 5,
+        "triangles": 1466,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 0,
+        "triangles": 1592,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 6,
+        "triangles": 1666,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 3,
+        "triangles": 3626,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 2,
+        "triangles": 2906,
+        "shadows": true
+      },
+      {
+        "key": "naupaka",
+        "count": 14,
+        "triangles": 8159,
+        "shadows": false
+      },
+      {
+        "key": "glory",
+        "count": 10,
+        "triangles": 372,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 6,
+        "triangles": 4404,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 6,
+        "triangles": 4404,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 5,
+        "triangles": 4404,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 5,
+        "triangles": 4404,
+        "shadows": false
+      },
+      {
+        "key": "plumeria",
+        "count": 3,
+        "triangles": 3356,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 3,
+        "triangles": 4032,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 3,
+        "triangles": 4072,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 3,
+        "triangles": 3432,
+        "shadows": true
+      },
+      {
+        "key": "blossom",
+        "count": 46,
+        "triangles": 120,
+        "shadows": false
+      },
+      {
+        "key": "blossom",
+        "count": 33,
+        "triangles": 272,
+        "shadows": false
+      },
+      {
+        "key": "blossom",
+        "count": 41,
+        "triangles": 272,
+        "shadows": false
+      }
+    ],
+    "points": {
+      "treeA": [
+        26.141029357910156,
+        8.374791145324707,
+        39.90156555175781
+      ],
+      "treeB": [
+        -20.596651077270508,
+        13.729442596435547,
+        2.5381484031677246
+      ],
+      "banyan": [
+        9.903998374938965,
+        10.313227653503418,
+        40.89009094238281
+      ]
+    },
+    "creatures": 230,
+    "draws": [
+      {
+        "key": "treeA",
+        "view": "close",
+        "calls": 1321,
+        "triangles": 10895153,
+        "shadowCalls": 412,
+        "shadowTriangles": 3842189,
+        "casters": 1898
+      },
+      {
+        "key": "treeA",
+        "view": "ground",
+        "calls": 1259,
+        "triangles": 10877258,
+        "shadowCalls": 413,
+        "shadowTriangles": 3842201,
+        "casters": 1898
+      },
+      {
+        "key": "treeA",
+        "view": "medium",
+        "calls": 1602,
+        "triangles": 10931408,
+        "shadowCalls": 294,
+        "shadowTriangles": 3647981,
+        "casters": 1898
+      },
+      {
+        "key": "treeA",
+        "view": "far",
+        "calls": 2484,
+        "triangles": 10894300,
+        "shadowCalls": 209,
+        "shadowTriangles": 2885587,
+        "casters": 1898
+      },
+      {
+        "key": "treeB",
+        "view": "close",
+        "calls": 1051,
+        "triangles": 10745339,
+        "shadowCalls": 592,
+        "shadowTriangles": 4046372,
+        "casters": 1922
+      },
+      {
+        "key": "treeB",
+        "view": "ground",
+        "calls": 973,
+        "triangles": 10688677,
+        "shadowCalls": 592,
+        "shadowTriangles": 4046372,
+        "casters": 1922
+      },
+      {
+        "key": "treeB",
+        "view": "medium",
+        "calls": 1488,
+        "triangles": 10895490,
+        "shadowCalls": 662,
+        "shadowTriangles": 4025685,
+        "casters": 1898
+      },
+      {
+        "key": "treeB",
+        "view": "far",
+        "calls": 1523,
+        "triangles": 10738599,
+        "shadowCalls": 257,
+        "shadowTriangles": 3628149,
+        "casters": 1898
+      },
+      {
+        "key": "banyan",
+        "view": "close",
+        "calls": 1528,
+        "triangles": 10987060,
+        "shadowCalls": 611,
+        "shadowTriangles": 4002648,
+        "casters": 1898
+      },
+      {
+        "key": "banyan",
+        "view": "ground",
+        "calls": 1227,
+        "triangles": 9578339,
+        "shadowCalls": 438,
+        "shadowTriangles": 3001421,
+        "casters": 1569
+      },
+      {
+        "key": "banyan",
+        "view": "medium",
+        "calls": 1398,
+        "triangles": 9720507,
+        "shadowCalls": 256,
+        "shadowTriangles": 2825569,
+        "casters": 1569
+      },
+      {
+        "key": "banyan",
+        "view": "far",
+        "calls": 1860,
+        "triangles": 9818341,
+        "shadowCalls": 43,
+        "shadowTriangles": 2026072,
+        "casters": 1569
+      }
+    ],
+    "placementSha256": "61ce7dd408cb759fe22c57847fb9cfda6cd150316eda9320520e3826562c6996",
+    "initialWildlifeSha256": "3b04648bb05851183b799d607e0933531f8867d5cbc13403193812fe20207924"
+  },
+  "final": {
+    "inventory": [
+      {
+        "key": "palm",
+        "count": 46,
+        "triangles": 1518,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 49,
+        "triangles": 1870,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 51,
+        "triangles": 1692,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 46,
+        "triangles": 1744,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 57,
+        "triangles": 1666,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 51,
+        "triangles": 1796,
+        "shadows": true
+      },
+      {
+        "key": "treeA",
+        "count": 71,
+        "triangles": 1632,
+        "shadows": true
+      },
+      {
+        "key": "treeA",
+        "count": 55,
+        "triangles": 1372,
+        "shadows": true
+      },
+      {
+        "key": "treeA",
+        "count": 60,
+        "triangles": 1632,
+        "shadows": true
+      },
+      {
+        "key": "treeA",
+        "count": 64,
+        "triangles": 1632,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 8,
+        "triangles": 1972,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 4,
+        "triangles": 1972,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 6,
+        "triangles": 1972,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 2,
+        "triangles": 1972,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 8,
+        "triangles": 1972,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 9,
+        "triangles": 1972,
+        "shadows": true
+      },
+      {
+        "key": "treeB",
+        "count": 3,
+        "triangles": 1972,
+        "shadows": true
+      },
+      {
+        "key": "bamboo",
+        "count": 12,
+        "triangles": 603,
+        "shadows": true
+      },
+      {
+        "key": "bamboo",
+        "count": 14,
+        "triangles": 603,
+        "shadows": true
+      },
+      {
+        "key": "banana",
+        "count": 34,
+        "triangles": 176,
+        "shadows": true
+      },
+      {
+        "key": "banana",
+        "count": 36,
+        "triangles": 176,
+        "shadows": true
+      },
+      {
+        "key": "fern",
+        "count": 564,
+        "triangles": 126,
+        "shadows": false
+      },
+      {
+        "key": "fern",
+        "count": 536,
+        "triangles": 126,
+        "shadows": false
+      },
+      {
+        "key": "bush",
+        "count": 170,
+        "triangles": 1680,
+        "shadows": false
+      },
+      {
+        "key": "bush",
+        "count": 171,
+        "triangles": 1532,
+        "shadows": false
+      },
+      {
+        "key": "bush",
+        "count": 179,
+        "triangles": 240,
+        "shadows": false
+      },
+      {
+        "key": "rock",
+        "count": 59,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 30,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 52,
+        "triangles": 320,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 101,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 61,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 55,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 44,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 64,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 84,
+        "triangles": 2000,
+        "shadows": true
+      },
+      {
+        "key": "rock",
+        "count": 8,
+        "triangles": 500,
+        "shadows": true
+      },
+      {
+        "key": "coral",
+        "count": 310,
+        "triangles": 220,
+        "shadows": true
+      },
+      {
+        "key": "coral",
+        "count": 311,
+        "triangles": 180,
+        "shadows": true
+      },
+      {
+        "key": "coral",
+        "count": 279,
+        "triangles": 20,
+        "shadows": true
+      },
+      {
+        "key": "seagrass",
+        "count": 3500,
+        "triangles": 2,
+        "shadows": false
+      },
+      {
+        "key": "coconut",
+        "count": 129,
+        "triangles": 584,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 17,
+        "triangles": 3266,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 19,
+        "triangles": 3738,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 20,
+        "triangles": 4458,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 24,
+        "triangles": 2434,
+        "shadows": true
+      },
+      {
+        "key": "banyan",
+        "count": 5,
+        "triangles": 9032,
+        "shadows": true
+      },
+      {
+        "key": "banyan",
+        "count": 1,
+        "triangles": 9008,
+        "shadows": true
+      },
+      {
+        "key": "banyan",
+        "count": 4,
+        "triangles": 8888,
+        "shadows": true
+      },
+      {
+        "key": "breadfruit",
+        "count": 12,
+        "triangles": 1620,
+        "shadows": true
+      },
+      {
+        "key": "breadfruit",
+        "count": 17,
+        "triangles": 1620,
+        "shadows": true
+      },
+      {
+        "key": "breadfruit",
+        "count": 17,
+        "triangles": 1620,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 18,
+        "triangles": 2760,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 16,
+        "triangles": 3556,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 19,
+        "triangles": 4192,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 17,
+        "triangles": 3436,
+        "shadows": true
+      },
+      {
+        "key": "naupaka",
+        "count": 77,
+        "triangles": 8054,
+        "shadows": false
+      },
+      {
+        "key": "naupaka",
+        "count": 93,
+        "triangles": 7459,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 43,
+        "triangles": 3940,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 29,
+        "triangles": 3940,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 30,
+        "triangles": 3940,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 48,
+        "triangles": 3940,
+        "shadows": false
+      },
+      {
+        "key": "bougainvillea",
+        "count": 15,
+        "triangles": 2780,
+        "shadows": false
+      },
+      {
+        "key": "bougainvillea",
+        "count": 13,
+        "triangles": 2780,
+        "shadows": false
+      },
+      {
+        "key": "bougainvillea",
+        "count": 9,
+        "triangles": 2780,
+        "shadows": false
+      },
+      {
+        "key": "bougainvillea",
+        "count": 9,
+        "triangles": 2780,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 19,
+        "triangles": 316,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 15,
+        "triangles": 316,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 11,
+        "triangles": 304,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 27,
+        "triangles": 304,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 22,
+        "triangles": 804,
+        "shadows": false
+      },
+      {
+        "key": "clump",
+        "count": 16,
+        "triangles": 804,
+        "shadows": false
+      },
+      {
+        "key": "taro",
+        "count": 39,
+        "triangles": 288,
+        "shadows": false
+      },
+      {
+        "key": "taro",
+        "count": 41,
+        "triangles": 288,
+        "shadows": false
+      },
+      {
+        "key": "ti",
+        "count": 19,
+        "triangles": 450,
+        "shadows": false
+      },
+      {
+        "key": "ti",
+        "count": 21,
+        "triangles": 450,
+        "shadows": false
+      },
+      {
+        "key": "ti",
+        "count": 30,
+        "triangles": 450,
+        "shadows": false
+      },
+      {
+        "key": "glory",
+        "count": 160,
+        "triangles": 372,
+        "shadows": false
+      },
+      {
+        "key": "orchid",
+        "count": 17,
+        "triangles": 600,
+        "shadows": false
+      },
+      {
+        "key": "orchid",
+        "count": 23,
+        "triangles": 600,
+        "shadows": false
+      },
+      {
+        "key": "orchid",
+        "count": 20,
+        "triangles": 600,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 107,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 96,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 100,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 96,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "wildflower",
+        "count": 121,
+        "triangles": 792,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 142,
+        "triangles": 88,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 150,
+        "triangles": 220,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 116,
+        "triangles": 960,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 65,
+        "triangles": 180,
+        "shadows": false
+      },
+      {
+        "key": "coral",
+        "count": 47,
+        "triangles": 20,
+        "shadows": false
+      },
+      {
+        "key": "anemone",
+        "count": 10,
+        "triangles": 1112,
+        "shadows": false
+      },
+      {
+        "key": "anemone",
+        "count": 13,
+        "triangles": 1112,
+        "shadows": false
+      },
+      {
+        "key": "anemone",
+        "count": 11,
+        "triangles": 1112,
+        "shadows": false
+      },
+      {
+        "key": "starfish",
+        "count": 46,
+        "triangles": 10,
+        "shadows": false
+      },
+      {
+        "key": "urchin",
+        "count": 40,
+        "triangles": 496,
+        "shadows": false
+      },
+      {
+        "key": "palm",
+        "count": 5,
+        "triangles": 1466,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 0,
+        "triangles": 1592,
+        "shadows": true
+      },
+      {
+        "key": "palm",
+        "count": 6,
+        "triangles": 1666,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 3,
+        "triangles": 3626,
+        "shadows": true
+      },
+      {
+        "key": "pandanus",
+        "count": 2,
+        "triangles": 2906,
+        "shadows": true
+      },
+      {
+        "key": "naupaka",
+        "count": 14,
+        "triangles": 8159,
+        "shadows": false
+      },
+      {
+        "key": "glory",
+        "count": 10,
+        "triangles": 372,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 6,
+        "triangles": 4404,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 6,
+        "triangles": 4404,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 5,
+        "triangles": 4404,
+        "shadows": false
+      },
+      {
+        "key": "hibiscus",
+        "count": 5,
+        "triangles": 4404,
+        "shadows": false
+      },
+      {
+        "key": "plumeria",
+        "count": 3,
+        "triangles": 3356,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 3,
+        "triangles": 4032,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 3,
+        "triangles": 4072,
+        "shadows": true
+      },
+      {
+        "key": "plumeria",
+        "count": 3,
+        "triangles": 3432,
+        "shadows": true
+      },
+      {
+        "key": "blossom",
+        "count": 46,
+        "triangles": 120,
+        "shadows": false
+      },
+      {
+        "key": "blossom",
+        "count": 33,
+        "triangles": 272,
+        "shadows": false
+      },
+      {
+        "key": "blossom",
+        "count": 41,
+        "triangles": 272,
+        "shadows": false
+      }
+    ],
+    "points": {
+      "treeA": [
+        26.141029357910156,
+        8.374791145324707,
+        39.90156555175781
+      ],
+      "treeB": [
+        -20.596651077270508,
+        13.729442596435547,
+        2.5381484031677246
+      ],
+      "banyan": [
+        9.903998374938965,
+        10.313227653503418,
+        40.89009094238281
+      ]
+    },
+    "creatures": 230,
+    "draws": [
+      {
+        "key": "treeA",
+        "view": "close",
+        "calls": 1331,
+        "triangles": 10461953,
+        "shadowCalls": 420,
+        "shadowTriangles": 3641459,
+        "casters": 1906
+      },
+      {
+        "key": "treeA",
+        "view": "ground",
+        "calls": 1269,
+        "triangles": 10444058,
+        "shadowCalls": 421,
+        "shadowTriangles": 3641471,
+        "casters": 1906
+      },
+      {
+        "key": "treeA",
+        "view": "medium",
+        "calls": 1606,
+        "triangles": 10399470,
+        "shadowCalls": 299,
+        "shadowTriangles": 3388379,
+        "casters": 1903
+      },
+      {
+        "key": "treeA",
+        "view": "far",
+        "calls": 2483,
+        "triangles": 10540946,
+        "shadowCalls": 210,
+        "shadowTriangles": 2904403,
+        "casters": 1898
+      },
+      {
+        "key": "treeB",
+        "view": "close",
+        "calls": 1048,
+        "triangles": 10154396,
+        "shadowCalls": 597,
+        "shadowTriangles": 3804404,
+        "casters": 1927
+      },
+      {
+        "key": "treeB",
+        "view": "ground",
+        "calls": 973,
+        "triangles": 10102042,
+        "shadowCalls": 598,
+        "shadowTriangles": 3807380,
+        "casters": 1928
+      },
+      {
+        "key": "treeB",
+        "view": "medium",
+        "calls": 1493,
+        "triangles": 10380605,
+        "shadowCalls": 670,
+        "shadowTriangles": 3798471,
+        "casters": 1906
+      },
+      {
+        "key": "treeB",
+        "view": "far",
+        "calls": 1527,
+        "triangles": 10032329,
+        "shadowCalls": 260,
+        "shadowTriangles": 3278067,
+        "casters": 1901
+      },
+      {
+        "key": "banyan",
+        "view": "close",
+        "calls": 1536,
+        "triangles": 10494032,
+        "shadowCalls": 619,
+        "shadowTriangles": 3771042,
+        "casters": 1906
+      },
+      {
+        "key": "banyan",
+        "view": "ground",
+        "calls": 1236,
+        "triangles": 9088669,
+        "shadowCalls": 446,
+        "shadowTriangles": 2771975,
+        "casters": 1577
+      },
+      {
+        "key": "banyan",
+        "view": "medium",
+        "calls": 1402,
+        "triangles": 9227555,
+        "shadowCalls": 260,
+        "shadowTriangles": 2575219,
+        "casters": 1573
+      },
+      {
+        "key": "banyan",
+        "view": "far",
+        "calls": 1859,
+        "triangles": 9405536,
+        "shadowCalls": 44,
+        "shadowTriangles": 1989904,
+        "casters": 1569
+      }
+    ],
+    "lods": [
+      {
+        "key": "treeA",
+        "instances": 71,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1632,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 552,
+            "castShadow": true
+          },
+          {
+            "count": 71,
+            "triangles": 264,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeA",
+        "instances": 55,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1372,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 472,
+            "castShadow": true
+          },
+          {
+            "count": 55,
+            "triangles": 232,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeA",
+        "instances": 60,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1632,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 552,
+            "castShadow": true
+          },
+          {
+            "count": 60,
+            "triangles": 264,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeA",
+        "instances": 64,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1632,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 552,
+            "castShadow": true
+          },
+          {
+            "count": 64,
+            "triangles": 264,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 8,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 8,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 4,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 4,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 6,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 6,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 2,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 2,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 8,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 8,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 9,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 9,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "treeB",
+        "instances": 3,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1972,
+            "castShadow": true
+          },
+          {
+            "count": 3,
+            "triangles": 712,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 376,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "bush",
+        "instances": 170,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1680,
+            "castShadow": false
+          },
+          {
+            "count": 5,
+            "triangles": 968,
+            "castShadow": false
+          },
+          {
+            "count": 165,
+            "triangles": 644,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "bush",
+        "instances": 171,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 1532,
+            "castShadow": false
+          },
+          {
+            "count": 1,
+            "triangles": 1040,
+            "castShadow": false
+          },
+          {
+            "count": 170,
+            "triangles": 640,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "banyan",
+        "instances": 5,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 9032,
+            "castShadow": true
+          },
+          {
+            "count": 5,
+            "triangles": 3812,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 2420,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "banyan",
+        "instances": 1,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 9008,
+            "castShadow": true
+          },
+          {
+            "count": 1,
+            "triangles": 3788,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 2396,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "banyan",
+        "instances": 4,
+        "sharedDetail": true,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 8888,
+            "castShadow": true
+          },
+          {
+            "count": 4,
+            "triangles": 3668,
+            "castShadow": true
+          },
+          {
+            "count": 0,
+            "triangles": 2276,
+            "castShadow": true
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "naupaka",
+        "instances": 77,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 8054,
+            "castShadow": false
+          },
+          {
+            "count": 3,
+            "triangles": 4398,
+            "castShadow": false
+          },
+          {
+            "count": 74,
+            "triangles": 2280,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "naupaka",
+        "instances": 93,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 7459,
+            "castShadow": false
+          },
+          {
+            "count": 4,
+            "triangles": 4503,
+            "castShadow": false
+          },
+          {
+            "count": 89,
+            "triangles": 2280,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 43,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 3940,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2130,
+            "castShadow": false
+          },
+          {
+            "count": 43,
+            "triangles": 1284,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 29,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 3940,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2130,
+            "castShadow": false
+          },
+          {
+            "count": 29,
+            "triangles": 1284,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 30,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 3940,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2130,
+            "castShadow": false
+          },
+          {
+            "count": 30,
+            "triangles": 1284,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 48,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 3940,
+            "castShadow": false
+          },
+          {
+            "count": 1,
+            "triangles": 2130,
+            "castShadow": false
+          },
+          {
+            "count": 47,
+            "triangles": 1284,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "naupaka",
+        "instances": 14,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 8159,
+            "castShadow": false
+          },
+          {
+            "count": 3,
+            "triangles": 4467,
+            "castShadow": false
+          },
+          {
+            "count": 11,
+            "triangles": 2292,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 6,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 4404,
+            "castShadow": false
+          },
+          {
+            "count": 1,
+            "triangles": 2362,
+            "castShadow": false
+          },
+          {
+            "count": 5,
+            "triangles": 1400,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 6,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 4404,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2362,
+            "castShadow": false
+          },
+          {
+            "count": 6,
+            "triangles": 1400,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 5,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 4404,
+            "castShadow": false
+          },
+          {
+            "count": 1,
+            "triangles": 2362,
+            "castShadow": false
+          },
+          {
+            "count": 4,
+            "triangles": 1400,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      },
+      {
+        "key": "hibiscus",
+        "instances": 5,
+        "sharedDetail": false,
+        "levels": [
+          {
+            "count": 0,
+            "triangles": 4404,
+            "castShadow": false
+          },
+          {
+            "count": 0,
+            "triangles": 2362,
+            "castShadow": false
+          },
+          {
+            "count": 5,
+            "triangles": 1400,
+            "castShadow": false
+          }
+        ],
+        "hidden": 0
+      }
+    ],
+    "profile": [
+      {
+        "updater": "#42 (l,h)=>{if(jL){let c=qe.find(y=>y.id===\"castaway\"),d=[{x:vt.position.x,y:vt.position.y,z:v",
+        "msPerFrame": 1.918
+      },
+      {
+        "updater": "#36 (y,m)=>{let g=Math.min(y,.05);yd(MA,g),d.begin();for(let A=0;A<c.length;A++){let b=c[A],T=",
+        "msPerFrame": 1.048
+      },
+      {
+        "updater": "#41 (x,V)=>{let _=Math.min(x,.05);for(let W of C)W.update(_,V)}",
+        "msPerFrame": 1.006
+      },
+      {
+        "updater": "#43 (c,d)=>{l.length=0;for(let y of qe){if(!y.group||y.id!==\"castaway\"&&y.name!==\"Blackfin ree",
+        "msPerFrame": 0.347
+      },
+      {
+        "updater": "#44 (y,m)=>{if(jL){let C=qe.find(_=>_.id===\"castaway\"),x=[{x:vt.position.x,y:vt.position.y,z:v",
+        "msPerFrame": 0.29
+      },
+      {
+        "updater": "#47 (M,J)=>{let q=performance.now();hV(M,J),Pr.ms+=(performance.now()-q-Pr.ms)*.02,Pr.frames++",
+        "msPerFrame": 0.285
+      },
+      {
+        "updater": "#45 (h,c)=>{let d=.12+.88*Math.min(1,ft.night*1.15+ft.dusk*.3);i.opacity=.2+.75*d,u.visible=!0",
+        "msPerFrame": 0.268
+      },
+      {
+        "updater": "#48 (w,F)=>{if(h){let bt=ue.under.value,Qt=t.musicOn&&p?t.music*t.master*(1-bt*.45):0;d+=(Qt-d",
+        "msPerFrame": 0.066
+      },
+      {
+        "updater": "#16 f=>this.update(f)",
+        "msPerFrame": 0.049
+      },
+      {
+        "updater": "#46 (L,$)=>Y(Math.min(L,.05),$)",
+        "msPerFrame": 0.046
+      },
+      {
+        "updater": "#40 (o,i)=>{let r=ht((ft.night+ft.dusk*.3-.2)*2,0,1);for(let s=0;s<170;s++){let p=e[s%e.length",
+        "msPerFrame": 0.045
+      },
+      {
+        "updater": "#7 a=>{if(Fw+=a,Fw<8||I7>=qe.length)return;let t=performance.now();for(;I7<qe.length;){let n=",
+        "msPerFrame": 0.03
+      },
+      {
+        "updater": "#37 (h,c)=>{let d=ft.day>.25;if(o.visible=d,!!d){for(let y=0;y<a;y++){let m=r[y],g=m.cx+Math.s",
+        "msPerFrame": 0.026
+      },
+      {
+        "updater": "#19 (C,x)=>{Go.time=x,P+=C;let V=.12;Go.state===\"idle\"?x>T&&(Go.state=\"build\",P=0,T=x+24,Le.em",
+        "msPerFrame": 0.024
+      }
+    ],
+    "occlusion": {
+      "following": {
+        "debugOn": false,
+        "last": [],
+        "built": true,
+        "instances": 4050,
+        "checks": 31,
+        "msPerCheck": 0.12750983850020986,
+        "candidates": 36,
+        "active": 0,
+        "buildMs": 56.7,
+        "buildMaxStepMs": 2
+      },
+      "released": {
+        "debugOn": false,
+        "last": [],
+        "built": true,
+        "instances": 4050,
+        "checks": 31,
+        "msPerCheck": 0.12750983850020986,
+        "candidates": 36,
+        "active": 0,
+        "buildMs": 56.7,
+        "buildMaxStepMs": 2
+      }
+    },
+    "rigs": {
+      "count": 5709,
+      "roots": 230,
+      "maxBuildStepMs": 0.7999999821186066,
+      "buildMs": 7.200000017881393
+    },
+    "placementSha256": "61ce7dd408cb759fe22c57847fb9cfda6cd150316eda9320520e3826562c6996",
+    "initialWildlifeSha256": "3b04648bb05851183b799d607e0933531f8867d5cbc13403193812fe20207924"
+  },
+  "errors": [],
+  "windPixelsChangedAbove4": 19709
+}

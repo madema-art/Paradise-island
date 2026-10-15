@@ -11,6 +11,11 @@ import { eco } from '../ecology.js';
 import { perf } from '../perf_hooks.js';
 import { setSkeletonShare, setSkinnedMerge, mergeCheck, setRigidMerge, rigidStatsRef, setSkinCulling } from '../skeleton_share.js';
 import { setPartInstancing, partStats } from '../part_instancing.js';
+import { vegetationStats } from '../vegetation_lod.js';
+import { rigRenderPruner, rigRenderStats } from '../rig_render_budget.js';
+
+window.__vegetationStats = vegetationStats;
+window.__rigRender = { pruner: rigRenderPruner, stats: rigRenderStats };
 
 const q = new URLSearchParams(location.search);
 const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return +s[Math.min(s.length - 1, Math.floor(s.length * p))].toFixed(2); };
@@ -64,7 +69,7 @@ perf.render = () => renderFrame();
 const holder = { fn: null };
 function holdCamera(fn) { holder.fn = fn; }
 const hook = (dt, t) => { if (holder.fn) holder.fn(dt, t); };
-updaters.push(hook);
+updaters.unshift(hook); // apply the benchmark camera before LOD/AI distance checks
 
 const one = (name) => creatures.find((c) => c.name === name && c.group);
 const troop = () => {

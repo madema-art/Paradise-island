@@ -1,0 +1,212 @@
+[
+  {
+    "name": "(program)",
+    "selfMs": 487.9,
+    "inclusiveMs": 487.9,
+    "line": -1
+  },
+  {
+    "name": "WebGLRenderer.renderBufferDirect",
+    "selfMs": 378.6,
+    "inclusiveMs": 2209.9,
+    "line": 42734
+  },
+  {
+    "name": "updateSchool",
+    "selfMs": 238.6,
+    "inclusiveMs": 254.2,
+    "line": 60685
+  },
+  {
+    "name": "multiplyMatrices",
+    "selfMs": 176.8,
+    "inclusiveMs": 176.8,
+    "line": 6929
+  },
+  {
+    "name": "setProgram",
+    "selfMs": 159.2,
+    "inclusiveMs": 1340.9,
+    "line": 43314
+  },
+  {
+    "name": "bindVertexArray",
+    "selfMs": 128.3,
+    "inclusiveMs": 128.3,
+    "line": -1
+  },
+  {
+    "name": "writeInstances",
+    "selfMs": 114,
+    "inclusiveMs": 154.8,
+    "line": 54228
+  },
+  {
+    "name": "updateMatrixWorld",
+    "selfMs": 94.1,
+    "inclusiveMs": 709.4,
+    "line": 8649
+  },
+  {
+    "name": "update",
+    "selfMs": 92.4,
+    "inclusiveMs": 92.4,
+    "line": 50146
+  },
+  {
+    "name": "getBindingState",
+    "selfMs": 91.9,
+    "inclusiveMs": 91.9,
+    "line": 32804
+  },
+  {
+    "name": "projectObject",
+    "selfMs": 89.4,
+    "inclusiveMs": 779,
+    "line": 43034
+  },
+  {
+    "name": "renderObjects",
+    "selfMs": 88.5,
+    "inclusiveMs": 2440.4,
+    "line": 43174
+  },
+  {
+    "name": "needsUpdate",
+    "selfMs": 86.6,
+    "inclusiveMs": 86.6,
+    "line": 32851
+  },
+  {
+    "name": "updateMatrixWorld",
+    "selfMs": 79,
+    "inclusiveMs": 585.5,
+    "line": 8649
+  },
+  {
+    "name": "getProgram",
+    "selfMs": 76.2,
+    "inclusiveMs": 145.2,
+    "line": 43207
+  },
+  {
+    "name": "renderObject",
+    "selfMs": 74.1,
+    "inclusiveMs": 2350.3,
+    "line": 43188
+  },
+  {
+    "name": "texSubImage2D",
+    "selfMs": 69.8,
+    "inclusiveMs": 69.8,
+    "line": -1
+  },
+  {
+    "name": "renderObject",
+    "selfMs": 69.7,
+    "inclusiveMs": 526,
+    "line": 36915
+  },
+  {
+    "name": "update3",
+    "selfMs": 66.9,
+    "inclusiveMs": 275.3,
+    "line": 34124
+  },
+  {
+    "name": "updateMatrixWorld",
+    "selfMs": 66.1,
+    "inclusiveMs": 482.5,
+    "line": 8649
+  },
+  {
+    "name": "multiplyMatrices",
+    "selfMs": 64.7,
+    "inclusiveMs": 64.7,
+    "line": 6929
+  },
+  {
+    "name": "sort",
+    "selfMs": 64.3,
+    "inclusiveMs": 97.2,
+    "line": 36105
+  },
+  {
+    "name": "copyArray",
+    "selfMs": 61.8,
+    "inclusiveMs": 61.8,
+    "line": 34363
+  },
+  {
+    "name": "setValue",
+    "selfMs": 61.7,
+    "inclusiveMs": 546.7,
+    "line": 41028
+  },
+  {
+    "name": "projectObject",
+    "selfMs": 60.7,
+    "inclusiveMs": 860.2,
+    "line": 43034
+  },
+  {
+    "name": "uniformMatrix4fv",
+    "selfMs": 60,
+    "inclusiveMs": 60,
+    "line": -1
+  },
+  {
+    "name": "renderObject",
+    "selfMs": 58.8,
+    "inclusiveMs": 416.9,
+    "line": 36915
+  },
+  {
+    "name": "projectObject",
+    "selfMs": 58.7,
+    "inclusiveMs": 1289.9,
+    "line": 43034
+  },
+  {
+    "name": "getParameters",
+    "selfMs": 58,
+    "inclusiveMs": 59.6,
+    "line": 35529
+  },
+  {
+    "name": "updateMatrixWorld",
+    "selfMs": 55.7,
+    "inclusiveMs": 769.9,
+    "line": 8649
+  },
+  {
+    "name": "updateMatrixWorld",
+    "selfMs": 52.6,
+    "inclusiveMs": 408.5,
+    "line": 8649
+  },
+  {
+    "name": "update3",
+    "selfMs": 52,
+    "inclusiveMs": 184,
+    "line": 34124
+  },
+  {
+    "name": "setup",
+    "selfMs": 50.5,
+    "inclusiveMs": 401.6,
+    "line": 32775
+  },
+  {
+    "name": "updateSchool",
+    "selfMs": 49.2,
+    "inclusiveMs": 50.7,
+    "line": 60685
+  },
+  {
+    "name": "renderObject",
+    "selfMs": 45.8,
+    "inclusiveMs": 194.1,
+    "line": 36915
+  }
+]

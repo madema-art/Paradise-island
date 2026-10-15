@@ -1,0 +1,79 @@
+{
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/148.0.7778.96 Safari/537.36",
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 SUPER (0x00001E84) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "gpuTimerQueries": true,
+    "drawingBuffer": [
+      1920,
+      1080
+    ],
+    "canvasCss": [
+      1920,
+      1080
+    ],
+    "dpr": 1,
+    "screen": [
+      1920,
+      1080
+    ],
+    "visibility": "visible",
+    "focused": true,
+    "hardwareAcceleration": true
+  },
+  "result": {
+    "scenario": "wideIsland",
+    "quality": "high",
+    "seconds": 14,
+    "frames": 610,
+    "fpsAverage": 43.5,
+    "fpsOnePercentLow": 36.9,
+    "frameMsMedian": 22.8,
+    "frameMsP95": 24.1,
+    "frameMsP99": 27.1,
+    "updateMsMean": 3.5,
+    "renderMsMean": 19.17,
+    "renderMsP95": 20.1,
+    "gpuMsMean": 14.08,
+    "gpuMsP95": 21.39,
+    "gpuSamples": 610,
+    "drawCallsMean": 1773.63,
+    "trianglesMean": 10286219.14,
+    "memoryMB": 527.4,
+    "longTasks": 12,
+    "sceneFish": 608,
+    "monkeys": 48,
+    "creatures": 230,
+    "canvas": [
+      1920,
+      1080
+    ],
+    "pixelRatio": 1,
+    "dpr": 1,
+    "innerSize": [
+      1920,
+      1080
+    ],
+    "frameMsMeanFromFps": 22.989
+  },
+  "counts": {
+    "shadows": 2102,
+    "instances": 9799,
+    "families": 113,
+    "rigs": null,
+    "occlusion": {
+      "debugOn": false,
+      "last": [],
+      "built": true,
+      "instances": 4050,
+      "checks": 0,
+      "msPerCheck": 0,
+      "candidates": 0,
+      "active": 0,
+      "buildMs": 38.4,
+      "buildMaxStepMs": 2.5
+    },
+    "placementSha256": "200442dffcdb2d1615a6b3f2a2d3234adba6713ff49dcd8640aaae99c499f8fe"
+  },
+  "errors": []
+}

@@ -2,21 +2,23 @@ import * as THREE from 'three';
 import { U } from './core.js';
 import { rr, rnd } from './util.js';
 import { noise2 } from './noise.js';
+import { smoothNormals } from './geometry_normals.js';
 
 /** Non-indexed mesh builder with vertex colours and a per-vertex wind weight. */
 // a target for the parts a detail level leaves out (see vegetation_lod.js): it takes every call, so the draws stay the same, and keeps nothing
 export const DRY = new Proxy({}, { get: () => () => {} });
 
 export class MB {
-  constructor() { this.pos = []; this.col = []; this.wind = []; }
-  vert(p, c, w) { this.pos.push(p.x, p.y, p.z); this.col.push(c.r, c.g, c.b); this.wind.push(w); }
+  constructor() { this.pos = []; this.col = []; this.wind = []; this.normals = []; }
+  vert(p, c, w) { this.pos.push(p.x, p.y, p.z); this.col.push(c.r, c.g, c.b); this.wind.push(w); this.normals.push(0, 0, 0); }
   tri(a, b, c, ca, cb = ca, cc = ca, wa = 0, wb = wa, wc = wa) {
     this.vert(a, ca, wa); this.vert(b, cb, wb); this.vert(c, cc, wc);
   }
   quad(a, b, c, d, col, w = 0) { this.tri(a, b, c, col, col, col, w); this.tri(a, c, d, col, col, col, w); }
   /** add a three geometry; color: Color | (v:Vector3,i)=>Color ; wind: number | (v)=>number */
-  addGeo(geo, m, color, wind = 0) {
+  addGeo(geo, m, color, wind = 0, { smooth = false } = {}) {
     let g = geo.index ? geo.toNonIndexed() : geo.clone();
+    if (smooth) smoothNormals(g);
     g.applyMatrix4(m);
     const p = g.attributes.position;
     const v = new THREE.Vector3();
@@ -24,15 +26,28 @@ export class MB {
       v.fromBufferAttribute(p, i);
       const c = typeof color === 'function' ? color(v, i) : color;
       this.vert(v, c, typeof wind === 'function' ? wind(v) : wind);
+      if (smooth) {
+        const n = g.attributes.normal, k = this.normals.length - 3;
+        this.normals[k] = n.getX(i); this.normals[k + 1] = n.getY(i); this.normals[k + 2] = n.getZ(i);
+      }
     }
     g.dispose();
   }
-  build() {
+  build({ smooth = false } = {}) {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
     g.setAttribute('aWind', new THREE.Float32BufferAttribute(this.wind, 1));
     g.computeVertexNormals();
+    if (smooth) smoothNormals(g);
+    else {
+      const out = g.attributes.normal.array;
+      for (let i = 0; i < this.normals.length; i += 3) {
+        if (this.normals[i] || this.normals[i + 1] || this.normals[i + 2]) {
+          out[i] = this.normals[i]; out[i + 1] = this.normals[i + 1]; out[i + 2] = this.normals[i + 2];
+        }
+      }
+    }
     g.computeBoundingSphere();
     return g;
   }
@@ -52,8 +67,8 @@ export function mat4(px, py, pz, sx = 1, sy = sx, sz = sx, rx = 0, ry = 0, rz = 
 }
 
 /** wind sway injected into a standard material (instancing aware) */
-export function windify(mat, { grass = false } = {}) {
-  mat.customProgramCacheKey = () => 'wind2' + (grass ? 'g' : '');
+export function windify(mat, { grass = false, distant = false } = {}) {
+  mat.customProgramCacheKey = () => 'wind2' + (grass ? 'g' : '') + (distant ? 'd' : '');
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uWindDir: U.windDir, uWindStr: U.windStr, uPh1: U.windPh1, uPh2: U.windPh2, uPh3: U.windPh3, uWet: U.wet });
     sh.vertexShader = sh.vertexShader
@@ -85,6 +100,17 @@ uniform vec2 uWindDir; uniform float uWindStr, uPh1, uPh2, uPh3;`)
             transformed += dw;
           #endif
         }`);
+    if (distant) {
+      // A coherent low-frequency sway for small crowns: one sine instead of the
+      // near shader's gust-front and leaf ripple calculations. No CPU wind updates.
+      const start = sh.vertexShader.indexOf('          // gust fronts');
+      const end = sh.vertexShader.indexOf('          #ifdef USE_INSTANCING', start);
+      sh.vertexShader = sh.vertexShader.slice(0, start) + `
+          float sway = sin(uPh1 + ip.x*.11 + ip.z*.13);
+          vec2 push = uWindDir * (.16 + .5*uWindStr + sway*(.1 + .28*uWindStr)) * w * .6;
+          vec3 dw = vec3(push.x, -length(push)*.1, push.y);
+` + sh.vertexShader.slice(end);
+    }
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform float uWet;`)
@@ -99,7 +125,7 @@ export function noiseColor(base, x, y, z, k = 0.18, f = 0.5) {
 }
 
 /** build a tube along centers with radii */
-export function tube(mb, centers, radii, seg, colorFn, windFn) {
+export function tube(mb, centers, radii, seg, colorFn, windFn, { outward = false } = {}) {
   const rings = [];
   for (let i = 0; i < centers.length; i++) {
     const a = centers[Math.max(0, i - 1)], b = centers[Math.min(centers.length - 1, i + 1)];
@@ -120,8 +146,13 @@ export function tube(mb, centers, radii, seg, colorFn, windFn) {
     for (let j = 0; j < seg; j++) {
       const j2 = (j + 1) % seg;
       const a = rings[i][j], b = rings[i][j2], cc = rings[i + 1][j2], d = rings[i + 1][j];
-      mb.tri(a, d, b, c, c, c, w0, w1, w0);
-      mb.tri(b, d, cc, c, c, c, w0, w1, w1);
+      if (outward) {
+        mb.tri(a, b, d, c, c, c, w0, w0, w1);
+        mb.tri(b, cc, d, c, c, c, w0, w1, w1);
+      } else {
+        mb.tri(a, d, b, c, c, c, w0, w1, w0);
+        mb.tri(b, d, cc, c, c, c, w0, w1, w1);
+      }
     }
   }
 }

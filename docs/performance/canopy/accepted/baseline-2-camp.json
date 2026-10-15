@@ -1,0 +1,44 @@
+{
+  "environment": {
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 SUPER (0x00001E84) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "visibility": "visible"
+  },
+  "results": [
+    {
+      "scenario": "campView",
+      "quality": "high",
+      "seconds": 14,
+      "frames": 814,
+      "fpsAverage": 58.1,
+      "fpsOnePercentLow": 51.8,
+      "frameMsMedian": 17.1,
+      "frameMsP95": 18.2,
+      "frameMsP99": 19.3,
+      "updateMsMean": 3.59,
+      "renderMsMean": 13.34,
+      "renderMsP95": 14.2,
+      "gpuMsMean": 10.27,
+      "gpuMsP95": 11.6,
+      "gpuSamples": 814,
+      "drawCallsMean": 1309.35,
+      "trianglesMean": 10619253.52,
+      "memoryMB": 527.4,
+      "longTasks": 12,
+      "sceneFish": 608,
+      "monkeys": 48,
+      "creatures": 230,
+      "canvas": [
+        1920,
+        1080
+      ],
+      "pixelRatio": 1,
+      "dpr": 1,
+      "innerSize": [
+        1920,
+        1080
+      ],
+      "frameMsMeanFromFps": 17.212
+    }
+  ],
+  "errors": []
+}

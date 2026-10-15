@@ -1,0 +1,1052 @@
+[
+  {
+    "scenario": "wideIsland",
+    "level": "high",
+    "rounds": 3,
+    "secs": 4,
+    "rows": [
+      {
+        "variant": "unindexed, default order",
+        "fps": 44.83,
+        "frameMsMedian": 22.13,
+        "gpuMs": 13.93,
+        "updateMs": 3.28,
+        "renderCpuMs": 18.7,
+        "drawCalls": 1785.61,
+        "trianglesM": 9.83,
+        "fpsRounds": [
+          45,
+          44.2,
+          45.3
+        ]
+      },
+      {
+        "variant": "unindexed, trees first",
+        "fps": 44.63,
+        "frameMsMedian": 22.3,
+        "gpuMs": 13.73,
+        "updateMs": 3.3,
+        "renderCpuMs": 18.8,
+        "drawCalls": 1795.88,
+        "trianglesM": 9.84,
+        "fpsRounds": [
+          44.5,
+          44.2,
+          45.2
+        ]
+      },
+      {
+        "variant": "indexed, default order",
+        "fps": 44.7,
+        "frameMsMedian": 22.3,
+        "gpuMs": 14,
+        "updateMs": 3.39,
+        "renderCpuMs": 18.67,
+        "drawCalls": 1794.67,
+        "trianglesM": 9.83,
+        "fpsRounds": [
+          44.7,
+          44.6,
+          44.8
+        ]
+      },
+      {
+        "variant": "indexed, trees first",
+        "fps": 44.9,
+        "frameMsMedian": 22.23,
+        "gpuMs": 13.56,
+        "updateMs": 3.31,
+        "renderCpuMs": 18.65,
+        "drawCalls": 1781.09,
+        "trianglesM": 9.82,
+        "fpsRounds": [
+          45.2,
+          45,
+          44.5
+        ]
+      }
+    ],
+    "geometry": [
+      {
+        "name": "treeA LOD 0",
+        "before": 4896,
+        "after": 1044
+      },
+      {
+        "name": "treeA LOD 1",
+        "before": 1656,
+        "after": 504
+      },
+      {
+        "name": "treeA LOD 2",
+        "before": 792,
+        "after": 360
+      },
+      {
+        "name": "treeA LOD 0",
+        "before": 4116,
+        "after": 906
+      },
+      {
+        "name": "treeA LOD 1",
+        "before": 1416,
+        "after": 456
+      },
+      {
+        "name": "treeA LOD 2",
+        "before": 696,
+        "after": 336
+      },
+      {
+        "name": "treeA LOD 0",
+        "before": 4896,
+        "after": 1044
+      },
+      {
+        "name": "treeA LOD 1",
+        "before": 1656,
+        "after": 504
+      },
+      {
+        "name": "treeA LOD 2",
+        "before": 792,
+        "after": 360
+      },
+      {
+        "name": "treeA LOD 0",
+        "before": 4896,
+        "after": 1044
+      },
+      {
+        "name": "treeA LOD 1",
+        "before": 1656,
+        "after": 504
+      },
+      {
+        "name": "treeA LOD 2",
+        "before": 792,
+        "after": 360
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "bush LOD 0",
+        "before": 5040,
+        "after": 4955
+      },
+      {
+        "name": "bush LOD 1",
+        "before": 2904,
+        "after": 2860
+      },
+      {
+        "name": "bush LOD 2",
+        "before": 1932,
+        "after": 1908
+      },
+      {
+        "name": "bush LOD 0",
+        "before": 4596,
+        "after": 4477
+      },
+      {
+        "name": "bush LOD 1",
+        "before": 3120,
+        "after": 3044
+      },
+      {
+        "name": "bush LOD 2",
+        "before": 1920,
+        "after": 1874
+      },
+      {
+        "name": "banyan LOD 0",
+        "before": 27096,
+        "after": 8476
+      },
+      {
+        "name": "banyan LOD 1",
+        "before": 11436,
+        "after": 5866
+      },
+      {
+        "name": "banyan LOD 2",
+        "before": 7260,
+        "after": 5170
+      },
+      {
+        "name": "banyan LOD 0",
+        "before": 27024,
+        "after": 8406
+      },
+      {
+        "name": "banyan LOD 1",
+        "before": 11364,
+        "after": 5796
+      },
+      {
+        "name": "banyan LOD 2",
+        "before": 7188,
+        "after": 5100
+      },
+      {
+        "name": "banyan LOD 0",
+        "before": 26664,
+        "after": 8044
+      },
+      {
+        "name": "banyan LOD 1",
+        "before": 11004,
+        "after": 5434
+      },
+      {
+        "name": "banyan LOD 2",
+        "before": 6828,
+        "after": 4738
+      },
+      {
+        "name": "naupaka LOD 0",
+        "before": 24162,
+        "after": 22403
+      },
+      {
+        "name": "naupaka LOD 1",
+        "before": 13194,
+        "after": 12307
+      },
+      {
+        "name": "naupaka LOD 2",
+        "before": 6840,
+        "after": 6368
+      },
+      {
+        "name": "naupaka LOD 0",
+        "before": 22377,
+        "after": 20660
+      },
+      {
+        "name": "naupaka LOD 1",
+        "before": 13509,
+        "after": 12590
+      },
+      {
+        "name": "naupaka LOD 2",
+        "before": 6840,
+        "after": 6366
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 11820,
+        "after": 11516
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 6390,
+        "after": 6222
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 3852,
+        "after": 3772
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 11820,
+        "after": 11497
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 6390,
+        "after": 6218
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 3852,
+        "after": 3772
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 11820,
+        "after": 11467
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 6390,
+        "after": 6199
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 3852,
+        "after": 3748
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 11820,
+        "after": 11518
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 6390,
+        "after": 6248
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 3852,
+        "after": 3770
+      },
+      {
+        "name": "naupaka LOD 0",
+        "before": 24477,
+        "after": 22692
+      },
+      {
+        "name": "naupaka LOD 1",
+        "before": 13401,
+        "after": 12450
+      },
+      {
+        "name": "naupaka LOD 2",
+        "before": 6876,
+        "after": 6386
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 13212,
+        "after": 12820
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 7086,
+        "after": 6920
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 4200,
+        "after": 4114
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 13212,
+        "after": 12856
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 7086,
+        "after": 6915
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 4200,
+        "after": 4103
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 13212,
+        "after": 12849
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 7086,
+        "after": 6909
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 4200,
+        "after": 4110
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 13212,
+        "after": 12846
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 7086,
+        "after": 6906
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 4200,
+        "after": 4086
+      },
+      {
+        "name": "",
+        "before": 31,
+        "after": 31
+      },
+      {
+        "name": "",
+        "before": 240,
+        "after": 57
+      },
+      {
+        "name": "",
+        "before": 47,
+        "after": 47
+      },
+      {
+        "name": "",
+        "before": 19,
+        "after": 19
+      },
+      {
+        "name": "",
+        "before": 108,
+        "after": 61
+      },
+      {
+        "name": "",
+        "before": 31,
+        "after": 31
+      },
+      {
+        "name": "",
+        "before": 240,
+        "after": 57
+      },
+      {
+        "name": "",
+        "before": 47,
+        "after": 47
+      },
+      {
+        "name": "",
+        "before": 19,
+        "after": 19
+      },
+      {
+        "name": "",
+        "before": 108,
+        "after": 61
+      }
+    ]
+  },
+  {
+    "scenario": "jungle48",
+    "level": "high",
+    "rounds": 3,
+    "secs": 4,
+    "rows": [
+      {
+        "variant": "unindexed, default order",
+        "fps": 56.5,
+        "frameMsMedian": 17.67,
+        "gpuMs": 9.62,
+        "updateMs": 4.43,
+        "renderCpuMs": 12.97,
+        "drawCalls": 759.48,
+        "trianglesM": 9.46,
+        "fpsRounds": [
+          57.5,
+          56.3,
+          55.7
+        ]
+      },
+      {
+        "variant": "unindexed, trees first",
+        "fps": 55.17,
+        "frameMsMedian": 17.93,
+        "gpuMs": 9.57,
+        "updateMs": 4.46,
+        "renderCpuMs": 13.33,
+        "drawCalls": 769.82,
+        "trianglesM": 9.53,
+        "fpsRounds": [
+          56,
+          53.6,
+          55.9
+        ]
+      },
+      {
+        "variant": "indexed, default order",
+        "fps": 56.07,
+        "frameMsMedian": 17.73,
+        "gpuMs": 9.54,
+        "updateMs": 4.34,
+        "renderCpuMs": 13.19,
+        "drawCalls": 761.32,
+        "trianglesM": 9.51,
+        "fpsRounds": [
+          55.6,
+          56.1,
+          56.5
+        ]
+      },
+      {
+        "variant": "indexed, trees first",
+        "fps": 56.33,
+        "frameMsMedian": 17.7,
+        "gpuMs": 9.45,
+        "updateMs": 4.32,
+        "renderCpuMs": 13.13,
+        "drawCalls": 767.06,
+        "trianglesM": 9.46,
+        "fpsRounds": [
+          55.6,
+          56,
+          57.4
+        ]
+      }
+    ],
+    "geometry": [
+      {
+        "name": "treeA LOD 0",
+        "before": 4896,
+        "after": 1044
+      },
+      {
+        "name": "treeA LOD 1",
+        "before": 1656,
+        "after": 504
+      },
+      {
+        "name": "treeA LOD 2",
+        "before": 792,
+        "after": 360
+      },
+      {
+        "name": "treeA LOD 0",
+        "before": 4116,
+        "after": 906
+      },
+      {
+        "name": "treeA LOD 1",
+        "before": 1416,
+        "after": 456
+      },
+      {
+        "name": "treeA LOD 2",
+        "before": 696,
+        "after": 336
+      },
+      {
+        "name": "treeA LOD 0",
+        "before": 4896,
+        "after": 1044
+      },
+      {
+        "name": "treeA LOD 1",
+        "before": 1656,
+        "after": 504
+      },
+      {
+        "name": "treeA LOD 2",
+        "before": 792,
+        "after": 360
+      },
+      {
+        "name": "treeA LOD 0",
+        "before": 4896,
+        "after": 1044
+      },
+      {
+        "name": "treeA LOD 1",
+        "before": 1656,
+        "after": 504
+      },
+      {
+        "name": "treeA LOD 2",
+        "before": 792,
+        "after": 360
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "treeB LOD 0",
+        "before": 5916,
+        "after": 1422
+      },
+      {
+        "name": "treeB LOD 1",
+        "before": 2136,
+        "after": 792
+      },
+      {
+        "name": "treeB LOD 2",
+        "before": 1128,
+        "after": 624
+      },
+      {
+        "name": "bush LOD 0",
+        "before": 5040,
+        "after": 4955
+      },
+      {
+        "name": "bush LOD 1",
+        "before": 2904,
+        "after": 2860
+      },
+      {
+        "name": "bush LOD 2",
+        "before": 1932,
+        "after": 1908
+      },
+      {
+        "name": "bush LOD 0",
+        "before": 4596,
+        "after": 4477
+      },
+      {
+        "name": "bush LOD 1",
+        "before": 3120,
+        "after": 3044
+      },
+      {
+        "name": "bush LOD 2",
+        "before": 1920,
+        "after": 1874
+      },
+      {
+        "name": "banyan LOD 0",
+        "before": 27096,
+        "after": 8476
+      },
+      {
+        "name": "banyan LOD 1",
+        "before": 11436,
+        "after": 5866
+      },
+      {
+        "name": "banyan LOD 2",
+        "before": 7260,
+        "after": 5170
+      },
+      {
+        "name": "banyan LOD 0",
+        "before": 27024,
+        "after": 8406
+      },
+      {
+        "name": "banyan LOD 1",
+        "before": 11364,
+        "after": 5796
+      },
+      {
+        "name": "banyan LOD 2",
+        "before": 7188,
+        "after": 5100
+      },
+      {
+        "name": "banyan LOD 0",
+        "before": 26664,
+        "after": 8044
+      },
+      {
+        "name": "banyan LOD 1",
+        "before": 11004,
+        "after": 5434
+      },
+      {
+        "name": "banyan LOD 2",
+        "before": 6828,
+        "after": 4738
+      },
+      {
+        "name": "naupaka LOD 0",
+        "before": 24162,
+        "after": 22403
+      },
+      {
+        "name": "naupaka LOD 1",
+        "before": 13194,
+        "after": 12307
+      },
+      {
+        "name": "naupaka LOD 2",
+        "before": 6840,
+        "after": 6368
+      },
+      {
+        "name": "naupaka LOD 0",
+        "before": 22377,
+        "after": 20660
+      },
+      {
+        "name": "naupaka LOD 1",
+        "before": 13509,
+        "after": 12590
+      },
+      {
+        "name": "naupaka LOD 2",
+        "before": 6840,
+        "after": 6366
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 11820,
+        "after": 11516
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 6390,
+        "after": 6222
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 3852,
+        "after": 3772
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 11820,
+        "after": 11497
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 6390,
+        "after": 6218
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 3852,
+        "after": 3772
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 11820,
+        "after": 11467
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 6390,
+        "after": 6199
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 3852,
+        "after": 3748
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 11820,
+        "after": 11518
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 6390,
+        "after": 6248
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 3852,
+        "after": 3770
+      },
+      {
+        "name": "naupaka LOD 0",
+        "before": 24477,
+        "after": 22692
+      },
+      {
+        "name": "naupaka LOD 1",
+        "before": 13401,
+        "after": 12450
+      },
+      {
+        "name": "naupaka LOD 2",
+        "before": 6876,
+        "after": 6386
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 13212,
+        "after": 12820
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 7086,
+        "after": 6920
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 4200,
+        "after": 4114
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 13212,
+        "after": 12856
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 7086,
+        "after": 6915
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 4200,
+        "after": 4103
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 13212,
+        "after": 12849
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 7086,
+        "after": 6909
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 4200,
+        "after": 4110
+      },
+      {
+        "name": "hibiscus LOD 0",
+        "before": 13212,
+        "after": 12846
+      },
+      {
+        "name": "hibiscus LOD 1",
+        "before": 7086,
+        "after": 6906
+      },
+      {
+        "name": "hibiscus LOD 2",
+        "before": 4200,
+        "after": 4086
+      },
+      {
+        "name": "",
+        "before": 31,
+        "after": 31
+      },
+      {
+        "name": "",
+        "before": 240,
+        "after": 57
+      },
+      {
+        "name": "",
+        "before": 47,
+        "after": 47
+      },
+      {
+        "name": "",
+        "before": 19,
+        "after": 19
+      },
+      {
+        "name": "",
+        "before": 108,
+        "after": 61
+      },
+      {
+        "name": "",
+        "before": 31,
+        "after": 31
+      },
+      {
+        "name": "",
+        "before": 240,
+        "after": 57
+      },
+      {
+        "name": "",
+        "before": 47,
+        "after": 47
+      },
+      {
+        "name": "",
+        "before": 19,
+        "after": 19
+      },
+      {
+        "name": "",
+        "before": 108,
+        "after": 61
+      }
+    ]
+  }
+]
