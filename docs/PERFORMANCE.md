@@ -326,3 +326,29 @@ drawn per frame in the lagoon view at that point (the tag keys are the ones in `
 - **Phase 7 (animated creatures in motion)** and **Phase 8 (AI scheduling)** were not started in this phase.
 - **60 fps** is not claimed. The 1% lows and the frame-time percentiles from the five-scene benchmark were not re-run on
   the final build, because the GPU load from other applications made separate runs unreliable.
+
+## Phase 4 (started): what the game renders on a 4K television
+
+**Diagnostic added** (`src/dev/display_diag.js`): press **F2** in the game (or open `?diag=1`) for an on-screen readout of the Chrome viewport,
+screen size, canvas CSS size, device pixel ratio, render scale, drawing-buffer size and megapixels, quality level, MSAA samples, bloom, average
+FPS, 1% low, median / 95th / 99th percentile frame time, CPU render time (time spent inside `composer.render`) and the last pass's draw calls and
+triangles. `window.__display()` returns the same as an object and `await window.__display.sample(10)` measures ten seconds of real play.
+GPU time is not in the readout (the existing `?perf=1` benchmark measures it).
+
+**What the code does** (`src/core.js`, `setQuality`): the render scale is the screen's device pixel ratio, capped per quality level (high 1.75,
+medium 1.25, low 1.0). It is a cap on the ratio, not on the pixel count, so what F11 produces depends on the Windows scaling setting:
+
+| Windows scale | Chrome viewport (CSS px) | DPR | high | medium | low |
+|---|---|---|---|---|---|
+| 100% | 3840 x 2160 | 1.0 | 3840 x 2160 (8.3 MP, 4x MSAA) | same size, 2x MSAA | same size, no MSAA, no bloom |
+| 150% | 2560 x 1440 | 1.5 | 3840 x 2160 | 3200 x 1800 | 2560 x 1440 |
+| 200% | 1920 x 1080 | 2.0 | 3360 x 1890 (6.4 MP) | 2400 x 1350 | 1920 x 1080 |
+
+These are derived from the code, **not measured on the television**: this session's browser pane had no visible size, and the benchmarks to date
+ran at 1920 x 1080 (2.1 MP). If the television runs at 100% scaling, the game renders four times the pixels of those benchmarks, and the automatic
+quality drop (medium, then low) does not reduce the resolution at all, only MSAA, bloom and shadow size. That is the most likely reason a 1080p
+benchmark is not a guide to the F11 experience.
+
+**Next step:** press F2 in fullscreen on the television and record the readout (a photo is enough); that fixes which row applies. Then measure
+the five scenarios at that buffer size with the interleaved A/B tool, and decide whether a pixel-count cap (for example about 5 MP on high) is
+needed. Not yet done: the CPU render-path profile, creature visual verification in motion, selective vegetation LOD, simulation scheduling.
