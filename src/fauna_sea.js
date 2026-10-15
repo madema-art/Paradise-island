@@ -112,8 +112,29 @@ class Gull {
   enter(state, t) { this.state = state; this.stateT = t; }
   takeOff() { if (this.state === 'perch' && this.perch && this.perch.water) fx.splash(this.pos.x, this.pos.y, this.pos.z, 0.25, { quiet: true }); this.enter('takeoff', 1.3); this.vy = 3.5; this.speed = 4; this.setClip('Flight_Takeoff'); }
   moveForward(dt) { this.pos.x += Math.sin(this.heading) * this.speed * dt; this.pos.z += Math.cos(this.heading) * this.speed * dt; }
+  /** a gliding gull holds its wings swept back with a slight lift at the wrist and a little dihedral, like a real one, not straight out like a plank */
+  sweepWings(dt) {
+    if (!this.wings) {
+      const f = (n) => { let b = null; this.root.traverse((o) => { if (o.name === n) b = o; }); return b; };
+      this.wings = { L: f('WingL'), R: f('WingR'), hL: f('HandL'), hR: f('HandR'), k: 0, applied: null };
+    }
+    const W = this.wings;
+    if (W.applied) { const a = W.applied; W.L.rotation.y -= a.wy; W.R.rotation.y += a.wy; W.L.rotation.z -= a.wz; W.R.rotation.z += a.wz; W.hL.rotation.y -= a.hy; W.hR.rotation.y += a.hy; W.applied = null; }
+    return W;
+  }
+  applyWingSweep(dt) {
+    const W = this.wings; if (!W || !W.L) return;
+    const cur = this.current, glide = cur === this.actions.get('Flight_Soar_Glide') ? 1 : cur === this.actions.get('Flight_Banked_Turn') ? 0.5 : 0;
+    W.k += (glide - W.k) * (1 - Math.exp(-3 * dt));
+    if (W.k < 0.01) return;
+    const a = { wy: -0.34 * W.k, wz: -0.12 * W.k, hy: -0.5 * W.k };       // a left wing swings back with a negative turn about its own axis; a positive z lowers it, so the lift is negative
+    W.L.rotation.y += a.wy; W.R.rotation.y -= a.wy; W.L.rotation.z += a.wz; W.R.rotation.z -= a.wz; W.hL.rotation.y += a.hy; W.hR.rotation.y -= a.hy;
+    W.applied = a;
+  }
   update(dt, t) {
+    this.sweepWings(dt);
     this.mixer.update(dt);
+    this.applyWingSweep(dt);
     this.stateT -= dt;
     const flush = Math.hypot(camera.position.x - this.pos.x, camera.position.z - this.pos.z) < 7 && camera.position.y - this.pos.y < 6;
     if (this.state === 'perch') this.updatePerch(dt, flush);
