@@ -101,3 +101,9 @@ Not measured: frame rate in play (the test browser renders in software).
 
 Creating and building seldom happen unaided because the collection fills slowly (more finds per trip, or other sources of materials such as Codex's gathering, would help); only eight kinds of goal exist (no fishing-for-pleasure, swimming, climbing, camp maintenance or visiting a favourite place on purpose);
 no goal knows about the canoe; collections are not shown anywhere in the UI; resuming a goal after a reload; a Field Guide page for his collection and memories; base-clip versions of the gesture clips; the unfinished swim clips; the fishing and coconut branches.
+
+## Merged since: Codex's coconut overhaul and fishing-to-dinner
+
+- **Coconut overhaul** (`codex/coconut-props`, `src/coconut.js`): merged whole. The castaway's coconut drink uses its states (whole, opened, half); the monkey contest and the survival nodes use the same props.
+- **Fishing-to-dinner** (`14d0c62`, `fishing.js`, `fishing_outing.js`): merged. It adds an `angling` activity (gather and twist rope, craft a rod, a real cast, bite, fight and landing, examine the fish, release or keep it, carry it home, prepare, cook and eat it) and its clips (`fish_cast`, `fish_wait_stand`, `fish_bite_reaction`, `fish_reel_in`, `fish_inspect_catch`, `prepare_food`, `tend_fire`, `eat_food`).
+  **It stays dormant until a fish population is registered.** The angling activity needs `registerFishingPopulation(...)` from Claude's school system (the bridge described in `docs/AUTONOMOUS_FISHING_MILESTONE_2.md`), which does not exist yet; until then the castaway keeps his old shoreline, spear and canoe fishing, which still credits catches (Codex's version retired it, which left him unable to feed himself). When a provider is registered the old routines stop awarding fish and `angling` takes over.

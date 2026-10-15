@@ -1282,7 +1282,11 @@ export function buildCastaway() {
     : a === 'sleep' || a === 'shelter' ? 'his lean-to'
     : a === 'camp' ? 'the campfire' : a === 'watch' ? 'the wildlife' : a === 'hunt' ? 'the rat burrows' : a === 'drink' ? (dKind === 'coconut' ? 'the coconut palms' : dSpot ? dSpot.name : 'the water') : a === 'chase' ? 'the monkeys’ clearing' : a === 'flee' ? 'a hasty retreat' : 'the shore');
   // a catch: he is pleased, which can tip him into a dance
-  const landed = () => { mind.note('The fish slipped away; this old fishing routine has no population ownership link.', null, 0); }; // Retired visual routines cannot award unowned catches.
+  // With a registered fish population (production angling) the old routines cannot credit catches; until the schools are connected they are how he feeds himself.
+  const landed = (name) => {
+    if (life.fishing.pop && life.fishing.pop()) { mind.note('The fish slipped away; this old fishing routine has no population ownership link.', null, 0); return; }
+    name = name || pick(FISH_NAMES); caught.push(name); mind.note(`Landed a ${name}.`, act, 0.06, true);
+  };
   const sessionEnd = (where) => { const ok = caught.length > sessionCatch; mind.note(ok ? `A good session at ${where}.` : `No bites at ${where}.`, null, ok ? 0.04 : -0.05); };
 
   // watching: he turns to follow a nearby animal with his head and body, for as long as it stays close
