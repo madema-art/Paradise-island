@@ -1,9 +1,9 @@
 // South Pacific vegetation: pandanus, banyan, breadfruit, plumeria, beach shrubs and a garden of tropical flowers.
 import * as THREE from 'three';
 import { makeNaupakaGeo } from './naupaka.js';
-import { lodFamily } from './vegetation_lod.js';
+import { lodFamily, lodLevels } from './vegetation_lod.js';
 import { scene } from './core.js';
-import { MB, C, shade, mat4, tube, lumpy, windify } from './gfx.js';
+import { MB, C, shade, mat4, tube, lumpy, windify, DRY } from './gfx.js';
 import { addCollider, getHeight, getSlope, riverDist, lavaDist, TEMPLE, COVE, LAKE, SPRING, FAIRY, VOL, MOTU, falls } from './world.js';
 import { burn, rnd, rr, pick, clamp, lerp, smoothstep, mulberry32, TAU } from './util.js';
 import { place, instanced, vegMat, clearOf, jungleN, makePalm, coralGeo } from './flora.js';
@@ -264,8 +264,9 @@ function makePlumeria(flowerCols) {
 }
 
 /* ---------------------------------------------------------------- shrubs with blossoms */
-function bushWith(blossom, { n = 4, R0 = 0.8, flowers = 12, green = ['#2c7a32', '#3a8a38', '#276a2d'], flat = 0.8, spread = 1.0 }) {
+function bushWith(blossom, { n = 4, R0 = 0.8, flowers = 12, green = ['#2c7a32', '#3a8a38', '#276a2d'], flat = 0.8, spread = 1.0, detail = 0 }) {
   const mb = new MB(), spots = [], nectarFlowers = [];
+  const thin = detail === 0 ? 1 : detail === 1 ? 2 : 4;   // detail 1 keeps every second leaf card and flower, detail 2 every fourth
   for (let i = 0; i < n; i++) {
     const a = rnd() * TAU, r0 = i ? rr(0.4, 1.0) * spread : 0, c = V(Math.cos(a) * r0, rr(0.55, 0.85) * flat, Math.sin(a) * r0), R = rr(0.7, 1.15) * R0 / 0.8;
     const g = lumpy(new THREE.IcosahedronGeometry(1, 1), 0.25, i), base = C(pick(green));
@@ -277,13 +278,14 @@ function bushWith(blossom, { n = 4, R0 = 0.8, flowers = 12, green = ['#2c7a32', 
     const p = s.c.clone().add(V(dir.x * s.R * 1.12, dir.y * s.R * s.flat * 1.12, dir.z * s.R * 1.12));
     const t1 = new THREE.Vector3().crossVectors(dir, UP).normalize(), sz = rr(0.17, 0.3), col = shade(C(pick(green)), rr(0.9, 1.25));
     const tip = p.clone().addScaledVector(dir, sz * 1.25), l = p.clone().addScaledVector(t1, sz * 0.5).addScaledVector(dir, sz * 0.45), r = p.clone().addScaledVector(t1, -sz * 0.5).addScaledVector(dir, sz * 0.45);
-    mb.tri(p, l, tip, shade(col, 0.8), col, shade(col, 1.1), 0.5, 0.8, 1.0); mb.tri(p, tip, r, shade(col, 0.8), shade(col, 1.1), col, 0.5, 1.0, 0.8);
+    const out = i % thin ? DRY : mb;
+    out.tri(p, l, tip, shade(col, 0.8), col, shade(col, 1.1), 0.5, 0.8, 1.0); out.tri(p, tip, r, shade(col, 0.8), shade(col, 1.1), col, 0.5, 1.0, 0.8);
   }
   for (let f = 0; f < flowers; f++) {
     const s = pick(spots), th = rnd() * TAU, ph = rr(0.15, 1.55);
     const dir = V(Math.sin(ph) * Math.cos(th), Math.cos(ph), Math.sin(ph) * Math.sin(th));
     const p = s.c.clone().add(V(dir.x * s.R * 1.26, dir.y * s.R * s.flat * 1.26, dir.z * s.R * 1.26));
-    blossom(mb, p, dir, f);
+    blossom(f % thin ? DRY : mb, p, dir, f, Math.sqrt(thin));
     nectarFlowers.push({ position: p.clone(), direction: dir.clone() });
   }
   const geo = mb.build(); geo.userData.nectarFlowers = nectarFlowers; return geo;
@@ -440,11 +442,11 @@ export function buildFlora2() {
   nauList.forEach((a) => nauB[Math.floor(rnd() * 2)].push(a));
   nau.forEach((g, i) => lodFamily(instanced(g[0], vegMat, nauB[i], { inspect: 'naupaka', scale: [0.8, 1.5], cast: false }), g, nauB[i]));
 
-  const hib = F.FLOWER_COLORS.hibiscus.map((col) => bushWith((mb, p, dir) => F.hibiscus(mb, p, dir, col), { n: 4, R0: 0.95, flowers: 30, green: ['#2a8a38', '#35a044', '#2e9440'], flat: 0.9 }));
+  const hib = F.FLOWER_COLORS.hibiscus.map((col) => lodLevels((detail) => bushWith((mb, p, dir, f, k) => F.hibiscus(mb, p, dir, col, 1.2 * k), { n: 4, R0: 0.95, flowers: 30, green: ['#2a8a38', '#35a044', '#2e9440'], flat: 0.9, detail })));
   const hibList = place(150, (x, z, h, s) => (h < 2.4 || h > 24 || s > 0.4 || !clearOf(x, z, 2)) ? false : 0.5 * (0.5 + 0.7 * smoothstep(2.2, 8, h)), 150 * 80);
   const hibB = hib.map(() => []);
   hibList.forEach((a) => hibB[Math.floor(rnd() * hib.length)].push(a));
-  hib.forEach((g, i) => { const im = instanced(g, vegMat, hibB[i], { inspect: 'hibiscus', scale: [0.8, 1.5], cast: false }); registerNectar(im, g, hibB[i]); });
+  hib.forEach((g, i) => { const im = instanced(g[0], vegMat, hibB[i], { inspect: 'hibiscus', scale: [0.8, 1.5], cast: false }); lodFamily(im, g, hibB[i]); registerNectar(im, g[0], hibB[i]); });
 
   const bg = ['#d81b8c', '#ff6a1a', '#e0243a', '#ffb4d8'].map((col) => bushWith((mb, p, dir) => F.bougain(mb, p, dir, col), { n: 5, R0: 1.0, flowers: 70, green: ['#2f7a34', '#3a8a3a'], flat: 0.65, spread: 1.5 }));
   const bgList = place(46, (x, z, h, s) => {
@@ -611,11 +613,11 @@ export function buildSouthSeas() {
 
   // --- the beach belt: hibiscus and frangipani where the lagoon beach meets the jungle, and blossoms fallen on the sand
   const near = (x, z) => Math.hypot(x - (COVE.x - 28), z - (COVE.z - 12)) < 62;
-  const hibBelt = F.FLOWER_COLORS.hibiscus.map((col) => bushWith((mb, p, dir) => F.hibiscus(mb, p, dir, col), { n: 4, R0: 0.95, flowers: 34, green: ['#2a8a38', '#35a044', '#2e9440'], flat: 0.9 }));
+  const hibBelt = F.FLOWER_COLORS.hibiscus.map((col) => lodLevels((detail) => bushWith((mb, p, dir, f, k) => F.hibiscus(mb, p, dir, col, 1.2 * k), { n: 4, R0: 0.95, flowers: 34, green: ['#2a8a38', '#35a044', '#2e9440'], flat: 0.9, detail })));
   const hbL = place(22, (x, z, h, s) => h > 2.2 && h < 4.2 && s < 0.3 && near(x, z) && clearOf(x, z, 2.5), 22 * 400);
   const hbB = hibBelt.map(() => []);
   hbL.forEach((a, i) => hbB[i % hibBelt.length].push(a));
-  hibBelt.forEach((g, i) => { const im = instanced(g, vegMat, hbB[i], { inspect: 'hibiscus', scale: [1.0, 1.55], cast: false }); registerNectar(im, g, hbB[i]); });
+  hibBelt.forEach((g, i) => { const im = instanced(g[0], vegMat, hbB[i], { inspect: 'hibiscus', scale: [1.0, 1.55], cast: false }); lodFamily(im, g, hbB[i]); registerNectar(im, g[0], hbB[i]); });
   const plBelt = [['#ffffff', '#fff8ee'], ['#fff1c8', '#ffe6a8'], ['#ffc0d6', '#ff8fb2'], ['#ffe36a', '#ffd23a']].map((c) => makePlumeria(c));
   const plL = place(12, (x, z, h, s) => h > 2.4 && h < 6 && s < 0.3 && near(x, z) && clearOf(x, z, 3), 12 * 400);
   const plB = plBelt.map(() => []);

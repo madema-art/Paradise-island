@@ -4,6 +4,9 @@ import { rr, rnd } from './util.js';
 import { noise2 } from './noise.js';
 
 /** Non-indexed mesh builder with vertex colours and a per-vertex wind weight. */
+// a target for the parts a detail level leaves out (see vegetation_lod.js): it takes every call, so the draws stay the same, and keeps nothing
+export const DRY = new Proxy({}, { get: () => () => {} });
+
 export class MB {
   constructor() { this.pos = []; this.col = []; this.wind = []; }
   vert(p, c, w) { this.pos.push(p.x, p.y, p.z); this.col.push(c.r, c.g, c.b); this.wind.push(w); }

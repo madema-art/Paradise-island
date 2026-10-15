@@ -6,12 +6,22 @@
 // (their instances are spread over the island, and their counts change), and static_cull.js leaves them alone.
 import * as THREE from 'three';
 import { scene, camera, U, updaters } from './core.js';
-import { vegMat } from './flora.js';
+import { recordDraws, replayDraws } from './util.js';
 
 const PX = [26, 10];   // on-screen radius in device pixels: below PX[0] the mid shrub is drawn, below PX[1] the far one
 const HYST = 1.2;      // back to the finer level only past 1.2 x the threshold
 const RADIUS = 1.0;    // metres, at scale 1: a bounding radius for the shrub
 const families = [];
+
+/**
+ * The three detail levels of one builder, [full, mid, far]. make(detail) runs once with the world's random stream (level 0, exactly as
+ * before), recording the draws it makes; levels 1 and 2 are then built from those same draws, so each is the same plant, and the
+ * world's stream is spent once, as before.
+ */
+export function lodLevels(make) {
+  const { result, values } = recordDraws(() => make(0));
+  return [result, replayDraws(values, () => make(1)), replayDraws(values, () => make(2))];
+}
 
 /** proxy: the family's full-detail InstancedMesh (already placed and tagged). geos: [full, mid, far]. list: the placed items (a.sc). */
 export function lodFamily(proxy, geos, list) {
@@ -26,8 +36,8 @@ export function lodFamily(proxy, geos, list) {
     sc[i] = list[i].sc;
   }
   const batches = geos.map((g, lvl) => {
-    const im = new THREE.InstancedMesh(g, vegMat, n);
-    im.name = 'naupaka LOD ' + lvl;
+    const im = new THREE.InstancedMesh(g, proxy.material, n);
+    im.name = (proxy.userData.inspect ? proxy.userData.inspect.key : 'vegetation') + ' LOD ' + lvl;
     im.castShadow = false; im.receiveShadow = true;
     im.frustumCulled = false; im.count = 0;
     im.userData.lodBatch = true;

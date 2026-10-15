@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { ROCK_VARIANTS, ROCK_SETS, makeRockGeo } from './rocks.js';
 import { scene, updaters, U, env, events } from './core.js';
-import { MB, C, jit, shade, mat4, windify, tube, lumpy, M } from './gfx.js';
+import { MB, C, jit, shade, mat4, windify, tube, lumpy, M, DRY } from './gfx.js';
 import { addPerch, addCollider, getHeight, getSlope, getNormal, riverDist, lavaDist, ascentDist, TEMPLE, SPRING, FAIRY, LAKE, COVE, VOL, falls } from './world.js';
 import { rnd, rr, pick, clamp, lerp, smoothstep, TAU, mulberry32 } from './util.js';
 import { fbm } from './noise.js';
 import * as F from './flowers.js';
 import { tagInstanced } from './inspect.js';
 import { waterAt, ripple } from './ripples.js';
+import { lodFamily, lodLevels } from './vegetation_lod.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 export const palms = [];
@@ -210,8 +211,11 @@ function fern() {
 }
 
 const FLOWER = ['#ff4f7a', '#ffd23f', '#fff6e8', '#ff7a2f', '#c64fff'];
-function bush(flowers) {
+function bush(flowers, detail = 0) {
   const mb = new MB();
+  const thin = detail === 0 ? 1 : detail === 1 ? 2 : 4;   // detail 1 keeps every second flower, detail 2 every fourth
+  let k = 0;
+  const kw = Math.sqrt(thin);   // kept flowers grow to keep the colour of the bush
   const greens = ['#2e7a2c', '#3c8a30', '#4a9a38'];
   const n = 3 + Math.floor(rnd() * 2);
   for (let i = 0; i < n; i++) {
@@ -224,7 +228,8 @@ function bush(flowers) {
       for (let f = 0; f < 5; f++) {
         const th = rnd() * TAU, ph = rr(0.05, 1.15), dir = V(Math.sin(ph) * Math.cos(th), Math.cos(ph), Math.sin(ph) * Math.sin(th));
         const p = c.clone().add(V(dir.x * R * 1.25, dir.y * R * 0.82 * 1.25, dir.z * R * 1.25)), col = pick(FLOWER);
-        if (rnd() < 0.45) F.hibiscus(mb, p, dir, col, 0.7); else F.daisy(mb, p, dir, col, 0.7);
+        const out = k++ % thin ? DRY : mb;
+        if (rnd() < 0.45) F.hibiscus(out, p, dir, col, 0.7 * kw); else F.daisy(out, p, dir, col, 0.7 * kw);
       }
     }
   }
@@ -463,7 +468,8 @@ export function buildFlora() {
   fList.forEach((a) => fB[Math.floor(rnd() * 2)].push(a));
   ferns.forEach((g, i) => instanced(g, vegMat, fB[i], { inspect: 'fern', scale: [0.8, 1.7], cast: false }));
 
-  const bushes = [bush(true), bush(true), bush(false)];
+  // the two flowered shrubs get three detail levels (the same shrub with fewer flowers); the bare one has nothing to thin
+  const bushes = [lodLevels((d) => bush(true, d)), lodLevels((d) => bush(true, d)), [bush(false)]];
   const bList = place(520, (x, z, h, s) => {
     if (h < 2.2 || h > 38 || s > 0.5 || !clearOf(x, z, 2)) return false;
     if (Math.hypot(x - TEMPLE.x, z - TEMPLE.z) < 9) return false;
@@ -471,7 +477,7 @@ export function buildFlora() {
   }, 520 * 40);
   const bB = [[], [], []];
   bList.forEach((a) => bB[Math.floor(rnd() * 3)].push(a));
-  bushes.forEach((g, i) => instanced(g, vegMat, bB[i], { inspect: 'bush', scale: [0.7, 1.5], cast: false }));
+  bushes.forEach((g, i) => { const im = instanced(g[0], vegMat, bB[i], { inspect: 'bush', scale: [0.7, 1.5], cast: false }); if (g.length > 1) lodFamily(im, g, bB[i]); });
 
   /* ----- grass ----- */
   const gm = new THREE.MeshStandardMaterial({ map: grassTexture(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1, metalness: 0 });
