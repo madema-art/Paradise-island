@@ -53,8 +53,6 @@ import * as WX from './weather.js';
 const { updateWeather, applyWeather } = WX;
 import { createAudio } from './audio.js';
 import { initUI } from './ui.js';
-import { initSurvival } from './survival/index.js';
-import { initNeedsHud } from './needs_hud.js';
 
 const T0 = performance.now();
 const msg = (t, p) => {
@@ -156,8 +154,6 @@ async function boot() {
   indexInspectables();
   const audio = createAudio(volcano);
   initUI({ presets, secrets, volcano, audio, labels });
-  initSurvival();
-  initNeedsHud();
 
   window.__dbg = { schoolMind: { detachFish, attachFish }, events, fx, RIP, falls, THREE, scene, camera, cam, flora, env, volcano, secrets, renderer, composer, bloom, sun, updaters, WORLD, creatures, dolphinPod: seaFauna.dolphinPod, dolphinPods: seaFauna.dolphinPods, audio, WX, lorikeetFlocks: seaFauna.lorikeetFlocks, frigatebirdColony: seaFauna.frigatebirdColony };
   // development only: ?inspect= holds the camera on one school (src/dev/school_inspect.js); normal play never loads it
@@ -172,8 +168,8 @@ async function boot() {
   window.__sizes = () => window.__dbg.creatures.filter((c) => c.sizeInfo).map((c) => ({ id: c.id, name: c.name, group: +c.group.scale.x.toFixed(3), info: c.sizeInfo }));
   window.render_game_to_text = () => {
     const man = creatures.find(c => c.id === 'castaway');
-    return JSON.stringify({ axes: 'Y up; X/Z island metres', mode: castawayAI.paused ? 'survival' : 'observation',
-      activity: man?.sim.current?.act, position: man?.group.position.toArray(), needs: man?.sim.needs,
+    return JSON.stringify({ axes: 'Y up; X/Z island metres', mode: castawayAI.controlled() ? 'control' : 'autonomous',
+      activity: man?.sim.current?.act, position: man?.group.position.toArray(),
       life: castawayAI.life?.summary(), wildlife: creatures.filter(c => c.id !== 'castaway').length });
   };
   if (location.search.includes('lifeReview')) {
@@ -210,9 +206,6 @@ async function boot() {
         birds: f.members.map(m => ({ id: m.i, age: m.age, state: m.state, clip: m.model.clip,
           position: m.pos.toArray(), speed: m.vel.length(), landings: m.landings, nectarVisits: m.visits })) })) });
     window.advanceTime = ms => { for (let n = Math.ceil(ms / (1000 / 60)); n > 0; n--) step(1 / 60); composer.render(); };
-  }
-  if (new URLSearchParams(location.search).has('coconutReview')) {
-    const { startCoconutReview } = await import('./dev/coconut_review.js'); startCoconutReview(step);
   }
   loop();
 }

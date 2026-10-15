@@ -1,6 +1,7 @@
-import { Resources } from './survival/nodes.js';
-import { Structure, canPlace } from './survival/structures.js';
-import { LEVELS } from './survival/items.js';
+import { Resources } from './crafting/nodes.js';
+import { env } from './core.js';
+import { Structure, canPlace } from './crafting/structures.js';
+import { LEVELS } from './crafting/items.js';
 import { getHeight, getSlope, lavaDist, resolveColliders } from './world.js';
 import { ComfortProject, LIFE_SAVE_KEY } from './comfort_project.js';
 import { findProjectPath } from './project_path.js';
@@ -37,7 +38,7 @@ export function createComfortLife(camp, hut, mind) {
   function save() {
     try {
       const p = fishingEcosystem.provider;
-      localStorage.setItem(saveKey, JSON.stringify({ fishing: fishing.snapshot(), fishingPopulation: p ? { key: p.key, data: p.snapshot() } : populationSave, v: 1, inventory: actor.s, clock: mind.clock, needs: mind.needs, project: project.snapshot(), structures: actor.structs.map(s => s.serialize()), resources: actor.res.snapshot(mind.clock) }));
+      localStorage.setItem(saveKey, JSON.stringify({ fishing: fishing.snapshot(), fishingPopulation: p ? { key: p.key, data: p.snapshot() } : populationSave, v: 1, inventory: actor.s, clock: mind.clock, project: project.snapshot(), structures: actor.structs.map(s => s.serialize()), resources: actor.res.snapshot(mind.clock) }));
       storageError = false;
     } catch { storageError = true; }
   }
@@ -45,8 +46,6 @@ export function createComfortLife(camp, hut, mind) {
     planRoute: (from, to) => findProjectPath(from, to, safe, getHeight),
     findSite, canPlace, safe, create: (...args) => new Structure(...args), save,
     reward: () => {
-      mind.needs.comfort = Math.min(1, mind.needs.comfort + .3);
-      mind.needs.fulfillment = Math.min(1, mind.needs.fulfillment + .25);
       mind.note('Gathered materials, built and enjoyed his own evening fire.', 'project', .16, true);
     },
     note: kind => { if (kind !== 'enjoy') mind.note(kind === 'gather' ? 'Collected materials for his evening fire.' : kind === 'build' ? 'Finished building his personal campfire.' : 'Fed a stick to his new fire.', null, .005); },
@@ -54,11 +53,10 @@ export function createComfortLife(camp, hut, mind) {
   const fishing = new FishingOuting(actor, {
     population: () => fishingEcosystem.provider, safe,
     planRoute: (from, to) => findProjectPath(from, to, safe, getHeight), save, now: () => mind.clock,
-    wantsDinner: () => mind.needs.hunger > .2,
+    wantsDinner: () => env.tod >= 16.5 && env.tod < 20.5,          // the evening meal is the reason to go out for a dinner
     note: text => mind.note(text, null, .005),
     reward: kind => {
-      mind.needs.fulfillment = Math.min(1, mind.needs.fulfillment + .12);
-      if (kind === 'meal') { mind.ate('fish'); mind.needs.comfort = Math.min(1, mind.needs.comfort + .08); }
+      if (kind === 'meal') mind.ate('fish');
       mind.note(kind === 'meal' ? 'A rewarding fishing afternoon and a dinner of his own.' : 'Returned a fine fish to the water.', 'angling', .08, true);
     },
   });
@@ -73,7 +71,6 @@ export function createComfortLife(camp, hut, mind) {
       actor.s.stats = Object.fromEntries(Object.entries(saved.inventory.stats || {}).filter(([k, v]) => /^(gathered\.|built\.|lit|crafted\.|fish|cooked|ate\.)/.test(k) && Number.isFinite(v) && v >= 0));
       actor.s.xp = Math.max(0, Math.min(10000, Number(saved.inventory.xp) || 0)); actor.addXp(0);
       mind.clock = Math.max(0, Math.min(1e6, Number(saved.clock) || 0));
-      for (const k of Object.keys(mind.needs)) if (Number.isFinite(saved.needs?.[k])) mind.needs[k] = Math.max(0, Math.min(1, saved.needs[k]));
       for (const q of (Array.isArray(saved.structures) ? saved.structures : []).slice(0, 1)) {
         if (q.type !== 'campfire' || ![q.x, q.z].every(Number.isFinite) || Math.hypot(q.x - camp.x, q.z - camp.z) > 25 || canPlace(q.type, q.x, q.z, actor.structs)) continue;
         const st = new Structure(q.type, q.x, q.z, Number(q.yaw) || 0); st.fuel = Math.max(0, Math.min(6, Number(q.fuel) || 0)); actor.structs.push(st);
@@ -81,7 +78,7 @@ export function createComfortLife(camp, hut, mind) {
       project.restore(saved.project); actor.res.restore(saved.resources, mind.clock);
       fishing.restore(saved.fishing); populationSave = saved.fishingPopulation || null; restorePopulation();
     }
-  } catch { /* An unavailable or damaged observation save does not affect classic survival. */ }
+  } catch { /* An unavailable or damaged observation save leaves a fresh start for his projects. */ }
   const summary = () => ({ ...project.summary(), inventory: { ...actor.s.inv }, structures: actor.structs.map(s => s.serialize()), fishing: fishing.summary(), storageError });
   mind.fishingText = () => fishing.describe();
   mind.projectText = () => {
@@ -94,7 +91,7 @@ export function createComfortLife(camp, hut, mind) {
     actor, project, fishing, summary, save, safe, restorePopulation,
     update(dt, dh, t, pos, paused) {
       actor.res.setVisible(!paused);
-      if (paused) { project.pause('Classic survival is active'); fishing.pause('Classic survival is active'); return; }
+      if (paused) { project.pause('He is under your control'); fishing.pause('He is under your control'); return; }
       actor.res.update(dt, mind.clock, pos);
       for (const st of actor.structs) st.update(dt, dh, t);
       saveT += dt; if (saveT >= 10) { saveT = 0; save(); }

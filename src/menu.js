@@ -10,6 +10,8 @@ export const SECTIONS = ['view', 'world', 'sound', 'guide', 'journal'];
 const SEL = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [data-nav]';
 
 let open = false, section = 0, following = false, controller = false;
+// under direct control: null, or the view he is seen from ('third' or 'first')
+let controlView = null;
 let lastHint = '';
 
 const menuEl = () => document.getElementById('menu');
@@ -111,6 +113,8 @@ export function toggleMenu() { if (open) closeMenu(); else openMenu(); }
 
 /** the follow state, for the hint bar */
 export function setFollowing(on) { following = !!on; renderHints(); }
+/** direct control, for the hint bar: the view (third or first person) while he is under control, or null */
+export function setControl(view) { controlView = view || null; renderHints(); }
 
 /** true when the last input came from the pad (within half a second), so the hints name the pad's buttons */
 // pad input switches the hints to the controller; a key press (below) switches them back. Stick and button activity counts, however old.
@@ -119,6 +123,10 @@ export function noteInput(connected, active) {
 }
 
 const HINT = {
+  control: {
+    pad: 'stick walk  ·  right stick look  ·  RT run  ·  A pick up  ·  R3 view  ·  Back let go  ·  Start menu',
+    keys: 'WASD walk  ·  Shift run  ·  F pick up  ·  T view  ·  V let go  ·  Tab menu',
+  },
   play: {
     pad: '◀▶ creature  ·  LB RB view  ·  Y nearest  ·  Start menu',
     keys: '[ ] creature  ·  1–0 places  ·  Tab menu  ·  H hide',
@@ -134,8 +142,9 @@ export function renderHints() {
   const el = document.getElementById('hints');
   if (!el) return;
   const kind = controller ? 'pad' : 'keys';
-  let text = open ? HINT.menu[kind] : HINT.play[kind];
-  if (!open && following) text = (controller ? 'hold B let go  ·  ' : 'Esc release  ·  ') + text;
+  let text = open ? HINT.menu[kind] : controlView ? HINT.control[kind] : HINT.play[kind];
+  if (!open && controlView) text = (controlView === 'first' ? 'First person' : 'Third person') + '  ·  ' + text;
+  if (!open && !controlView && following) text = (controller ? 'hold B let go  ·  ' : 'Esc release  ·  ') + text;
   if (text === lastHint) return;
   lastHint = text;
   el.textContent = text;

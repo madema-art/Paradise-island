@@ -1,6 +1,6 @@
 // The rock climb up Mount Ignis. A switchback trail (cut into the cone, see world.js) leads to a basecamp ledge; from there a natural
 // rock climb (no ropes or fixed gear) goes up the south buttress through two rest ledges to the crest of the crater rim. While climbing, the climber rides a rail along
-// that line: W/S up and down, A/D shuffle sideways, Shift hurries. Both the first-person walk and survival mode use this.
+// that line: W/S up and down, A/D shuffle sideways, Shift hurries. It is the rock-climbing code the volcano ascent uses.
 import * as THREE from 'three';
 import { ASCENT, VOL, getHeight } from './world.js';
 import { clamp } from './util.js';

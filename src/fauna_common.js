@@ -11,7 +11,7 @@ scene.add(fauna);
 export const actors = { castaway: { on: false, x: 0, y: 0, z: 0 }, camScale: 1 };
 const _np = { x: 0, z: 0, d: 99, cast: false };
 /** the nearest person to a creature at (x, z): the camera, or the castaway if he is closer. d is 99 when out of vertical reach.
- *  A walking or survival camera is a person; the free and follow cameras are an unseen observer, so animals only mind them from close by (actors.camScale, set by camera.js). */
+ *  A camera on the castaway is a person; the free and follow cameras are an unseen observer, so animals only mind them from close by (actors.camScale, set by camera.js). */
 export function nearestPerson(x, z, y, reachY = 7) {
   const cam = camera.position, cd = Math.abs(cam.y - y) < reachY ? Math.hypot(cam.x - x, cam.z - z) / actors.camScale : 99;
   const c = actors.castaway, kd = c.on && Math.abs(c.y - y) < 4 ? Math.hypot(c.x - x, c.z - z) : 99;

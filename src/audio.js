@@ -381,7 +381,7 @@ export function createAudio(volcano) {
   events.on('land', (v, surf) => { if (ac && started) flat(0.5, (d, t) => { (STEP[surf] || STEP.grass)(d, t, 1.8); voices.thud(d, t, v * 0.6); }); });
   events.on('swim', (run) => { if (ac && started) flat(0.8, (d, t) => nz(t, 0.6, run ? 0.32 : 0.22, d, { f: 1200, f1: 450, q: 0.7, attack: 0.12 })); });
 
-  /* ------------------------------------------------------------ survival mode effects */
+  /* ------------------------------------------------------------ effects for finds, camp work and the rest */
   const SV = {
     pickup(d, t) { osc('triangle', 620, 980, t, 0.09, 0.22, d); osc('sine', 1240, 1500, t + 0.05, 0.08, 0.1, d); nz(t, 0.05, 0.12, d, { ft: 'highpass', f: 3000 }); },
     thud(d, t) { voices.thud(d, t, 0.6); },

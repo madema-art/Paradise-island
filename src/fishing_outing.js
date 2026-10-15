@@ -1,5 +1,5 @@
-import { RECIPES } from './survival/items.js';
-import { canAfford, spend, awardRecipe, gatherResource, fuelFire, cookItems } from './survival/mechanics.js';
+import { RECIPES } from './crafting/items.js';
+import { canAfford, spend, awardRecipe, gatherResource, fuelFire, cookItems } from './crafting/mechanics.js';
 import { FishingSession, FISH_PROFILES } from './fishing.js';
 const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const recipe = id => RECIPES.find(r => r.id === id);

@@ -1,4 +1,4 @@
-// Survival mode: items, recipes, levels and quests. Pure data, no rendering.
+// Crafting: items, recipes, levels and quests for the castaway's own projects (his evening fire, his fishing outings). Pure data, no rendering.
 
 /** icon: shown in the inventory; food: what eating it does ({hunger, thirst, health, sick: chance of a stomach ache}) */
 export const ITEMS = {

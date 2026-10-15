@@ -519,9 +519,8 @@ export function liveFacts(c, speed, pos) {
   } else if (c.name === 'The Castaway') {
     const m = s.summary ? s.summary() : null;
     if (m) {
-      sub('Doing', m.doing); sub('Intention', m.intention); sub('Happiness', m.happiness + ' (' + m.bars.happy + '%)'); sub('Hunger', m.hunger + ' (food ' + m.bars.food + '%)');
-      sub('Drinking', m.drinking); sub('Energy', m.energy + ' (' + m.bars.energy + '%)');
-      sub('Curiosity', m.curiosity); sub('Survival record', m.survived); sub('Closest to empty', m.lowest); sub('Current interests', m.interests);
+      sub('Doing', m.doing); sub('Intention', m.intention); sub('Drinking', m.drinking);
+      sub('Record', m.survived); sub('Current interests', m.interests);
       sub('Recent experiences', m.recent); sub('Notable memories', m.memories); sub('Developing preferences', m.preferences);
       sub('Current goal', m.goal); sub('What stirs in him', m.drivesText); sub('His collection', m.collection); sub('What he has made', m.made); sub('Skills', m.skills); sub('Places he knows', m.knownPlaces);
     }

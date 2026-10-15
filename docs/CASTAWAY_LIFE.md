@@ -5,7 +5,7 @@ day, and what he does changes the island. The code is `src/castaway_life.js` (dr
 `src/castaway_mind.js`, and the quest runner, clip picker, gestures and face in `src/human.js` and `src/castaway_new.js`.
 
 ```
-NEEDS (food, energy, happiness; Codex's comfort project)  ->  DRIVES  ->  GOALS  ->  PLANS  ->  ACTIONS  ->  ANIMATIONS  ->  OUTCOMES  ->  MEMORIES
+CONTEXT (time of day, weather, place, wildlife, recency)  ->  DRIVES  ->  GOALS  ->  PLANS  ->  ACTIONS  ->  ANIMATIONS  ->  OUTCOMES  ->  MEMORIES
 ```
 
 ## What was reused from Codex
@@ -14,8 +14,8 @@ Reviewed: `codex/autonomous-comfort` (worktree `D:\ParadiseIsland-Life-Workshop`
 
 | Question | Answer from Codex's work (commit 43f4208, merged here) |
 |---|---|
-| Needs | food, fatigue, boredom, happiness (existing), plus `comfort` and `fulfillment` raised by the evening fire |
-| Motivation priority | the existing utility scores in `castaway_mind.js` (urgent needs and danger interrupt; budgets keep him at a task) |
+| Context | time of day, weather, place, wildlife nearby, how recently each activity was done (no needs, no meters) |
+| Motivation priority | the weights in `castaway_mind.js`, drawn at random by weight; danger and heavy rain interrupt; budgets keep him at a task |
 | Goal selection | utility choice among activities; Codex added one, `project` (a personal evening fire) |
 | Multistep plans | `ComfortProject`: gather, build, fuel, enjoy; each a timed job with a bounded route |
 | Interruptions | `project.pause()`; unfinished animation time is discarded, materials and structures stay |
@@ -47,7 +47,7 @@ raises the appeal of its goal. After any goal he is **content** for 0.6 to 1.8 h
 ## Goals, plans and what they change
 
 A goal is a drive, a target and a reason (`why`). The goals with the highest value win: appetite, learned preference for that kind of goal, a variety weight (what he has not done for a while is more attractive) and a little chance.
-Urgent things (a boar, rain, hunger, exhaustion, a drink he is overdue for) override a goal; the goal is paused and, if it is under 16 game hours old, offered again, so he can decide to carry on.
+Urgent things (a boar, heavy rain) override a goal; the goal is paused and, if it is under 16 game hours old, offered again, so he can decide to carry on.
 
 | Goal | Steps | Lasting result |
 |---|---|---|

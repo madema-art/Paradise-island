@@ -1,5 +1,5 @@
-import { RECIPES } from './survival/items.js';
-import { gatherResource, constructRecipe, fuelFire } from './survival/mechanics.js';
+import { RECIPES } from './crafting/items.js';
+import { gatherResource, constructRecipe, fuelFire } from './crafting/mechanics.js';
 
 export const LIFE_SAVE_KEY = 'paradise.observation.life.v1';
 const recipe = RECIPES.find(r => r.id === 'campfire');

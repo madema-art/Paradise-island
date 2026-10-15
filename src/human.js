@@ -1,8 +1,7 @@
-// The castaway: a blond, sun-tanned man living a simple island life —
-// hiking (and running) all over the island, fishing and spear-fishing anywhere there is water, swimming,
-// drinking at fresh water, cooking and eating what he catches by the campfire, and sleeping in his lean-to.
-// He keeps fed and rested while pursuing comfort and accomplishment. He runs from
-// boars, chases monkeys for fun, and when he is happy he dances, whistles and sings.
+// The castaway: a blond, sun-tanned man living a simple island life. Left alone, he chooses what to do from the moment
+// (castaway_mind.js): hiking and running, fishing and spear-fishing in the shallows, swimming and wading, drinking, cooking and eating
+// what he catches by the campfire, napping and sleeping in his lean-to, stargazing, dancing and singing. He runs from boars and chases
+// monkeys for fun. The player can take him over (control.js): the same body and the same clips, with the autonomy paused.
 import * as THREE from 'three';
 import { createCoconut, setCoconutState } from './coconut.js';
 import { scene, env, camera, updaters, creatures, events } from './core.js';
@@ -22,6 +21,7 @@ import { makeRatModel } from './rat_model.js';
 import { buildNewBody, coverage, clipMeta } from './castaway_new.js';
 import { createLife } from './castaway_life.js';
 import { findProjectPath } from './project_path.js';
+import { ctrl, attachCastaway } from './control.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const wrap = (a) => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
@@ -31,9 +31,8 @@ const FISH_NAMES = ['parrotfish', 'red snapper', 'mackerel', 'grouper', 'sea bre
 
 const STAND = { py: 0.9, rx: 0, spX: 0, spY: 0, nkX: 0, hdX: 0, hdY: 0, aPs: 0.05, aPe: -0.2, aPz: 0.08, aNs: 0.05, aNe: -0.2, aNz: -0.08, lPh: 0, lPk: 0, lNh: 0, lNk: 0, lPz: 0.03, lNz: -0.03 };
 
-/** survival mode borrows the island: while paused the AI castaway stands aside */
-
-export const castawayAI = { paused: false };
+/** the castaway as the rest of the game sees him: whether the player has him (buildCastaway sets this) */
+export const castawayAI = { controlled: () => false };
 
 
 
@@ -237,12 +236,12 @@ export function buildCastaway() {
   let inWater = false, snap = false, hurry = false, speedNow = 0, snoreT = 0, waveT = 0, route = [], wpi = 0, pauseKind = 'look';
   let noProg = 0, spot = null, sessionT = 0, waitT = 8, meal = 'dinner', sleepWake = false, started = false;
   const caught = [];
-  let runFlag = false, vocal = null, vocalCd = rr(6, 12), vHdX = 0, vHdY = 0, vSpY = 0, noteT = 0;
+  let vocal = null, vocalCd = rr(6, 12), vHdX = 0, vHdY = 0, vSpY = 0, noteT = 0;
   const bob = { pos: V(), flying: 0, from: V(), to: V(), biteT: 0, hit: false };
   const info = { tag: null };
   const _hw = V(), _tip = V(), _hand = V();
   let desc = '';
-  // his mind: needs, mood, memory and what he decides to do (see castaway_mind.js)
+  // his mind: memory, and the choices he makes from the moment (see castaway_mind.js)
   const mind = makeMind();
   const life = createComfortLife(camp, hut, mind);
   castawayAI.life = life;
@@ -253,7 +252,7 @@ export function buildCastaway() {
   if (new URLSearchParams(location.search).has('fishingReview')) {
     const site = fishable.filter(s => s.method === 'bank' && life.safe(s.stand))
       .sort((a, b) => Math.hypot(a.stand.x - camp.x, a.stand.z - camp.z) - Math.hypot(b.stand.x - camp.x, b.stand.z - camp.z))[0];
-    if (site) installFishingReview({ ...site, target: { ...site.target, y: (waterAt(site.target.x, site.target.z) ?? 0) - .45 } }, life, () => castawayAI.paused);
+    if (site) installFishingReview({ ...site, target: { ...site.target, y: (waterAt(site.target.x, site.target.z) ?? 0) - .45 } }, life, () => ctrl.on);
     else console.error('Fishing review requires a safe bank');
   }
   let lastHours = env.hours;
@@ -270,6 +269,7 @@ export function buildCastaway() {
     return ` ${[nf ? `${nf} fish` : '', nr ? `${nr} rat${nr > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ')} in the basket so far.`;
   };
   function describe() {
+    if (act === 'control') return 'Under player control.';
     if (act === 'angling') return life.fishing.describe();
     if (act === 'project') return mind.projectText();
     if (act === 'quest') { const q = castawayAI.lf && castawayAI.lf.quest, st = q && q.steps[q.i]; return q ? `${st && st.label ? st.label.charAt(0).toUpperCase() + st.label.slice(1) : 'Following his own interests'} (${q.why}).` : 'Following his own interests.'; }
@@ -301,6 +301,10 @@ export function buildCastaway() {
     if (act === 'watch') return phase === 'watch' ? `Watching the ${watchName}, turning his head to follow it.` : 'Looking around for something to watch.';
     if (act === 'linger' && rockUp) return lingerGest ? `Sitting on top of a boulder, ${LINGER_TEXT[lingerGest]}.` : 'Sitting on top of a boulder, taking in the view.';
     if (act === 'linger') return lingerGest ? `Resting in the view, ${LINGER_TEXT[lingerGest]}.` : 'Resting in the view.';
+    if (act === 'nap') return phase === 'asleep' ? 'Napping in the shade, out of the sun.' : 'Lying down for a nap.';
+    if (act === 'stargaze') return phase === 'gaze' ? 'Lying back on the sand, looking up at the stars.' : 'Walking out to a clear spot to look at the sky.';
+    if (act === 'wade') return phase === 'wade' ? 'Wading about in the shallows.' : 'Wading out into the shallows.';
+    if (act === 'run') return 'Running a stretch of the coast toward ' + (route[wpi] ? route[wpi].name : 'the next point') + '.';
     if (act === 'dance') return 'Dancing, just for the joy of it.';
     if (act === 'drink' && dKind === 'coconut') return phase === 'goto' ? 'Racing for a fallen coconut before the monkeys can snatch it.' : phase === 'crack' ? 'Knocking the top off a coconut.' : phase === 'sip' ? 'Drinking the sweet water of a coconut.' : 'Wiping his mouth.';
     if (act === 'drink') return phase === 'drink' || phase === 'kneel' ? `Kneeling at ${dSpot ? dSpot.name : 'the water'} to drink from cupped hands.` : phase === 'rise' ? 'Wiping his mouth.' : `Walking to ${dSpot ? dSpot.name : 'fresh water'} for a drink.`;
@@ -374,7 +378,6 @@ export function buildCastaway() {
   }
   // a run: quick cadence, long stride, high knees, torso leaning into it, bent arms pumping
   function run(dt, spd, staffHand = false) {
-    runFlag = true;
     ph += dt * (3.4 + spd * 1.45);
     const s = Math.sin(ph), c = Math.cos(ph), a = clamp(spd / 5.6, 0.6, 1.15);
     Object.assign(P, STAND, {
@@ -430,21 +433,25 @@ export function buildCastaway() {
     act = a; phase = 'init'; sub = ''; stuck = 0; lastOff = 0; hurry = true; clearProps(); me.chest.scale.set(1, 1, 1);
     if (a === 'camp') meal = caught.length ? 'dinner' : 'breakfast';      // fish if he has caught any, otherwise a coconut
     if (a === 'fish') spot = null;
+    runOnly = a === 'run';
+    if (a === 'nap') napSpot = pickNapSpot();
   }
 
   /* ================================================================ SLEEP */
   function sleepUpdate(dt, t) {
+    const bed = act === 'nap' && napSpot ? napSpot : { x: hut.mat.x, z: hut.mat.z, y: hut.mat.y, yaw: hut.yaw };
     if (phase === 'init') phase = 'goto';
     if (phase === 'goto') {
-      const d = step(hut.mat.x, hut.mat.z, hurry ? 3.6 : 2.4, dt, inWater);
+      mind.current.until = Math.max(mind.current.until, mind.clock + 0.3);      // the walk to the bed is part of the nap or the night's sleep
+      const d = step(bed.x, bed.z, hurry ? 3.6 : 2.4, dt, inWater);
       settleY(dt); if (inWater) swimGait(dt); else gait(dt, speedNow);
-      if (d < 0.7 || stuck > 8) { phase = 'lie'; pt = 0; x = hut.mat.x; z = hut.mat.z; heading = hut.yaw + Math.PI / 2; hurry = false; }
+      if (d < 0.7 || stuck > 8) { phase = 'lie'; pt = 0; x = bed.x; z = bed.z; heading = bed.yaw + Math.PI / 2; hurry = false; }
       apply(dt); return;
     }
-    x = damp(x, hut.mat.x, 4, dt); z = damp(z, hut.mat.z, 4, dt); y = damp(y, hut.mat.y, 6, dt);
+    x = damp(x, bed.x, 4, dt); z = damp(z, bed.z, 4, dt); y = damp(y, bed.y, 6, dt);
     if (phase === 'lie') {
       pt += dt;
-      heading = turnTo(heading, hut.yaw + Math.PI / 2, 2.5 * dt);
+      heading = turnTo(heading, bed.yaw + Math.PI / 2, 2.5 * dt);
       if (pt < 1.3) setPose({ py: 0.55, spX: 0.5, lPh: -1.2, lPk: 1.9, lNh: -1.2, lNk: 1.9, aPs: -0.5, aNs: -0.5, aPe: -0.8, aNe: -0.8 });
       else if (pt < 2.4) setPose({ py: 0.2, rx: -1.2, lPh: -0.3, lPk: 0.3, lNh: -0.2, lNk: 0.25, aPs: 0.1, aNs: 0.1, aPz: 0.2, aNz: -0.2 });
       else { phase = 'asleep'; pt = 0; }
@@ -461,7 +468,6 @@ export function buildCastaway() {
     }
     apply(dt);
   }
-
   /* ================================================================ HIKE */
   let jog = false, jogLeg = -1, legT = 0, legMax = 60;
   function hikeUpdate(dt, t) {
@@ -473,21 +479,22 @@ export function buildCastaway() {
       // sometimes he heads where the monkeys forage (and may end up chasing one)
       const ms = creatures.filter((c) => c.name === 'Capuchin monkey' && c.sim && c.sim.state !== 'perch' && !unsafeAt(c.sim.x, c.sim.z, 26));
       if (ms.length && rnd() < 0.6) { const m = pick(ms).sim; route[0] = { x: m.x, z: m.z, name: 'where the monkeys forage' }; }
-      wpi = 0; phase = 'walk'; clearProps(); staff.visible = true; jogLeg = -1;
+      if (runOnly) route = coastRoute();
+      wpi = 0; phase = 'walk'; clearProps(); staff.visible = !runOnly; jogLeg = -1;
     }
     settleY(dt);
     if (phase === 'walk') {
       const w = route[wpi];
       const dleg = Math.hypot(w.x - x, w.z - z);
       if (jogLeg !== wpi) {          // a long way to go: when he is in good spirits (or hungry) he runs it
-        jogLeg = wpi; legT = 0; legMax = dleg / 1.5 + 14; const m = mind.needs;
-        jog = dleg > 35 && rnd() < 0.12 + 0.6 * Math.max(0, m.happy - 0.5) + (m.hunger > 0.6 ? 0.2 : 0);
+        jogLeg = wpi; legT = 0; legMax = dleg / 1.5 + 14;
+        jog = runOnly ? dleg > 6 : dleg > 35 && rnd() < 0.15;
       }
       const d = step(w.x, w.z, jog && dleg > 7 ? 5.6 : hurry ? 3.8 : 2.7, dt, inWater);
       if (inWater) swimGait(dt); else move(dt, true);
       if (d < 1.4) hurry = false;
       legT += dt;                                    // a leg that takes far too long (he keeps being turned aside) ends where he has got to
-      if (d < 1.2 || stuck > 7 || legT > legMax) { phase = 'pause'; pt = rr(6, 10); stuck = 0; pauseKind = pick(['look', 'rest', 'look']); }
+      if (d < 1.2 || stuck > 7 || legT > legMax) { phase = 'pause'; pt = runOnly ? rr(1.2, 2.4) : rr(6, 10); stuck = 0; pauseKind = pick(['look', 'rest', 'look']); }
     } else {
       pt -= dt;
       const lk = Math.sin(t * 0.45 + 2) * 0.9;
@@ -1178,7 +1185,7 @@ export function buildCastaway() {
   const CAN_WHISTLE = new Set(['hike', 'fish', 'canoe', 'watch', 'linger', 'camp', 'drink', 'swim', 'dance']);
   const CAN_SING = new Set(['camp', 'linger', 'dance', 'canoe', 'swim', 'hike']);
   function vocalUpdate(dt, t) {
-    const hp = mind.needs.happy;
+    const hp = 0.6 + (ctx && ctx.justCaught ? 0.4 : 0) + (env.tod >= 9 && env.tod < 17 && wx.rain < 0.1 ? 0.05 : 0);     // how readily he whistles: more after a catch, in fine weather by day
     const ok = act !== 'sleep' && act !== 'flee' && act !== 'chase' && act !== 'shelter' && !(act === 'camp' && (phase === 'eat' || phase === 'drink')) && !(act === 'drink' && phase !== 'goto' && phase !== 'edge') && !(act === 'fish' && (sub === 'bite' || sub === 'reel'));
     if (vocal) {
       vocal.t += dt;
@@ -1268,7 +1275,7 @@ export function buildCastaway() {
     const nutT = eco.coconuts ? eco.coconuts.free(x, z, 80, true) : null;
     let freshNear = false;
     for (const q of freshSpots) if (Math.hypot(q.stand.x - x, q.stand.z - z) < 45) { freshNear = true; break; }
-    return { hour: env.tod, rain: wx.rain, fishOK: !!(fishSpots && fishSpots.length) && !life.fishing.available(mind.clock), anglingOK: life.fishing.available(mind.clock), fishingPending: !!life.fishing.pending(), canoeOK: !!cn && wx.rain < 0.2, calm: wx.rain < 0.1, wildlife: wild, watchable: nearC ? nearC.name : null, watchC: nearC,
+    return { hour: env.tod, rain: wx.rain, justCaught: mind.clock - mind.memory.lastGood < 0.6, napSpotOK: !unsafeAt(x, z, 24), shallowOK: shallowNear(), fishOK: !!(fishSpots && fishSpots.length) && !life.fishing.available(mind.clock), anglingOK: life.fishing.available(mind.clock), fishingPending: !!life.fishing.pending(), canoeOK: !!cn && wx.rain < 0.2, calm: wx.rain < 0.1, wildlife: wild, watchable: nearC ? nearC.name : null, watchC: nearC,
       projectOK: life.project.available(mind.clock), quest: lf.propose(), drives: lf.drivesNow(), huntBoost: mind.clock < huntBoostUntil, novel: (mind.memory.tries.hike || 0) < 5, rockNear: perchesNear(x, z, 35, (p) => p.kind !== 'volcano' && p.r >= 0.45 && p.y - getHeight(p.x, p.z) > 0.5 && p.y - getHeight(p.x, p.z) < 1.5 && !unsafeAt(p.x, p.z, 22)).length > 0, threat: !!threatC, threatC, monkeyC, unsafeCamp: unsafeAt(camp.x, camp.z, 30), unsafeHut: unsafeAt(hut.mat.x, hut.mat.z, 24), freshOK: freshSpots.some((q) => !unsafeAt(q.stand.x, q.stand.z, 22)), freshNear, ratC: !!ratT, coconutOK: !!nutT, caught: caught.length };
   }
   let ctx = null, ctxT = 0, curDh = 0, sessionCatch = 0;
@@ -1375,7 +1382,7 @@ export function buildCastaway() {
     if (phase === 'init') { phase = 'dance'; pt = 0; dph = 0; danceStyle = Math.floor(rnd() * 5); mind.danced(); }
     settleY(dt);
     pt += dt;
-    dph += dt * (2.0 + 1.6 * clamp(mind.needs.happy, 0, 1));
+    dph += dt * 2.4;
     const s = Math.sin(dph), c = Math.cos(dph);
     let p = { py: 0.9 + 0.07 * Math.abs(s) };
     if (danceStyle === 0) p = { ...p, spY: 0.22 * s, hdY: 0.25 * s, lPh: 0.35 * s, lNh: -0.35 * s, lPk: 0.3 + 0.3 * Math.max(0, c), lNk: 0.3 + 0.3 * Math.max(0, -c), aPs: -1.2 + 0.5 * c, aNs: -1.2 - 0.5 * c, aPe: -0.9, aNe: -0.9 };
@@ -1384,6 +1391,139 @@ export function buildCastaway() {
     else p = { ...p, spY: 0.3 * s, spX: 0.05, hdX: -0.1, lPh: 0.12 * s, lNh: -0.12 * s, aPs: -0.7 + 0.5 * s, aNs: -0.7 - 0.5 * s, aPe: -1.6 + 0.5 * c, aNe: -1.6 - 0.5 * c };
     setPose(p);
     apply(dt);
+  }
+
+  /* ================================================================ direct control (control.js): he is driven, and autonomy waits */
+  // Taking control stops what he was doing where he stands: nothing is teleported or restarted. The body is the same rig, driven by the
+  // same clips (clipFor), so the animation is his own. Releasing control leaves him where he is, and his autonomy chooses from that spot.
+  let pickT = -1;
+  const isSleeping = () => act === 'sleep' || act === 'nap';
+  function takeControl() {
+    if (act === 'angling') life.fishing.pause('taken over by the player');
+    if (act === 'project') life.project.pause('taken over by the player');
+    if (act === 'quest') { lf.pause('taken over by the player'); showHeld(null); qFace = null; }
+    if (act === 'hunt') endHunt();
+    if (act === 'drink' && coco.visible) coco.visible = false;
+    if (act === 'canoe') bobber.visible = line.visible = false;      // he steps out of the canoe where it floats; the canoe stays put
+    if (isSleeping() && (phase === 'asleep' || phase === 'lie') && !sleepWake) { sleepWake = true; pt = 0; me.chest.scale.set(1, 1, 1); }
+    rockUp = null;                                                    // he keeps his place on the boulder
+    if (act !== 'control' && act !== 'none') mind.finish();
+    mind.current = null; vocal = null;
+    clearProps(); mealFish.visible = mealSupport.visible = false; me.chest.scale.set(1, 1, 1);
+    act = 'control'; phase = 'free'; sub = ''; hurry = false; stuck = 0; pickT = -1;
+    return true;
+  }
+  function releaseControl() {
+    act = 'none'; phase = 'init'; sub = ''; hurry = false; stuck = 0; pickT = -1; mind.current = null;
+  }
+  // one step in the direction asked, if the ground allows it (a wall is slid along rather than stopping him dead)
+  function moveBy(dist, ux, uz) {
+    _p.x = x + ux * dist; _p.z = z + uz * dist;
+    resolveColliders(_p, 0.42);
+    if (!passable(_p.x, _p.z, 0.3, true)) return false;
+    x = _p.x; z = _p.z; return true;
+  }
+  function controlStep(dt, t) {
+    if (sleepWake && wakeUp(dt)) return;                  // he gets up where he lay, before anything else
+    if (pickT >= 0) { pickT += dt; speedNow = damp(speedNow, 0, 8, dt); if (pickT > 2.1) pickT = -1; settleY(dt); apply(dt); return; }
+    if (ctrl.actQueued) {                                  // pick up a keepsake in reach
+      ctrl.actQueued = false;
+      const got = lf.pickupNear(x, z, 2.2);
+      if (got) { pickT = 0; events.emit('sfx', 'pickup'); mind.note(got.text, null, 0, true); settleY(dt); apply(dt); return; }
+    }
+    const inp = ctrl.input, fx0 = Math.sin(ctrl.yaw), fz0 = Math.cos(ctrl.yaw);
+    // the view's own forward and right (right is (-cos, sin)): the stick and the keys walk relative to the view
+    let mx = fx0 * inp.fwd - fz0 * inp.side, mz = fz0 * inp.fwd + fx0 * inp.side;
+    let ml = Math.hypot(mx, mz);
+    if (ml > 1) { mx /= ml; mz /= ml; ml = 1; }
+    const moving = ml > 0.1;
+    const top = inWater ? 1.7 : inp.run ? 5.0 : inp.slow ? 0.9 : 2.0;
+    speedNow = damp(speedNow, moving ? top * Math.min(1, ml) : 0, moving ? 6 : 9, dt);
+    if (ctrl.view === 'first') heading = ctrl.yaw;        // first person: his body turns with the view
+    else if (moving) heading = turnTo(heading, Math.atan2(mx, mz), 8 * dt);   // third person: he turns to where he walks
+    if (moving && speedNow > 0.02) {
+      const dist = speedNow * dt;
+      if (!(moveBy(dist, mx, mz) || moveBy(dist, mx, 0) || moveBy(dist, 0, mz))) speedNow = damp(speedNow, 0, 12, dt);
+    }
+    settleY(dt);
+    if (inWater && speedNow > 0.3) swimGait(dt);
+    apply(dt);
+  }
+
+  /* ================================================================ NAP, STARGAZE, WADE, RUN: short voluntary activities built from the existing clips */
+  let napSpot = null, gazeSpot = null, wadeSpot = null, wadeTo = null, runOnly = false;
+  // a nap: a grassy spot a short walk away, out of the water and off the steep slopes
+  function pickNapSpot() {
+    for (let k = 0; k < 40; k++) {
+      const a = rnd() * TAU, r = rr(4, 40), px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r, h = getHeight(px, pz);
+      if (h > 1.2 && h < 9 && getSlope(px, pz) < 0.2 && !unsafeAt(px, pz, 22) && !resolveColliders({ x: px, z: pz }, 1.0)) return { x: px, z: pz, y: h, yaw: rnd() * TAU };
+    }
+    return { x: hut.mat.x, z: hut.mat.z, y: hut.mat.y, yaw: hut.yaw };
+  }
+  // stargazing: a clear, open patch of ground, where he lies back to look up
+  function pickGazeSpot() {
+    for (let k = 0; k < 30; k++) {
+      const a = rnd() * TAU, r = rr(2, 14), px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r, h = getHeight(px, pz);
+      if (h > 0.9 && getSlope(px, pz) < 0.2 && !unsafeAt(px, pz, 22) && !resolveColliders({ x: px, z: pz }, 1.0)) return { x: px, z: pz };
+    }
+    return { x, z };
+  }
+  function stargazeUpdate(dt, t) {
+    if (phase === 'init') { gazeSpot = pickGazeSpot(); phase = 'goto'; walkT = 0; stuck = 0; }
+    settleY(dt);
+    if (phase === 'goto') {
+      walkT += dt;
+      mind.current.until = Math.max(mind.current.until, mind.clock + 0.3);      // the walk to the spot is part of the stargazing
+      const d = step(gazeSpot.x, gazeSpot.z, 1.8, dt, false);
+      if (inWater) swimGait(dt); else move(dt);
+      if (d < 0.9 || stuck > 2 || walkT > 25) { phase = 'gaze'; pt = 0; }
+      apply(dt); return;
+    }
+    // lying back with his head tipped up, turning a little now and then
+    pt += dt; speedNow = damp(speedNow, 0, 6, dt);
+    setPose({ ...SIT, py: 0.25, spX: -0.12, hdX: -0.5 + 0.04 * Math.sin(t * 0.3), hdY: 0.25 * Math.sin(t * 0.2) });
+    apply(dt);
+  }
+  // wading: the shallows (ankle to knee deep), where he steps about slowly; deep water is never entered on foot
+  const shallowAt = (px, pz) => { const hh = getHeight(px, pz); return hh < -0.25 && hh > -1.05; };
+  function shallowNear() {
+    for (const r of [6, 12, 20, 30, 42]) for (let k = 0; k < 12; k++) { const a = (k / 12) * TAU; if (shallowAt(x + Math.sin(a) * r, z + Math.cos(a) * r)) return true; }
+    return false;
+  }
+  function pickShallow() {
+    for (let k = 0; k < 40; k++) {
+      const a = rnd() * TAU, r = rr(4, 50), px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r;
+      if (shallowAt(px, pz) && !unsafeAt(px, pz, 22)) return { x: px, z: pz };
+    }
+    return null;
+  }
+  function wadeUpdate(dt, t) {
+    if (phase === 'init') { wadeSpot = pickShallow(); phase = wadeSpot ? 'goto' : 'wade'; pt = 0; walkT = 0; stuck = 0; wadeTo = null; }
+    settleY(dt);
+    if (phase === 'goto') {
+      walkT += dt;
+      mind.current.until = Math.max(mind.current.until, mind.clock + 0.3);      // the walk out to the shallows does not eat into his wading
+      const d = step(wadeSpot.x, wadeSpot.z, 1.9, dt, false);
+      if (inWater) swimGait(dt); else move(dt);
+      if (d < 1.0 || stuck > 2 || walkT > 30) { phase = 'wade'; pt = 0; }
+      apply(dt); return;
+    }
+    // a few slow steps about in the shallows, a new little target every few seconds
+    pt -= dt;
+    if (pt < 0 || !wadeTo) {
+      pt = rr(2, 4);
+      const a = rnd() * TAU, r = rr(1, 3.5), tx = x + Math.sin(a) * r, tz = z + Math.cos(a) * r;
+      wadeTo = shallowAt(tx, tz) ? { x: tx, z: tz } : null;
+    }
+    if (wadeTo) step(wadeTo.x, wadeTo.z, 0.8, dt, false); else speedNow = damp(speedNow, 0, 6, dt);
+    if (inWater) swimGait(dt); else gait(dt, speedNow);
+    apply(dt);
+  }
+  // a run along the coast: the nearest few stretches of sand, one after another
+  function coastRoute() {
+    const near = fishSpots.filter((s) => s.method === 'bank' && Math.hypot(s.stand.x - x, s.stand.z - z) < 170 && !unsafeAt(s.stand.x, s.stand.z, 26))
+      .sort((a, b) => Math.hypot(a.stand.x - x, a.stand.z - z) - Math.hypot(b.stand.x - x, b.stand.z - z)).slice(0, 3);
+    return near.length ? near.map((s) => ({ x: s.stand.x, z: s.stand.z, name: s.name })) : [{ x: x + Math.sin(heading) * 25, z: z + Math.cos(heading) * 25, name: 'the coast' }];
   }
 
   /* ================================================================ his inner life: goals from his own drives (castaway_life.js), run here step by step */
@@ -1410,6 +1550,7 @@ export function buildCastaway() {
   // what the Field Guide shows of his inner life
   { const sum0 = mind.summary; mind.summary = (c) => {
     const m = sum0(c), d = lf.debug(), pct = (v) => Math.round(v * 100) + '%';
+    if (ctrl.on) m.doing = 'Under player control';
     const top = Object.entries(d.drives).sort((a, b) => b[1].appetite - a[1].appetite).slice(0, 3).map(([k, v]) => `${k} (${pct(v.appetite)})`).join(', ');
     m.goal = d.quest ? `${d.quest.label || 'under way'}: ${d.quest.why}` : d.proposal ? `Not yet; thinking about it: ${d.proposal.why}` : d.content > 0 ? 'Content for now' : 'None just now';
     m.drivesText = top;
@@ -1421,7 +1562,8 @@ export function buildCastaway() {
     return m;
   }; }
   if (nb && window.__castaway) window.__castaway.life = lf;
-  if (window.__castaway) window.__castaway.scores = () => ({ scores: mind.scores(ctx), needs: Object.fromEntries(Object.entries(mind.needs).map(([k, v]) => [k, +v.toFixed(2)])), act: mind.current && mind.current.act });
+  if (window.__castaway) window.__castaway.activity = (a) => { devActivity = a; };
+  if (window.__castaway) window.__castaway.scores = () => ({ scores: mind.scores(ctx), act: mind.current && mind.current.act });
   if (window.__castaway) window.__castaway.state = () => ({ act, phase, sub, meal, x: +x.toFixed(1), z: +z.toFixed(1), y: +y.toFixed(2), stuck: +stuck.toFixed(1), speed: +speedNow.toFixed(2), caught: caught.length, hurry, sleepWake, logPos: { x: +logPos.x.toFixed(1), z: +logPos.z.toFixed(1) } });
   // every clip that a behaviour is wired to (the coverage report compares this with what has actually played)
   coverage.declare({
@@ -1629,7 +1771,15 @@ export function buildCastaway() {
         return j.kind === 'enjoy' ? ['rest_by_fire'] : j.kind === 'fuel' ? ['tend_fire'] : j.elapsed < 1.5 ? ['kneel_down'] : ['kneel_idle'];
       }
       case 'hike': return phase === 'pause' ? ['idle_staff_lean'] : L();
+      case 'run': return phase === 'pause' ? ['idle_relaxed'] : L();
+      case 'stargaze': return phase === 'gaze' ? ['look_up_sky'] : L();
+      case 'wade': return phase === 'wade' && speedNow < 0.2 ? ['idle_relaxed'] : L();
+      case 'control':                            // the player's castaway: the same clips the logic would play for the same state
+        if (pickT >= 0) return pickT < 0.6 ? ['kneel_down'] : pickT < 1.5 ? ['kneel_idle'] : ['kneel_rise'];
+        if (inWater) return speedNow > 0.25 ? ['swim_breaststroke', Math.max(0.7, speedNow / 1.6)] : ['tread_water'];
+        return L();
       case 'sleep':
+      case 'nap':
         if (phase === 'asleep') { if (asleepAt < 0) asleepAt = performance.now(); return performance.now() - asleepAt < 5200 ? ['fall_asleep'] : ['sleep_loop']; }
         asleepAt = -1;
         return phase === 'lie' ? ['lie_down'] : L();
@@ -1682,9 +1832,8 @@ export function buildCastaway() {
   // ---- expression and gestures: what his face and upper body show follows his mood and what he is doing
   let faceT = 0, layerT = 12, layerCool = 20;
   function faceNow() {
-    const m = mind.needs, h = env.tod;
     const clip = nb.name;
-    if (act === 'sleep' && (phase === 'asleep' || phase === 'lie')) return ['sleepy', 1];
+    if (isSleeping() && (phase === 'asleep' || phase === 'lie')) return ['sleepy', 1];
     if (act === 'flee' && phase !== 'breath') return ['surprise', 0.9];
     if (/^(laugh|celebrate|excitement|clap)/.test(clip) || clip === 'laugh_after_chase') return ['laugh', 0.9];
     if (/^dance_|^play_|^chase_monkey/.test(clip)) return ['grin', 0.85];
@@ -1692,16 +1841,15 @@ export function buildCastaway() {
     if (act === 'quest' && qFace) return [FACE[qFace] || qFace, 0.9];
     if (/^(frustration|disappointment)/.test(clip)) return ['frown', 0.8];
     if (act === 'camp' && (phase === 'eat' || phase === 'drink')) return ['friendly', 0.35];
-    if (m.happy < 0.22) return ['sad', 0.6];
-    if (h > 10 && h < 16.5 && wx.rain < 0.1 && act !== 'sleep' && act !== 'shelter' && !inCaveish()) return ['sun_squint', 0.45];
-    if (m.happy > 0.7) return ['friendly', 0.7];
-    if (m.happy > 0.5) return ['friendly', 0.35];
+    if (ctx && ctx.justCaught) return ['grin', 0.5];
+    if (env.tod > 10 && env.tod < 16.5 && wx.rain < 0.1 && !isSleeping() && act !== 'shelter' && !inCaveish()) return ['sun_squint', 0.45];
     return ['neutral', 1];
   }
   const inCaveish = () => false;
   function expressionTick(dt, why) {
     faceT -= dt;
     if (faceT < 0) { faceT = 0.25; const [f, s] = faceNow(); nb.setFace(f, s); }
+    if (ctrl.on) { layerWish = null; return; }                // under control he makes no gestures of his own
     if (layerWish && !nb.layerName) {
       if (performance.now() > layerWish.until) layerWish = null;
       else if (nb.layer(layerWish.name, 0.85, { why: act + '/event' })) { nb.lastLayerAt = performance.now(); layerWish = null; return; }
@@ -1710,18 +1858,17 @@ export function buildCastaway() {
     if (layerT > 0 || nb.layerName) return;
     layerT = 3 + Math.random() * 3;
     if (performance.now() - (nb.lastLayerAt || 0) < layerCool * 1000) return;
-    // a gesture over a standing base loop: whistling or humming as he goes, noticing nearby wildlife, small signs of tiredness or contentment
-    const m = mind.needs;
+    // a gesture over a standing base loop: whistling or humming as he goes, noticing nearby wildlife, and small things the hour brings
     let pick = null, reason = '';
+    const h = env.tod;
     if (vocal && (vocal.kind === 'whistle' || vocal.kind === 'sing')) { pick = vocal.kind === 'sing' ? 'hum_sing' : 'whistle'; reason = 'vocal'; }
-    else if (ctx && ctx.watchC && act !== 'sleep' && act !== 'flee' && Math.random() < 0.35 && lf.drivesNow().curiosity > 0.3) {
+    else if (ctx && ctx.watchC && !isSleeping() && act !== 'flee' && Math.random() < 0.35 && lf.drivesNow().curiosity > 0.3) {
       const g = ctx.watchC.group.position, d = Math.hypot(g.x - x, g.z - z);
-      if (d < 26 && d > 4) { pick = ctx.watchC.cat === 'Birds' ? 'birdwatch' : ctx.watchC.name === 'Capuchin monkey' && m.happy > 0.6 && Math.random() < 0.3 ? 'wave_hello' : Math.random() < 0.5 ? 'observe_animal' : 'curious_reaction'; reason = 'wildlife'; }
-    } else if (m.fatigue > 0.6 && Math.random() < 0.4) { pick = Math.random() < 0.5 ? 'yawn' : 'sigh'; reason = 'tired'; }
-    else if (m.hunger > 0.55 && Math.random() < 0.15) { pick = 'shrug'; reason = 'hungry'; }
-    else if (m.happy > 0.72 && Math.random() < 0.2) { pick = Math.random() < 0.5 ? 'hum_sing' : 'stretch_standing'; reason = 'content'; }
-    else if (m.boredom > 0.6 && Math.random() < 0.2) { pick = Math.random() < 0.5 ? 'head_scratch' : 'talk_to_self'; reason = 'restless'; }
-    else if (env.tod > 17 && env.tod < 19.5 && Math.random() < 0.15 && act === 'hike') { pick = 'look_up_sky'; reason = 'sunset'; }
+      if (d < 26 && d > 4) { pick = ctx.watchC.cat === 'Birds' ? 'birdwatch' : ctx.watchC.name === 'Capuchin monkey' && Math.random() < 0.3 ? 'wave_hello' : Math.random() < 0.5 ? 'observe_animal' : 'curious_reaction'; reason = 'wildlife'; }
+    }
+    else if (ctx && ctx.justCaught && Math.random() < 0.3) { pick = 'hum_sing'; reason = 'catch'; }
+    else if ((h >= 22 || h < 5) && Math.random() < 0.2 && act !== 'sleep' && act !== 'nap') { pick = Math.random() < 0.5 ? 'yawn' : 'sigh'; reason = 'late'; }
+    else if (h > 17 && h < 19.5 && Math.random() < 0.15 && act === 'hike') { pick = 'look_up_sky'; reason = 'sunset'; }
     if (pick && nb.layer(pick, 0.85, { why: act + '/' + reason })) nb.lastLayerAt = performance.now();
   }
 
@@ -1799,32 +1946,27 @@ export function buildCastaway() {
     if (result?.completed) mind.finish();
   }
 
-  const castawayStep = (dt0, t) => {
-    if (castawayAI.paused) { clearProps(); mealFish.visible = mealSupport.visible = false; life.update(0, 0, t, { x, z }, true); lastHours = env.hours; actors.castaway.on = false; return; }
-    if (env.paused) return;
-    const dt = Math.min(dt0, 0.05);
-    const dh = Math.max(0, env.hours - lastHours); lastHours = env.hours; curDh = dh;
-    mind.exertion = runFlag ? 1 : 0; runFlag = false;
-    mind.tick(dh);
-    life.update(dt, dh, t, { x, z }, false);
-    lf.update(dt, dh);
+  // one autonomous step: his choice of activity, and what that activity does (paused while the player has him)
+  let devActivity = null;                                  // development: window.__castaway.activity(name) starts one
+  function autonomy(dt, t) {
     ctxT -= dt;
     if (!ctx || ctxT <= 0) { ctx = buildCtx(); ctxT = 0.5; }
     if (!started) { started = true; placeFor(mind.choose(ctx)); }
-    const w = mind.choose(ctx);
+    const w = devActivity ? mind.force(devActivity) : mind.choose(ctx);
+    devActivity = null;
     if (w !== act) {
-      if (act === 'sleep' && (phase === 'asleep' || phase === 'lie') && w !== 'flee') { if (!sleepWake) { sleepWake = true; pt = 0; me.chest.scale.set(1, 1, 1); } }
+      if (isSleeping() && (phase === 'asleep' || phase === 'lie') && w !== 'flee') { if (!sleepWake) { sleepWake = true; pt = 0; me.chest.scale.set(1, 1, 1); } }
       else { mind.visit(placeName(w), w); begin(w); }
     }
     if (sleepWake) {
-      if (wakeUp(dt)) { me.group.position.set(x, y, z); me.group.rotation.y = heading; if (nb) driveNew(dt); return; }
+      if (wakeUp(dt)) return;
       begin(w);
     }
     if (act === 'angling') anglingUpdate(dt, t);
     else if (act === 'project') projectUpdate(dt, t);
     else if (act === 'quest') questUpdate(dt, t);
-    else if (act === 'sleep') sleepUpdate(dt, t);
-    else if (act === 'hike') hikeUpdate(dt, t);
+    else if (isSleeping()) sleepUpdate(dt, t);
+    else if (act === 'hike' || act === 'run') hikeUpdate(dt, t);
     else if (act === 'swim') swimUpdate(dt, t);
     else if (act === 'fish') fishUpdate(dt, t);
     else if (act === 'canoe') canoeUpdate(dt, t);
@@ -1832,12 +1974,23 @@ export function buildCastaway() {
     else if (act === 'shelter') shelterUpdate(dt, t);
     else if (act === 'watch') watchUpdate(dt);
     else if (act === 'linger') lingerUpdate(dt);
+    else if (act === 'stargaze') stargazeUpdate(dt, t);
+    else if (act === 'wade') wadeUpdate(dt, t);
     else if (act === 'dance') danceUpdate(dt);
     else if (act === 'drink') drinkUpdate(dt, t);
     else if (act === 'hunt') huntUpdate(dt, t);
     else if (act === 'chase') chaseUpdate(dt, t);
     else if (act === 'flee') fleeUpdate(dt, t);
     vocalUpdate(dt, t);
+  }
+  const castawayStep = (dt0, t) => {
+    if (env.paused) return;
+    const dt = Math.min(dt0, 0.05);
+    const dh = Math.max(0, env.hours - lastHours); lastHours = env.hours; curDh = dh;
+    mind.tick(dh);
+    life.update(dt, dh, t, { x, z }, ctrl.on);            // his projects and fishing outings wait while the player has him
+    lf.update(dt, dh);
+    if (ctrl.on) controlStep(dt, t); else autonomy(dt, t);
     if (nb) driveNew(dt);
     if (act !== 'camp' && (spitFish[0].visible || spitRat[0].visible || spitRat[1].visible || spitRat[2].visible)) { spitFish.forEach((f) => (f.visible = false)); spitRat.forEach((r) => (r.visible = false)); }
     desc = describe() + (vocal && act !== 'sleep' && act !== 'flee' ? (vocal.kind === 'sing' ? ' He is singing to himself.' : ' He is whistling a tune.') : '');
@@ -1848,6 +2001,8 @@ export function buildCastaway() {
   // the whole castaway update, timed (a running average in milliseconds, for the performance notes: window.__castaway.cost)
   const cost = { ms: 0, driveMs: 0, frames: 0 };
   if (window.__castaway) window.__castaway.cost = cost;
+  castawayAI.controlled = () => ctrl.on;
+  attachCastaway({ take: takeControl, release: releaseControl, show: (on) => { if (nb) nb.root.visible = on; }, pose: () => ({ x, y, z, heading, inWater }) });
   updaters.push((dt0, t) => { const t0 = performance.now(); castawayStep(dt0, t); cost.ms += (performance.now() - t0 - cost.ms) * 0.02; cost.frames++; });
   return me;
 }

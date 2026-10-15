@@ -5,18 +5,17 @@ import { camera, renderer, U, pickables, creatures } from './core.js';
 import { pollPad, rumble, BTN } from './gamepad.js';
 import { getHeight, inCave } from './world.js';
 import { clamp, lerp, angDiff } from './util.js';
-import { walk, spawnNear } from './walk.js';
 import { actors } from './fauna_common.js';
 import { createCameraOcclusion } from './camera_occlusion.js';
 import * as menu from './menu.js';
 import { cycleFocus } from './creature_cycle.js';
+import * as control from './control.js';
 
 export const occlusion = createCameraOcclusion();      // scenery that blocks the view of the followed animal fades (camera_occlusion.js)
 let occBuildT = 0;
 export const zones = { grotto: null };
-export { walk };
 export const cam = {
-  mode: 'orbit', follow: null, releaseProgress: 0, tour: false, presets: [], onFollow: null, onMode: null, shake: 0, suspended: false,
+  mode: 'orbit', follow: null, releaseProgress: 0, tour: false, presets: [], onFollow: null, onMode: null, shake: 0,
   target: new THREE.Vector3(0, 12, 10), goto: null,
 };
 
@@ -33,7 +32,7 @@ const keys = new Set();
 let tween = null;
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3();
 const aim = new THREE.Vector3(); let aimOn = false;       // the point a locked-on camera must be facing, re-checked after every later adjustment
-const padKeys = new Set();           // keys the pad is holding down for first-person walking
+let wasControl = false;              // whether the castaway was under direct control last frame (for the hand-over)
 
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const groundY = (x, z) => Math.max(getHeight(x, z), 0);
@@ -141,47 +140,25 @@ export function setMode(m, opts = {}) {
   if (m === cam.mode) return;
   if (occlusion.active) occlusion.clear();         // a change of mode: everything whole at once
   tween = null;
-  const prev = cam.mode;
-  let leftWalk = null;
-  if (prev === 'walk') leftWalk = walk.leave();
-  if (m === 'walk') {
-    // spawn under the current view
-    let x, z, yaw;
-    if (prev === 'fly') { x = camera.position.x; z = camera.position.z; yaw = fly.yaw; }
-    else { x = cam.target.x; z = cam.target.z; yaw = S.yaw; }
-    if (getHeight(x, z) < 0.6) { const q = spawnNear(x, z); x = q.x; z = q.z; }
-    cam.follow = null; if (cam.onFollow) cam.onFollow(null);
-    cam.mode = 'walk';
-    walk.enter(x, z, yaw);
-    S.auto = false;
-    flash();
-  } else if (m === 'fly') {
+  if (m === 'fly') {
     cam.mode = 'fly';
     cam.follow = null; if (cam.onFollow) cam.onFollow(null);
     const e = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
     fly.yaw = e.y; fly.pitch = e.x; fly.vel.set(0, 0, 0);
-    if (leftWalk) flash();
   } else {
     cam.mode = 'orbit';
-    if (leftWalk) {
-      // step back behind the walker
-      cam.target.set(leftWalk.x, leftWalk.y + 1.5, leftWalk.z); S.goal.copy(cam.target);
-      S.yaw = S.yawG = leftWalk.yaw; S.pitch = S.pitchG = 0.45; S.dist = S.distG = 9; S.yOff = leftWalk.y + 1.5 - groundY(leftWalk.x, leftWalk.z);
-      apply(); flash();
-    } else {
-      const fwd = _v.set(0, 0, -1).applyQuaternion(camera.quaternion);
-      const hit = rayGround(camera.position, fwd, 400);
-      const tgt = hit || _v2.copy(camera.position).addScaledVector(fwd, 45);
-      const p = paramsFrom([camera.position.x, camera.position.y, camera.position.z], [tgt.x, tgt.y, tgt.z]);
-      S.yaw = S.yawG = p.yaw; S.pitch = S.pitchG = p.pitch; S.dist = S.distG = clamp(p.dist, 3, 600);
-      cam.target.copy(tgt); S.goal.copy(tgt); S.yOff = tgt.y - groundY(tgt.x, tgt.z);
-    }
+    const fwd = _v.set(0, 0, -1).applyQuaternion(camera.quaternion);
+    const hit = rayGround(camera.position, fwd, 400);
+    const tgt = hit || _v2.copy(camera.position).addScaledVector(fwd, 45);
+    const p = paramsFrom([camera.position.x, camera.position.y, camera.position.z], [tgt.x, tgt.y, tgt.z]);
+    S.yaw = S.yawG = p.yaw; S.pitch = S.pitchG = p.pitch; S.dist = S.distG = clamp(p.dist, 3, 600);
+    cam.target.copy(tgt); S.goal.copy(tgt); S.yOff = tgt.y - groundY(tgt.x, tgt.z);
   }
   if (cam.onMode) cam.onMode(cam.mode);
 }
 
 export function followCreature(c) {
-  if (cam.mode === 'walk') setMode('fly', { quiet: true });
+  if (control.ctrl.on) control.releaseControl();
   tween = null;
   cam.follow = c; F.ready = false; cam.releaseProgress = 0;
   const p = c.focus ? c.focus(new THREE.Vector3()) : c.group.position.clone();
@@ -208,7 +185,6 @@ export function setSpin(on) { S.auto = on; }
 export function goPreset(i) {
   const p = cam.presets[i];
   if (!p) return;
-  if (cam.mode === 'walk' && p.walk) { walk.teleport(p.walk.x, p.walk.z, Math.atan2(-(p.walk.fx - p.walk.x), -(p.walk.fz - p.walk.z))); flash(); return; }
   flyTo(p.pos, p.tgt, p.dur || 3.4);
 }
 // the lens: the wheel and Z / X narrow or widen the field of view (the View tab slider shows the same value); the camera does not move
@@ -238,7 +214,7 @@ function cycleCreature(dir) {
 }
 // [ and ] cycle creatures from the keyboard (the controller's left and right)
 window.addEventListener('keydown', (e) => {
-  if (e.repeat || isTyping(e) || e.ctrlKey || e.metaKey || e.altKey || menu.isOpen()) return;
+  if (e.repeat || isTyping(e) || e.ctrlKey || e.metaKey || e.altKey || menu.isOpen() || control.ctrl.on) return;
   if (e.code === 'BracketLeft') cycleCreature(-1);
   else if (e.code === 'BracketRight') cycleCreature(1);
 });
@@ -264,7 +240,6 @@ dom.addEventListener('contextmenu', (e) => e.preventDefault());
 dom.addEventListener('pointerdown', (e) => {
   dom.focus();
   cancelTween();
-  if (cam.mode === 'walk' && !walk.locked) walk.requestLock();
   try { dom.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointer */ }
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
@@ -287,10 +262,7 @@ dom.addEventListener('pointermove', (e) => {
     pinch = { d, mx, my };
     return;
   }
-  if (cam.mode === 'walk') {
-    if (!walk.locked) walk.look(dx, dy);
-    return;
-  }
+  if (control.ctrl.on) { control.lookBy(dx, dy); return; }
   if (cam.mode === 'fly') {
     if (cam.follow) { F.yaw -= dx * 0.0045; F.pitch = clamp(F.pitch + dy * 0.0045, -1.2, 1.45); return; }       // locked on: drag swings round the target
     fly.yaw -= dx * 0.0032; fly.pitch = clamp(fly.pitch - dy * 0.0032, -1.5, 1.5);
@@ -303,7 +275,7 @@ function endPtr(e) {
   if (!downAt || hadTwo) return;
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y), dt = performance.now() - downAt.t;
   downAt = null;
-  if (cam.mode === 'walk' || moved > 5 || dt > 450 || e.button === 2) return;
+  if (control.ctrl.on || moved > 5 || dt > 450 || e.button === 2) return;
   const r = cursorRay(e.clientX, e.clientY);
   r.far = 600;
   const hits = r.intersectObjects(pickables, false);
@@ -341,43 +313,56 @@ function panScreen(dx, dy) {
   S.goal.z += (sy * dx - cy * dy) * k;
 }
 
-let wheelAcc = 0, wheelT = 0;
 window.addEventListener('wheel', (e) => {
   // the wheel works anywhere over the scene and the cards; only the side panel keeps its own scrolling
   if (e.target && e.target.closest && e.target.closest('#side')) return;
   e.preventDefault();
   cancelTween();
   const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
-  const now = performance.now();
-  if (now - wheelT > 450) wheelAcc = 0;
-  wheelT = now;
-  if (cam.mode === 'walk') {
-    // scrolling back leaves first person
-    if (dy > 0) { wheelAcc += dy; if (wheelAcc > 100) { wheelAcc = 0; setMode('orbit'); } } else wheelAcc = 0;
-    return;
-  }
+  if (control.ctrl.on) { control.wheelBy(dy); return; }      // under control the wheel moves the camera in and out (third person)
   // the wheel zooms the lens: scrolling in narrows the field of view, scrolling out widens it. The camera stays where it is.
   zoomBy(clamp(dy, -400, 400) * 0.0016);
 }, { passive: false });
 
 /* ---------------------------------------------------------------- per-frame */
-// the free and follow cameras are an unseen observer: animals mind them only from close by. On foot (or in survival) the camera is a person.
+// the free and follow cameras are an unseen observer: animals mind them only from close by. Under direct control the castaway is the person in view.
 const OBSERVER = 0.38;
 export function updateCamera(dt) {
-  actors.camScale = cam.suspended || cam.mode === 'walk' ? 1 : OBSERVER;
+  actors.camScale = control.ctrl.on ? 1 : OBSERVER;     // under direct control he is the person in view: animals mind him as they would a person
   if (!occlusion.ready) { occBuildT += dt; if (occBuildT > 9 && creatures.length > 100) occlusion.buildStep(1.2); }
-  if (cam.suspended) { if (occlusion.active) occlusion.clear(); return; }          // survival mode drives the camera itself
-  // the near plane follows the orbit distance: a near plane of 0.3 m with a far plane of 7 km makes palm fronds z-fight when zoomed out.
-  // First person and free-fly keep the close near plane.
-  if (cam.mode === 'orbit' && !tween) toFree();   // orbit is only for the glide between views
-  const alt = camera.position.y - getHeight(camera.position.x, camera.position.z);
-  const near = cam.mode === 'walk' ? 0.3 : clamp(alt * 0.006, 0.3, 3);
-  if (camera.near !== near) { camera.near = near; camera.updateProjectionMatrix(); }
-  // while the menu is open the menu reads the pad and the keys, and the camera holds still
+  // while the menu is open the menu reads the pad and the keys, and nothing moves: not the camera, and not the castaway
   const rawPad = pollPad(dt);
   menu.noteInput(rawPad.connected, rawPad.active);
   const inMenu = menu.isOpen();
   const pad = inMenu ? IDLE_PAD : rawPad;
+  if (inMenu && rawPad.connected) menu.padMenu(rawPad);
+  // the hand-over: taking control drops any creature he was following; letting go brings the free camera back where the view is
+  if (control.ctrl.on !== wasControl) {
+    wasControl = control.ctrl.on;
+    if (wasControl) { cam.follow = null; F.ready = false; if (cam.onFollow) cam.onFollow(null); cancelTween(); }
+    else toFree();
+  }
+  if (control.ctrl.on) {
+    if (pad.connected) {
+      if (pad.pressed[BTN.START]) menu.openMenu();
+      if (pad.pressed[BTN.BACK]) control.toggleControl();
+    }
+    control.frame(dt, pad, keys, inMenu);
+    if (control.ctrl.on) {
+      if (occlusion.active) occlusion.clear();
+      if (Math.abs(camera.fov - S.fovG) > 0.01) applyFov(camera.fov + (S.fovG - camera.fov) * k1(16, dt));
+      U.under.value += ((camera.position.y < 0.1 ? 1 : 0) - U.under.value) * Math.min(1, dt * 10);
+      return;
+    }
+    // he has let go this frame (the hold-B release): the free camera takes the view from here
+    wasControl = false; toFree();
+  }
+  // orbit is only for the glide between views
+  if (cam.mode === 'orbit' && !tween) toFree();
+  // the near plane follows the orbit distance: a near plane of 0.3 m with a far plane of 7 km makes palm fronds z-fight when zoomed out.
+  const alt = camera.position.y - getHeight(camera.position.x, camera.position.z);
+  const near = clamp(alt * 0.006, 0.3, 3);
+  if (camera.near !== near) { camera.near = near; camera.updateProjectionMatrix(); }
   const shift = !inMenu && (keys.has('ShiftLeft') || keys.has('ShiftRight') || pad.held[BTN.A]);       // pad: A held is fast
   const slow = !inMenu && (keys.has('ControlLeft') || pad.held[BTN.X]);                                // pad: X held is precise
   const dn = (a, b) => (!inMenu && (keys.has(a) || (b && keys.has(b))) ? 1 : 0);
@@ -388,9 +373,8 @@ export function updateCamera(dt) {
   // the look sensitivity eases off when the lens is zoomed in or the precision button is held, so a long lens stays steady
   const lookK = clamp(camera.fov / 55, 0.3, 1.5) * (slow ? 0.35 : 1);
   const padLook = pad.rx !== 0 || pad.ry !== 0;
-  if (inMenu && rawPad.connected) menu.padMenu(rawPad);
   if (pad.connected) {
-    // buttons that work everywhere (not in survival mode, which does not run this function)
+    // buttons that work everywhere
     if (pad.pressed[BTN.Y]) lockOn();
     if (pad.pressed[BTN.RB] && cam.presets.length) { presetI = (presetI + 1) % cam.presets.length; goPreset(presetI); }
     if (pad.pressed[BTN.LB] && cam.presets.length) { presetI = (presetI - 1 + cam.presets.length) % cam.presets.length; goPreset(presetI); }
@@ -398,19 +382,12 @@ export function updateCamera(dt) {
     if (pad.pressed[BTN.LEFT]) cycleCreature(-1);
     if (pad.pressed[BTN.R3]) { S.fovG = 55; }
     if (pad.pressed[BTN.START]) menu.openMenu();
-    if (pad.pressed[BTN.BACK]) setMode(cam.mode === 'walk' ? 'fly' : 'walk');
+    if (pad.pressed[BTN.BACK]) control.toggleControl();
     // the lens: d-pad up zooms in, down zooms out
     const lens = (pad.held[BTN.UP] ? 1 : 0) - (pad.held[BTN.DOWN] ? 1 : 0);
     if (lens) zoomBy(-lens * 0.9 * dt);
     if (padLook || pad.lx || pad.ly || pad.lt || pad.rt || lens) cancelTween();
   }
-  // first person: the pad drives the walk through the same keys the keyboard uses, and the right stick looks
-  if (cam.mode === 'walk') {
-    const set = (code, on) => { if (on) keys.add(code); else if (padKeys.has(code)) keys.delete(code); if (on) padKeys.add(code); else padKeys.delete(code); };
-    set('KeyW', pad.ly < -0.35); set('KeyS', pad.ly > 0.35); set('KeyA', pad.lx < -0.35); set('KeyD', pad.lx > 0.35);
-    set('Space', pad.held[BTN.A]); set('KeyC', pad.held[BTN.B]); set('KeyF', pad.held[BTN.X]); set('ShiftLeft', pad.held[BTN.L3] || pad.rt > 0.5);
-    if (padLook) walk.look(pad.rx * dt * 700 * lookK, pad.ry * dt * 700 * lookK);
-  } else if (padKeys.size) { for (const k of padKeys) keys.delete(k); padKeys.clear(); }
 
   if (tween) {
     tween.t += dt;
@@ -423,10 +400,6 @@ export function updateCamera(dt) {
     S.yawG = S.yaw; S.pitchG = S.pitch; S.distG = S.dist; S.goal.copy(cam.target);
     apply();
     if (tween.t >= tween.dur) { tween = null; toFree(); if (cam.tour) { S.auto = true; tourT = 0; } }
-  } else if (cam.mode === 'walk') {
-    walk.update(dt, keys);
-    const wf = _v.set(0, 0, -1).applyQuaternion(camera.quaternion);
-    cam.target.copy(camera.position).addScaledVector(wf, 30);
   } else {
     // free camera: mouse look, WASD, Q/E turn, R/F rise/sink. A followed creature stays locked in the middle of the view: the mouse, the keys and
     // the right stick swing the camera round it, and it only lets go on a deliberate act (Esc, the Release button, or holding B on the pad).

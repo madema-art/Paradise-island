@@ -1,6 +1,6 @@
-// The castaway's inner life above survival: drives, goals, plans, memory, keepsakes and the things he makes.
+// The castaway's inner life: drives, goals, plans, memory, keepsakes and the things he makes.
 //
-//   NEEDS (castaway_mind.js: food, energy, happiness; comfort_life.js: the evening fire)
+//   CONTEXT (time of day, weather, place, wildlife: castaway_mind.js chooses his activities from these)
 //     -> DRIVES (adventure, curiosity, creativity, play, hunting, collecting, building, creating): appetites with their own dynamics
 //     -> GOALS (a drive plus a concrete target and a reason)  -> PLANS (steps)  -> ACTIONS/ANIMATIONS (human.js runs the steps)
 //     -> OUTCOMES (a find, a keepsake, a structure, a design) -> MEMORIES (places, discoveries, skills, preferences, fears)
@@ -22,7 +22,7 @@ export const DRIVES = ['adventure', 'curiosity', 'creativity', 'play', 'hunting'
 const TASTE = { adventure: 0.62, curiosity: 0.78, creativity: 0.5, play: 0.66, hunting: 0.45, collecting: 0.58, building: 0.48, creating: 0.45 };
 
 /* ------------------------------------------------------------------ keepsakes: small things lying about the island */
-const KINDS = {
+export const KINDS = {
   shell: { label: 'a seashell', n: 32, sc: [0.9, 1.5], col: [0xf2d9c4, 0xf6c9b8, 0xeadfce, 0xe8b4a0, 0xd9c2e0] },
   pebble: { label: 'a smooth stone', n: 28, sc: [0.8, 1.4], col: [0x8d8f92, 0x6e7378, 0xa6a39a, 0x5d6166, 0xb0aaa0] },
   driftwood: { label: 'a piece of driftwood', n: 18, sc: [0.8, 1.5], col: [0xcdbd9e, 0xb9a687, 0xd8cbb0, 0xa59274] },
@@ -201,7 +201,7 @@ export function createLife(api) {
       adventure: far ? 1 : 0.3, curiosity: clamp(0.3 + 0.3 * Math.min(2, pending) + 0.4 * uv / total, 0, 1),
       collecting: near ? clamp(1 - Math.hypot(near.x - pos.x, near.z - pos.z) / 140, 0.3, 1) : 0.1,
       building: buildableDesigns().length ? 1 : 0.08, creating: creatableDesigns().length && S.creations.length < 8 ? 1 : 0.08,
-      creativity: storedKinds() >= 2 ? (S.designs.length < 4 ? 1 : 0.4) : 0.2, play: 0.5 + 0.5 * Math.max(mind.needs.boredom || 0, (mind.needs.happy || 0) - 0.5),
+      creativity: storedKinds() >= 2 ? (S.designs.length < 4 ? 1 : 0.4) : 0.2, play: 0.4 + (ctx.hour >= 9 && ctx.hour < 17 && ctx.rain < 0.1 ? 0.3 : 0) + (ctx.hour >= 16 && ctx.hour < 19 && ctx.rain < 0.1 ? 0.1 : 0),
       hunting: (night || (ctx.hour >= 17 && ctx.hour < 21) ? 0.8 : 0.3) + (ctx.ratC ? 0.2 : 0),
     };
   }
@@ -418,6 +418,17 @@ export function createLife(api) {
     S.stats.quests++; S.stats.byKind[prop.kind] = (S.stats.byKind[prop.kind] || 0) + 1; log(`Set out: ${prop.why}.`); touch();
     return quest;
   }
+  // a keepsake he picks up himself (under direct control): the same record as a collecting walk
+  function pickupNear(x, z, r) {
+    let best = null, bd = r;
+    for (const it of items) { if (!it.alive) continue; const d = Math.hypot(it.x - x, it.z - z); if (d < bd) { bd = d; best = it; } }
+    if (!best) return null;
+    const got = events.pickup({ item: best }, { got: 0 });
+    if (got) log(got.text);
+    return got;
+  }
+  // what he has gathered, for the Collection (Journal): stored at camp, and carried until he gets back there
+  const collection = () => ({ stored: { ...S.stored }, carried: { ...S.carried }, total: S.collection.total, firsts: S.collection.firsts.slice() });
   const resume = () => { if (quest) { quest.touched = mind.clock; } return quest; };
   function pause(why) { if (quest) { quest.touched = mind.clock; log('Put aside what he was doing (' + why + ').'); } }
   function finish(ok, text) {
@@ -432,7 +443,6 @@ export function createLife(api) {
       if (q.kind === 'investigate') satisfy('adventure', 0.1, 1);
       learn(q.kind, q.drive, enjoy);
       mind.note(text || `Finished: ${q.why}.`, 'quest', enjoy * 0.12, true);
-      if (mind.needs.fulfillment !== undefined) mind.needs.fulfillment = Math.min(1, mind.needs.fulfillment + 0.1);
       log(text || 'Finished.'); skill({ collect: 'collect', create: 'create', experiment: 'create', build: 'build', adventure: 'explore', investigate: 'explore' }[q.kind] || 'explore', 0.1);
     } else { S.stats.abandoned++; D(q.drive).cool = mind.clock + 2; log(text || 'Gave up.'); }
     touch(); save();
@@ -538,7 +548,7 @@ export function createLife(api) {
   };
   const carriedTotalNow = () => Object.values(S.carried).reduce((a, b) => a + b, 0);
   const life = {
-    S, items, dev, update, blockedPlace, propose: () => proposal, start, resume, pause, finish, runEvent, stageProgress, discover, experimentResult, scare, onNote, debug, save,
+    S, items, dev, update, blockedPlace, propose: () => proposal, start, resume, pause, finish, runEvent, stageProgress, discover, experimentResult, scare, onNote, debug, save, pickupNear, collection,
     get quest() { return quest; }, get content() { return content; }, opp: null, proposal: null, KINDS, DESIGNS,
     heldColor: (kind) => COLOR_OF[kind], carriedTotal: () => Object.values(S.carried).reduce((a, b) => a + b, 0),
     drivesNow: () => Object.fromEntries(DRIVES.map((d) => [d, S.drives[d].a])), skillOf: (k) => S.skills[k] || 0.1,

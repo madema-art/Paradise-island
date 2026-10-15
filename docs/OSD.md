@@ -10,7 +10,7 @@ The interface is one focus card, one hint bar and one menu. The workshop prototy
 - **Hint bar** (`#hints`, bottom centre): one line for the current mode and input (controller or keyboard). Rewritten only when its
   text changes.
 - **Menu** (`#menu`, top right, open only): five sections, View, World, Sound, Guide and Journal. The panes are the game's own:
-  View (places, camera, controls reference), World (weather, volcano, graphics, survival), Sound (music, effects, master volume and
+  View (places, camera, controls reference), World (weather, volcano, graphics), Sound (music, effects, master volume and
   the music library), Guide (the Field Guide with the specimen viewer and live data) and Journal (notes, secrets, inspection).
 - Solid backgrounds throughout. No `backdrop-filter` on the HUD; the boot screen keeps its own effect.
 
@@ -31,7 +31,7 @@ The interface is one focus card, one hint bar and one menu. The workshop prototy
 | Y | lock on to the nearest creature in view (as before) |
 | Hold B | let go (as before) |
 | Start | open the menu |
-| Back | walk / fly (as before) |
+| Back | take or let go of the castaway (below) |
 
 | Menu | Action |
 |---|---|
@@ -51,7 +51,7 @@ Pad buttons count once each (the pad reports edges), and a closed menu gives the
 | Tab | open the menu |
 | Esc | release the followed creature (as before) |
 | H | hide the interface (as before) |
-| Q / E, WASD, arrows, R / F, 1–0, M, N, V, P | as before |
+| Q / E, WASD, arrows, R / F, 1–0, M, N, V, P | as before (V takes or lets go of the castaway) |
 
 | Menu | Action |
 |---|---|
@@ -128,6 +128,41 @@ interface, and no regression in the matched scenes.
 
 ## Not done
 
-- Survival mode keeps its own pad map; the menu is not reachable from the survival screen.
+- Survival mode was removed: the castaway is driven by the same menu and input as the rest of the game (see below).
 - The keyboard arrows still turn the view in play. Creature cycling uses `[` and `]` on the keyboard.
 - The notes list and the secrets list are focusable, but a long notes list is scrolled with the pad only through the menu's own scrolling.
+
+## Taking control of the castaway (`src/control.js`)
+
+The castaway the island already has can be taken over. Taking control stops what he was doing where he stands; releasing it leaves him there and his own choices resume from that spot. Nothing is teleported or restarted. While he is under control the autonomous logic does not run, and the comfort projects and fishing outings wait.
+
+| Castaway, controller | Action |
+|---|---|
+| Back | take control, or let go (hold B also lets go) |
+| Left stick | walk, relative to the view |
+| Right stick | turn and tilt the view |
+| RT (held) | run |
+| LT (held) | walk slowly |
+| A | pick up a keepsake in reach |
+| R3 | switch third and first person |
+| Start | menu (the castaway reads nothing while it is open) |
+
+| Castaway, keyboard | Action |
+|---|---|
+| V | take control, or let go (Esc also lets go) |
+| W S | walk forward and back, relative to the view |
+| A D | sidestep |
+| Q E, Left Right | turn the view |
+| Up Down | tilt the view |
+| Mouse drag | turn and tilt the view |
+| Wheel | move the camera in and out (third person) |
+| Shift | run |
+| Ctrl | walk slowly |
+| F | pick up a keepsake in reach |
+| T | switch third and first person |
+| Tab | menu |
+
+- **Third person**: the camera sits behind and a little above him and turns to his back when he walks straight ahead; a wall or the ground between pulls it in.
+- **First person**: the view is his eyes, his own body is not drawn, and the view turns with the mouse, the stick or the keys. Movement is the same as in third person, so the two views are the same control.
+- **Switching view** keeps his position, his heading and the control exactly as they were.
+- **Not yet**: jumping (there is no jump clip), climbing under control, and boarding the canoe under control (you step out of it where it floats).

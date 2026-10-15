@@ -6,10 +6,10 @@
 import { creatures } from '../core.js';
 
 export function startLifeSim() {
-  const S = { hist: {}, quests: [], stalls: [], timeline: [], steps: 0, key: '', keyAt: 0, lastQ: '', hungerMin: 1, happyMin: 1, energyMax: 0, byQuest: {} };
+  const S = { hist: {}, quests: [], stalls: [], timeline: [], steps: 0, key: '', keyAt: 0, lastQ: '', byQuest: {} };
   const cast = () => creatures.find((c) => c.id === 'castaway');
   window.__sim = {
-    reset() { Object.assign(S, { hist: {}, quests: [], stalls: [], timeline: [], steps: 0, key: '', keyAt: 0, lastQ: '', hungerMin: 1, happyMin: 1, byQuest: {} }); },
+    reset() { Object.assign(S, { hist: {}, quests: [], stalls: [], timeline: [], steps: 0, key: '', keyAt: 0, lastQ: '', byQuest: {} }); },
     run(ms = 25000, compact = false) {
       window.requestAnimationFrame = () => 0;
       const c = cast(), mind = c.sim, lf = window.__castaway.life; let err = null;
@@ -18,7 +18,6 @@ export function startLifeSim() {
         while (performance.now() - t0 < ms) {
           window.__step(0.05); S.steps++;
           const a = mind.current && mind.current.act; S.hist[a] = (S.hist[a] || 0) + 1;
-          S.hungerMin = Math.min(S.hungerMin, 1 - mind.needs.hunger); S.happyMin = Math.min(S.happyMin, mind.needs.happy);
           if (S.steps % 100 === 0) {
             const st = window.__castaway.state(), key = st.act + '/' + st.phase + '/' + st.sub;
             const moved = S.pos ? Math.hypot(st.x - S.pos.x, st.z - S.pos.z) : 99;
@@ -35,7 +34,7 @@ export function startLifeSim() {
       if (compact) return { err, day: +(mind.clock / 24).toFixed(2), steps: S.steps, share: Object.fromEntries(Object.entries(S.hist).map(([k, v]) => [k, +(v / Math.max(1, S.steps) * 100).toFixed(1)])), stalls: S.stalls.length, bars: sm.bars, survived: sm.survived, quests: d.stats, last: S.quests.slice(-3), stored: d.stored, creations: d.creations.length, built: d.built, designs: d.designs.length };
       return {
         err, day: +(mind.clock / 24).toFixed(2), steps: S.steps, share: Object.fromEntries(Object.entries(S.hist).map(([k, v]) => [k, +(v / Math.max(1, S.steps) * 100).toFixed(1) + '%'])),
-        stalls: S.stalls, bars: sm.bars, survived: sm.survived, lowestEver: sm.lowest, quests: d.stats, questLog: S.quests.slice(-12), stored: d.stored, creations: d.creations, built: d.built, designs: d.designs,
+        stalls: S.stalls, survived: sm.survived, quests: d.stats, questLog: S.quests.slice(-12), stored: d.stored, creations: d.creations, built: d.built, designs: d.designs,
         skills: d.skills, places: d.places, discoveries: d.discoveries.length, keepsakesLeft: d.keepsakesLeft, instances: d.instances, recent: d.recent.slice(-5),
       };
     },

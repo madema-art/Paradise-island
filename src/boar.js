@@ -173,7 +173,7 @@ export class Boar {
     const toCam = Math.atan2(dxc, dzc);
     let moving = false, run = false;
 
-    if (this.charge) {                                             // survival mode drives a charging boar
+    if (this.charge) {                                             // a boar that is charging
       if (this.state !== 'walk') { this.state = 'walk'; this.t = 1; }
     } else {
       // ---- noticing people

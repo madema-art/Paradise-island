@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { camera, env, creatures, bloom, renderer, sun, updaters, setQuality, tideLabel, moonLabel } from './core.js';
 import { isTyping } from './typing.js';
-import { cam, walk, goPreset, setMode, setTour, setSpin, setFov, followCreature, release, flyTo } from './camera.js';
+import { cam, goPreset, setTour, setSpin, setFov, followCreature, release, flyTo } from './camera.js';
+import * as control from './control.js';
+import { initCollection } from './collection_ui.js';
 import { clamp } from './util.js';
 import { wx, setWeather } from './weather.js';
 import { SpecimenViewer } from './specimen.js';
@@ -45,20 +47,10 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
   };
   $$('#p-journal .subtabs button').forEach((b) => b.addEventListener('click', () => showJournal(b.dataset.t)));
   showJournal('notebook');
+  initCollection();
 
   /* ---------- toggles ---------- */
-  const wh = $('#walkhint'), cross = $('#cross');
-  const walkUI = () => {
-    const w = cam.mode === 'walk';
-    wh.style.display = w && !walk.locked ? 'block' : 'none';
-    cross.style.display = w && walk.locked ? 'block' : 'none';
-    $('#whmsg').textContent = walk.locked ? '' : 'Click the view to capture the mouse';
-  };
-  walk.onLock = walkUI;
-  cam.onMode = (m) => {
-    if (m === 'walk') { cam.tour = false; $('#tour').checked = false; $('#spin').checked = false; }
-    walkUI();
-  };
+
   $$('#qualSeg button').forEach((b) => b.addEventListener('click', () => { setQuality(b.dataset.q); $$('#qualSeg button').forEach((x) => x.classList.toggle('on', x === b)); }));
   window.addEventListener('quality', (e) => $$('#qualSeg button').forEach((x) => x.classList.toggle('on', x.dataset.q === e.detail)));
   $('#tour').addEventListener('change', (e) => setTour(e.target.checked));
@@ -127,8 +119,7 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
     if (menu.keyMenu(e, isTyping(e))) return;
     if (isTyping(e)) return;
     if (e.code.startsWith('Digit')) { const dg = parseInt(e.code.slice(5)), i = dg === 0 ? presets.length - 1 : dg - 1; if (presets[i]) goPreset(i); }
-    else if (e.code === 'KeyV') setMode(cam.mode === 'walk' ? 'fly' : 'walk');
-    else if (e.code === 'Escape') { if (document.fullscreenElement) return; if (cam.mode === 'walk') setMode('fly'); else release(); }
+    else if (e.code === 'Escape') { if (document.fullscreenElement) return; if (!control.ctrl.on) release(); }
     else if (e.code === 'KeyH') hide();
     else if (e.code === 'KeyP') { env.paused = !env.paused; }
   });
