@@ -8,6 +8,7 @@ import { CATALOG } from './catalog.js';
 import { SpecimenViewer } from './specimen.js';
 import * as S from './notes.js';
 import { isTyping } from './typing.js';
+import * as menu from './menu.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -152,8 +153,8 @@ const viewerEntry = (res) => {
 /** show an inspection result in the panel (opens the Inspect tab and shows the interface if it is hidden) */
 export function openInspection(res) {
   insResult = res;
-  document.body.classList.remove('hidden-ui');
-  $('#p-inspect') && document.querySelector('#side .tabs button[data-t="inspect"]').click();
+  menu.openMenu('journal');
+  document.querySelector('#p-journal .subtabs button[data-t="inspect"]').click();
   const hint = $('#inspHint'), empty = $('#inspEmpty');
   if (res.model && res.owner) {
     const v = ensureInspViewer();
@@ -259,7 +260,7 @@ function renderNotebook() {
     return `<div class="nb-group"><h4>${label}<span>${group.length}</span></h4>${group.map((n) => noteCard(n, { showSubject: true })).join('')}</div>`;
   }).join('');
   $('#nbList').innerHTML = html || `<p class="dn-empty">${S.allNotes().length ? 'No notes match this filter.' : 'No notes yet. Click anything in the world, or a creature in the Field Guide, and write a note.'}</p>`;
-  $('#nbList').querySelectorAll('.dn-card').forEach((card) => wireCard(card, (msg) => { $('#nbFoot').dataset.msg = msg; renderFooter(msg); }));
+  $('#nbList').querySelectorAll('.dn-card').forEach((card) => { card.setAttribute('data-nav', ''); card.tabIndex = 0; wireCard(card, (msg) => { $('#nbFoot').dataset.msg = msg; renderFooter(msg); }); });
   renderFooter();
 }
 function renderFooter(msg) {
@@ -288,12 +289,12 @@ export function initNotebook() {
   S.onNotesChange(() => { if (notebookPane) renderFooter(); });
   // the viewers only draw while their panel is showing
   setInterval(() => {
-    const open = (id) => { const p = document.getElementById(id); return !!p && p.classList.contains('on') && $('#side').offsetParent !== null; };
+    const open = (id) => { const p = document.getElementById(id); return !!p && p.classList.contains('on') && menu.isOpen() && menu.currentSection() === 'journal'; };
     if (insViewer) insViewer.setVisible(open('p-inspect') && !!insResult && !!insResult.model);
   }, 250);
   window.addEventListener('keydown', (e) => {
     if (isTyping(e)) return;
-    if (e.code === 'KeyN' && !e.ctrlKey && !e.metaKey) document.querySelector('#side .tabs button[data-t="notebook"]').click();
+    if (e.code === 'KeyN' && !e.ctrlKey && !e.metaKey) { menu.openMenu('journal'); document.querySelector('#p-journal .subtabs button[data-t="notebook"]').click(); }
   });
   S.loadNotes();
   renderNotebook();

@@ -8,6 +8,8 @@ import { SpecimenViewer } from './specimen.js';
 import { speciesInfo, STATUS, liveFacts } from './species.js';
 import { getHeight } from './world.js';
 import { initNotebook, onFollowed } from './notebook.js';
+import * as menu from './menu.js';
+import { focusMeta } from './creature_cycle.js';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -17,12 +19,13 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
     setWeather(b.dataset.w === 'auto' ? null : b.dataset.w);
     $$('#wxSeg button').forEach((x) => x.classList.toggle('on', x === b));
   }));
-  let wxT = 0;
+  let wxT = 0, wxLast = '';
   updaters.push((dt) => {
     wxT -= dt;
     if (wxT > 0) return;
     wxT = 0.5;
-    $('#wxline').innerHTML = `${wx.label}<br>${wx.windLabel}<br>${tideLabel()} · ${moonLabel()}`;
+    const text = `${wx.label}<br>${wx.windLabel}<br>${tideLabel()} · ${moonLabel()}`;
+    if (text !== wxLast) { wxLast = text; $('#wxline').innerHTML = text; }
   });
 
   /* ---------- dock ---------- */
@@ -34,11 +37,14 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
     dock.appendChild(b);
   });
 
-  /* ---------- tabs ---------- */
-  $$('#side .tabs button').forEach((b) => b.addEventListener('click', () => {
-    $$('#side .tabs button').forEach((x) => x.classList.toggle('on', x === b));
-    $$('.pane').forEach((p) => p.classList.toggle('on', p.id === 'p-' + b.dataset.t));
-  }));
+  /* ---------- menu sections and the journal's subtabs ---------- */
+  $$('#menuTabs button').forEach((b) => b.addEventListener('click', () => menu.openMenu(b.dataset.s)));
+  const showJournal = (t) => {
+    $$('#p-journal .subtabs button').forEach((x) => x.classList.toggle('on', x.dataset.t === t));
+    $$('#p-journal .subpane').forEach((p) => p.classList.toggle('on', p.id === 'p-' + t));
+  };
+  $$('#p-journal .subtabs button').forEach((b) => b.addEventListener('click', () => showJournal(b.dataset.t)));
+  showJournal('notebook');
 
   /* ---------- toggles ---------- */
   const wh = $('#walkhint'), cross = $('#cross');
@@ -118,6 +124,7 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
   document.body.classList.add('hidden-ui');
   $('#hideui').addEventListener('click', hide);
   window.addEventListener('keydown', (e) => {
+    if (menu.keyMenu(e, isTyping(e))) return;
     if (isTyping(e)) return;
     if (e.code.startsWith('Digit')) { const dg = parseInt(e.code.slice(5)), i = dg === 0 ? presets.length - 1 : dg - 1; if (presets[i]) goPreset(i); }
     else if (e.code === 'KeyV') setMode(cam.mode === 'walk' ? 'fly' : 'walk');
@@ -147,7 +154,7 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
       + FIELDS.filter(([k]) => info[k]).map(([k, label]) => `<div class="sect"><b>${label}</b><p>${info[k]}</p></div>`).join('')
       + (info.facts ? `<div class="sect"><b>Interesting facts</b>${info.facts.map((f) => `<p>• ${f}</p>`).join('')}</div>` : '');
   };
-  const guideOpen = () => $('#p-guide').classList.contains('on') && $('#side').offsetParent !== null;
+  const guideOpen = () => menu.isOpen() && menu.currentSection() === 'guide';
   const playBtn = $('#specPlay'), spinBtn = $('#specSpin'), clipSel = $('#specClip');
   const ensureViewer = () => {
     if (!viewer) {
@@ -212,20 +219,22 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
     if (html !== liveText) { panel.innerHTML = html; liveText = html; }
   };
   setInterval(updateLive, 250);
+  window.addEventListener('menu:change', updateLive);
   initNotebook();
 
   /* ---------- follow card ---------- */
   const card = $('#follow');
   cam.onFollow = (c) => {
+    menu.setFollowing(!!c);
     if (!c) { card.style.display = 'none'; return; }
     card.style.display = 'block';
     card.querySelector('.n').textContent = c.name;
-    card.querySelector('.d').textContent = c.desc || '';
+    card.querySelector('.meta').textContent = focusMeta(c);
+    card.querySelector('.d').textContent = (c.desc || '').split('. ')[0].replace(/\.?$/, '.');
     openSpecimen(c);
     onFollowed(c);
   };
   $('#unfollow').addEventListener('click', release);
-  setInterval(() => { if (cam.follow && card.style.display !== 'none') card.querySelector('.d').textContent = cam.follow.desc || ''; }, 800);
 
   /* ---------- field guide ---------- */
   const species = new Map();
@@ -248,8 +257,9 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
         let best = null, bd = 1e9;
         const p = new THREE.Vector3();
         for (const c of s.list) { c.focus(p); const d = p.distanceTo(camera.position) + Math.random() * 30; if (d < bd) { bd = d; best = c; } }
-        if (best) followCreature(best);
+        if (best) { followCreature(best); menu.closeMenu(); }
       });
+      it.setAttribute('data-nav', ''); it.tabIndex = 0;
       guide.appendChild(it);
     }
   }
@@ -265,8 +275,10 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
       if (!s.found) return;
       const d = s.viewDist || 22;
       const p = s.pos;
+      menu.closeMenu();
       flyTo([p.x + (s.viewOff ? s.viewOff[0] : d), p.y + (s.viewOff ? s.viewOff[1] : d * 0.5), p.z + (s.viewOff ? s.viewOff[2] : d)], [p.x, p.y, p.z], 3);
     });
+    it.setAttribute('data-nav', ''); it.tabIndex = 0;
     list.appendChild(it); items.set(s.id, it);
   });
   const toast = $('#toast');

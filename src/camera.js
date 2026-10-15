@@ -8,6 +8,8 @@ import { clamp, lerp, angDiff } from './util.js';
 import { walk, spawnNear } from './walk.js';
 import { actors } from './fauna_common.js';
 import { createCameraOcclusion } from './camera_occlusion.js';
+import * as menu from './menu.js';
+import { cycleFocus } from './creature_cycle.js';
 
 export const occlusion = createCameraOcclusion();      // scenery that blocks the view of the followed animal fades (camera_occlusion.js)
 let occBuildT = 0;
@@ -227,43 +229,19 @@ function zoomBy(amount) { S.fovG = clamp(S.fovG * Math.exp(amount), FOV_MIN, FOV
 
 /* ---------------------------------------------------------------- choosing a target */
 const focusOf = (c, out) => (c.focus ? c.focus(out) : c.group.getWorldPosition(out));
-/** creatures within range of ref, nearest first (only ones that are on show) */
-function nearby(ref, range = 260) {
-  const out = [];
-  for (const c of creatures) {
-    if (!c.group || c.group.visible === false) continue;
-    const d = ref.distanceTo(focusOf(c, new THREE.Vector3()));
-    if (d < range) out.push({ c, d });
-  }
-  return out.sort((a, b) => a.d - b.d).map((o) => o.c);
+// the pad's idle state while the menu is open: gameplay reads no stick, trigger or button
+const IDLE_PAD = { connected: false, lx: 0, ly: 0, rx: 0, ry: 0, lt: 0, rt: 0, active: 0, held: [], pressed: [], released: [] };
+/** left (dir -1) and right (dir 1) in play mode: the next individual of the focus's species, else the next creature in the global order */
+function cycleCreature(dir) {
+  const next = cycleFocus(cam.follow, dir, camera.position, (c) => focusOf(c, new THREE.Vector3()));
+  if (next && next !== cam.follow) { followCreature(next); rumble(0.2, 0.3, 60); }
 }
-/** lock on to whatever is nearest the middle of the view (or, failing that, the nearest creature) */
-function lockOn() {
-  const fwd = _v.set(0, 0, -1).applyQuaternion(camera.quaternion);
-  let best = null, bs = -1e9, near = null, nd = 1e9;
-  const q = new THREE.Vector3();
-  for (const c of creatures) {
-    if (!c.group || c.group.visible === false || c === cam.follow) continue;
-    focusOf(c, q);
-    const to = _v2.copy(q).sub(camera.position), d = to.length();
-    if (d < 1 || d > 900) continue;
-    const cos = to.dot(fwd) / d;
-    if (d < nd) { nd = d; near = c; }
-    const score = cos - d * 0.0003;
-    if (cos > 0.93 && score > bs) { bs = score; best = c; }
-  }
-  const pick = best || near;
-  if (pick) { followCreature(pick); rumble(0.25, 0.35, 70); }
-}
-/** step to the next (dir 1) or previous (dir -1) creature around the one we are on, or around the camera if none */
-function cycleTarget(dir) {
-  const ref = cam.follow ? focusOf(cam.follow, new THREE.Vector3()) : camera.position;
-  const list = nearby(ref);
-  if (!list.length) return;
-  let i = list.indexOf(cam.follow);
-  i = i < 0 ? (dir > 0 ? 0 : list.length - 1) : (i + dir + list.length) % list.length;
-  followCreature(list[i]); rumble(0.2, 0.3, 60);
-}
+// [ and ] cycle creatures from the keyboard (the controller's left and right)
+window.addEventListener('keydown', (e) => {
+  if (e.repeat || isTyping(e) || e.ctrlKey || e.metaKey || e.altKey || menu.isOpen()) return;
+  if (e.code === 'BracketLeft') cycleCreature(-1);
+  else if (e.code === 'BracketRight') cycleCreature(1);
+});
 let presetI = -1;
 
 /* ---------------------------------------------------------------- input */
@@ -395,10 +373,14 @@ export function updateCamera(dt) {
   const alt = camera.position.y - getHeight(camera.position.x, camera.position.z);
   const near = cam.mode === 'walk' ? 0.3 : clamp(alt * 0.006, 0.3, 3);
   if (camera.near !== near) { camera.near = near; camera.updateProjectionMatrix(); }
-  const pad = pollPad(dt);
-  const shift = keys.has('ShiftLeft') || keys.has('ShiftRight') || pad.held[BTN.A];       // pad: A held is fast
-  const slow = keys.has('ControlLeft') || pad.held[BTN.X];                                // pad: X held is precise
-  const dn = (a, b) => (keys.has(a) || (b && keys.has(b)) ? 1 : 0);
+  // while the menu is open the menu reads the pad and the keys, and the camera holds still
+  const rawPad = pollPad(dt);
+  menu.noteInput(rawPad.connected, rawPad.active);
+  const inMenu = menu.isOpen();
+  const pad = inMenu ? IDLE_PAD : rawPad;
+  const shift = !inMenu && (keys.has('ShiftLeft') || keys.has('ShiftRight') || pad.held[BTN.A]);       // pad: A held is fast
+  const slow = !inMenu && (keys.has('ControlLeft') || pad.held[BTN.X]);                                // pad: X held is precise
+  const dn = (a, b) => (!inMenu && (keys.has(a) || (b && keys.has(b))) ? 1 : 0);
   const fwdIn = clamp(dn('KeyW', 'ArrowUp') - dn('KeyS', 'ArrowDown') - pad.ly, -1, 1);
   const strIn = clamp(dn('KeyD') - dn('KeyA') + pad.lx, -1, 1);
   const rotIn = dn('KeyQ', 'ArrowLeft') - dn('KeyE', 'ArrowRight'); // Q turns the view left, E right
@@ -406,15 +388,16 @@ export function updateCamera(dt) {
   // the look sensitivity eases off when the lens is zoomed in or the precision button is held, so a long lens stays steady
   const lookK = clamp(camera.fov / 55, 0.3, 1.5) * (slow ? 0.35 : 1);
   const padLook = pad.rx !== 0 || pad.ry !== 0;
+  if (inMenu && rawPad.connected) menu.padMenu(rawPad);
   if (pad.connected) {
     // buttons that work everywhere (not in survival mode, which does not run this function)
     if (pad.pressed[BTN.Y]) lockOn();
-    if (pad.pressed[BTN.RB]) cycleTarget(1);
-    if (pad.pressed[BTN.LB]) cycleTarget(-1);
-    if (pad.pressed[BTN.RIGHT] && cam.presets.length) { presetI = (presetI + 1) % cam.presets.length; goPreset(presetI); }
-    if (pad.pressed[BTN.LEFT] && cam.presets.length) { presetI = (presetI - 1 + cam.presets.length) % cam.presets.length; goPreset(presetI); }
+    if (pad.pressed[BTN.RB] && cam.presets.length) { presetI = (presetI + 1) % cam.presets.length; goPreset(presetI); }
+    if (pad.pressed[BTN.LB] && cam.presets.length) { presetI = (presetI - 1 + cam.presets.length) % cam.presets.length; goPreset(presetI); }
+    if (pad.pressed[BTN.RIGHT]) cycleCreature(1);
+    if (pad.pressed[BTN.LEFT]) cycleCreature(-1);
     if (pad.pressed[BTN.R3]) { S.fovG = 55; }
-    if (pad.pressed[BTN.START]) document.body.classList.toggle('hidden-ui');
+    if (pad.pressed[BTN.START]) menu.openMenu();
     if (pad.pressed[BTN.BACK]) setMode(cam.mode === 'walk' ? 'fly' : 'walk');
     // the lens: d-pad up zooms in, down zooms out
     const lens = (pad.held[BTN.UP] ? 1 : 0) - (pad.held[BTN.DOWN] ? 1 : 0);

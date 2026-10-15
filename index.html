@@ -6,7 +6,7 @@
 <title>Paradise Island — a living biome</title>
 <style>
   :root {
-    --glass: rgba(10, 24, 34, 0.55);
+    --glass: rgba(10, 24, 34, 0.9);
     --glass-b: rgba(255, 255, 255, 0.14);
     --ink: #eaf6f4;
     --dim: #9fc3c4;
@@ -19,14 +19,10 @@
   html, body { margin: 0; height: 100%; background: #06141c; overflow: hidden; color: var(--ink);
     font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
   canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
-  .glass { background: var(--glass); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  .glass { background: var(--glass);
     border: 1px solid var(--glass-b); border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.28); }
   #hud { position: fixed; inset: 0; pointer-events: none; }
   #hud > * { pointer-events: auto; }
-  #title { position: absolute; left: 18px; top: 16px; padding: 12px 16px 12px 16px; min-width: 220px; }
-  #title h1 { margin: 0; font-size: 15px; letter-spacing: .28em; font-weight: 700; text-transform: uppercase;
-    background: linear-gradient(90deg, #ffd27a, #ff8a4c 55%, #ff5a3c); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  #title .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; letter-spacing: .04em; }
   #wxline { font-size: 11.5px; color: var(--dim); margin-top: 3px; line-height: 1.5; }
   input[type=range] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 4px; background: rgba(255,255,255,.2); outline: none; }
   input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #1a1208; cursor: pointer; }
@@ -40,17 +36,24 @@
   button.lava { background: rgba(255,106,43,.22); border-color: rgba(255,106,43,.6); }
   button.lava:hover { background: rgba(255,106,43,.4); }
 
-  #dock { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 6px; padding: 8px; max-width: calc(100vw - 24px); overflow-x: auto; }
+  #dock { display: flex; flex-wrap: wrap; gap: 6px; }
   #dock button { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 74px; padding: 7px 8px; white-space: nowrap; }
   #dock button b { font-size: 10px; color: var(--accent); font-weight: 600; letter-spacing: .1em; }
   #dock button span { font-size: 12px; }
 
-  #side { position: absolute; right: 16px; top: 16px; width: 344px; max-height: calc(100vh - 110px); display: flex; flex-direction: column; overflow: hidden; }
-  #side .tabs { display: flex; border-bottom: 1px solid var(--glass-b); }
-  #side .tabs button { flex: 1; border: 0; border-radius: 0; background: transparent; padding: 11px 6px; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
-  #side .tabs button.on { color: var(--accent); background: rgba(255,255,255,.06); box-shadow: inset 0 -2px 0 var(--accent); }
-  #side .body { padding: 12px 14px 14px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+  #menu { position: absolute; right: 16px; top: 16px; width: 360px; max-height: calc(100vh - 110px); display: none; flex-direction: column; overflow: hidden; }
+  body.menu-open #menu { display: flex; }
+  #menu .menu-head { padding: 12px 14px 0; }
+  #menu .menu-title { font-size: 13px; letter-spacing: .28em; font-weight: 700; text-transform: uppercase; }
+  #menu .tabs { display: flex; border-bottom: 1px solid var(--glass-b); margin-top: 8px; }
+  #menu .tabs button { flex: 1; border: 0; border-radius: 0; background: transparent; padding: 11px 6px; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  #menu .tabs button.on { color: var(--accent); background: rgba(255,255,255,.06); box-shadow: inset 0 -2px 0 var(--accent); }
+  #menu .body { padding: 12px 14px 14px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
   .pane { display: none; } .pane.on { display: block; }
+  .subpane { display: none; } .subpane.on { display: block; }
+  .nw { white-space: nowrap; }
+  #menu .ref { font-size: 11.5px; line-height: 1.7; color: var(--dim); }
+  #menu button:focus-visible, #menu input:focus-visible, #menu select:focus-visible, #menu [data-nav]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .ctl { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 9px 0; font-size: 12.5px; }
   .ctl label { color: var(--dim); }
   #music-library { max-height: 190px; overflow-y: auto; border: 1px solid rgba(255,255,255,.1); border-radius: 9px; padding: 4px 7px; background: rgba(0,0,0,.12); }
@@ -82,19 +85,17 @@
   .item.found .dot { background: var(--accent); color: var(--accent); }
   .grp { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); margin: 12px 0 2px; }
 
-  #help { position: absolute; left: 18px; top: 232px; padding: 10px 14px; font-size: 11.5px; line-height: 1.85; color: var(--dim); max-width: 330px; }
-  #help b { color: var(--accent); letter-spacing: .16em; font-size: 10px; text-transform: uppercase; }
-  #help kbd { background: rgba(255,255,255,.14); border-radius: 4px; padding: 1px 5px; font-size: 10.5px; color: var(--ink); font-family: inherit; }
   #toast { position: absolute; left: 50%; top: 22px; transform: translateX(-50%) translateY(-30px); opacity: 0; transition: .5s cubic-bezier(.2,.9,.3,1.2);
     padding: 12px 22px; text-align: center; pointer-events: none !important; border-color: rgba(255,180,84,.55); }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   #toast .k { font-size: 10px; letter-spacing: .24em; color: var(--accent); text-transform: uppercase; }
   #toast .n { font-size: 17px; font-weight: 600; margin-top: 3px; }
   #toast .d { font-size: 12px; color: var(--dim); margin-top: 2px; max-width: 360px; }
-  #follow { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); padding: 12px 18px; text-align: center; display: none; min-width: 280px; }
+  #follow { position: absolute; left: 16px; top: 16px; width: 290px; padding: 12px 14px; display: none; }
+  #follow .meta { font-size: 11.5px; color: var(--dim); margin-top: 2px; }
+  #hints { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); padding: 8px 16px; font-size: 12px; color: var(--dim); white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
   #follow .n { font-size: 16px; font-weight: 600; }
   #follow .l { font-size: 11px; color: var(--accent); letter-spacing: .14em; text-transform: uppercase; }
-  #follow .lockhint { font-size: 11px; color: var(--dim); line-height: 1.5; margin-bottom: 6px; }
   #follow .relwrap { height: 4px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; margin: 0 0 8px; }
   #follow .relwrap i { display: block; height: 100%; width: 0; background: var(--accent); }
   #follow .d { font-size: 12px; color: var(--dim); margin: 4px 0 8px; max-width: 360px; }
@@ -131,10 +132,9 @@
     color: #fff6dc; text-shadow: 0 1px 4px rgba(0,40,60,.9), 0 0 10px rgba(0,60,80,.8); opacity: 0; transition: opacity .8s .3s; pointer-events: none; }
   #boot.ready #enterHint { opacity: 1; }
   .hidden-ui #hud > *:not(#toast) { display: none !important; }
-  @media (max-width: 1150px), (max-height: 760px) { #help { display: none; } }
   @media (max-width: 760px) {
-    #side { width: 240px; top: auto; bottom: 90px; right: 8px; max-height: 40vh; }
-    #title { left: 8px; top: 8px; } #help { display: none; } #dock button { min-width: 62px; }
+    #menu { width: 300px; top: auto; bottom: 64px; right: 8px; max-height: 50vh; }
+    #dock button { min-width: 62px; }
   }
   /* specimen viewer and species notes */
   .spec-stick { position: sticky; top: -12px; z-index: 3; margin: -12px -14px 0; padding: 12px 14px 8px;
@@ -172,7 +172,7 @@
   .spec-facts .note { font-size: 11.8px; line-height: 1.55; color: var(--dim); font-style: italic; margin: 0 0 2px; }
   .guide-h { margin-top: 18px; }
   /* ---- Island Notes: notebook, inspection and development-note boxes */
-  #side .tabs button { font-size: 11.5px; padding: 8px 5px; }
+  #menu .tabs button { font-size: 11.5px; padding: 8px 5px; }
   .ins .spec-stick, .spec-stick { position: sticky; top: -12px; z-index: 3; margin: -12px -14px 0; padding: 12px 14px 8px;
     background: linear-gradient(rgba(10,24,34,.97), rgba(10,24,34,.92)); border-bottom: 1px solid var(--glass-b); }
   .dev-notes { margin-top: 14px; border-top: 1px solid var(--glass-b); padding-top: 10px; }
@@ -239,7 +239,7 @@
   body.sv-on #sv { display: block; }
   #sv > * { pointer-events: none; position: absolute; }
   #sv .sv-btn { pointer-events: auto; }
-  .sv-card { background: rgba(10, 24, 34, .6); backdrop-filter: blur(10px) saturate(1.3); -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  .sv-card { background: rgba(10, 24, 34, .9);
     border: 1px solid rgba(255,255,255,.16); border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.3); }
   /* needs */
   #sv-needs { left: 16px; top: 14px; width: 232px; padding: 10px 12px 9px; }
@@ -354,36 +354,52 @@
 <div id="cross"></div>
 
 <div id="hud">
-  <div id="title" class="glass">
-    <h1>Paradise Island</h1>
-    <div class="sub">a living biome · drag to observe</div>
-    <div id="wxline"></div>
-    <button id="svbtn" class="sv-entry">▶ Play survival</button>
-    
+  <div id="follow" class="glass" style="display:none">
+    <div class="l">Locked on</div><div class="n"></div><div class="meta"></div><div class="d"></div>
+    <div class="relwrap"><i id="relbar"></i></div>
+    <button id="unfollow">Let go (Esc)</button>
   </div>
 
-  <div id="side" class="glass">
-    <div class="tabs">
-      <button data-t="view" class="on">View</button><button data-t="guide">Field guide</button><button data-t="inspect">Inspect</button><button data-t="notebook">Notebook</button><button data-t="secrets">Secrets <span id="sc">0/7</span></button>
+  <div id="hints" class="glass"></div>
+
+  <div id="menu" class="glass">
+    <div class="menu-head">
+      <div class="menu-title">Paradise Island</div>
+      <div class="tabs" id="menuTabs"><button data-s="view" class="on">View</button><button data-s="world">World</button><button data-s="sound">Sound</button><button data-s="guide">Guide</button><button data-s="journal">Journal</button></div>
     </div>
     <div class="body">
       <div class="pane on" id="p-view">
+        <h3>Places</h3>
+        <div id="dock"></div>
         <h3>Camera</h3>
-        
         <div class="ctl"><label>Cinematic tour</label><label class="switch"><input type="checkbox" id="tour"><i></i></label></div>
         <div class="ctl"><label>Slow auto-orbit</label><label class="switch"><input type="checkbox" id="spin"><i></i></label></div>
-        <div class="ctl"><label>Field of view</label><input type="range" id="fov" min="12" max="110" value="55" style="width:110px" /></div>
+        <div class="ctl"><label>Field of view</label><input type="range" id="fov" min="15" max="110" step="5" value="55" style="width:110px" /></div>
+        <div class="ctl"><label>Place labels</label><label class="switch"><input type="checkbox" id="labels-t"><i></i></label></div>
+        <div class="row"><button id="hideui">Hide interface (H)</button></div>
+        <h3>Controls</h3>
+        <div class="ref">
+          <b>Controller</b> left stick move · right stick look · D-pad ◀▶ creature · LB RB places · Y nearest · hold B let go · Start menu<br>
+          <b>Keyboard</b> WASD move · Q E turn · R F rise / sink · [ ] creature · <span class="nw">1–0 places</span> · Tab menu · H hide · Esc release
+        </div>
+      </div>
+
+      <div class="pane" id="p-world">
+        <div id="wxline"></div>
+        <div class="row" style="margin:8px 0 2px"><button id="svbtn" class="sv-entry">▶ Play survival</button></div>
+        <h3>Weather</h3>
+        <div class="ctl"><label>Weather</label>
+        <div class="seg" id="wxSeg"><button data-w="auto" class="on">Auto</button><button data-w="clear">Sun</button><button data-w="shower">Rain</button><button data-w="storm">Storm</button></div></div>
         <h3>Volcano</h3>
         <div class="row" style="margin-top:2px"><button class="lava" id="erupt">Trigger eruption</button></div>
-        <h3>World</h3>
-        <div class="ctl"><label>Weather</label>
-          <div class="seg" id="wxSeg"><button data-w="auto" class="on">Auto</button><button data-w="clear">Sun</button><button data-w="shower">Rain</button><button data-w="storm">Storm</button></div></div>
+        <h3>Graphics</h3>
         <div class="ctl"><label>Quality</label>
-          <div class="seg" id="qualSeg"><button data-q="low">Low</button><button data-q="medium">Med</button><button data-q="high" class="on">High</button></div></div>
-        <div class="ctl"><label>Place labels</label><label class="switch"><input type="checkbox" id="labels-t"><i></i></label></div>
+        <div class="seg" id="qualSeg"><button data-q="low">Low</button><button data-q="medium">Med</button><button data-q="high" class="on">High</button></div></div>
         <div class="ctl"><label>Bloom glow</label><label class="switch"><input type="checkbox" id="bloom-t" checked><i></i></label></div>
         <div class="ctl"><label>Shadows</label><label class="switch"><input type="checkbox" id="shadow-t" checked><i></i></label></div>
-        <h3>Sound</h3>
+      </div>
+
+      <div class="pane" id="p-sound">
         <div class="ctl"><label>Music</label><label class="switch"><input type="checkbox" id="music-t" checked><i></i></label></div>
         <div class="ctl"><label>Music volume</label><input type="range" id="music-v" min="0" max="1" step="0.01" value="0.5" style="width:110px" /></div>
         <div class="ctl"><label id="trackname" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">♪ —</label><span><button id="prevT">⏮</button> <button id="nextT">⏭</button></span></div>
@@ -393,8 +409,8 @@
         <div class="ctl"><label>Nature &amp; effects</label><label class="switch"><input type="checkbox" id="sfx-t" checked><i></i></label></div>
         <div class="ctl"><label>Effects volume</label><input type="range" id="sfx-v" min="0" max="1" step="0.01" value="0.85" style="width:110px" /></div>
         <div class="ctl"><label>Master volume</label><input type="range" id="master-v" min="0" max="1" step="0.01" value="0.9" style="width:110px" /></div>
-        <div class="row"><button id="hideui">Hide interface (H)</button></div>
       </div>
+
       <div class="pane" id="p-guide">
         <div class="spec">
           <div class="spec-stick">
@@ -420,7 +436,22 @@
         <h3 class="guide-h">All creatures</h3>
         <div id="guide"></div>
       </div>
-      <div class="pane" id="p-inspect">
+
+      <div class="pane" id="p-journal">
+        <div class="tabs subtabs"><button data-t="notebook" class="on">Notes</button><button data-t="secrets">Secrets <span id="sc">0/7</span></button><button data-t="inspect">Inspect</button></div>
+      <div class="subpane" id="p-notebook">
+        <div class="nb">
+          <div class="nb-head">
+            <div class="nb-title">Island Notes</div>
+            <div class="nb-sub">Your development notebook: observations, bugs and requests. Claude Code reads these at the start of each session.</div>
+          </div>
+          <div class="nb-filters" id="nbFilters"></div>
+          <input id="nbSearch" class="nb-search" type="search" placeholder="Search notes…" />
+          <div id="nbList"></div>
+          <div class="nb-foot" id="nbFoot"></div>
+        </div>
+      </div>
+      <div class="subpane" id="p-inspect">
         <div class="ins">
           <div class="spec-stick">
             <div class="spec-view" id="inspView"><div class="spec-empty" id="inspEmpty">Click anything in the world to inspect it here: a tree, a flower, a rock, a structure, the water or the ground.</div></div>
@@ -434,43 +465,14 @@
           <div id="insBody"><p class="note">Nothing selected yet.</p></div>
         </div>
       </div>
-      <div class="pane" id="p-notebook">
-        <div class="nb">
-          <div class="nb-head">
-            <div class="nb-title">Island Notes</div>
-            <div class="nb-sub">Your development notebook: observations, bugs and requests. Claude Code reads these at the start of each session.</div>
-          </div>
-          <div class="nb-filters" id="nbFilters"></div>
-          <input id="nbSearch" class="nb-search" type="search" placeholder="Search notes…" />
-          <div id="nbList"></div>
-          <div class="nb-foot" id="nbFoot"></div>
-        </div>
+        <div class="subpane" id="p-secrets"><div id="secretList"></div></div>
       </div>
-      <div class="pane" id="p-secrets"><div id="secretList"></div></div>
     </div>
   </div>
 
-  <div id="dock" class="glass"></div>
-
-  <div id="help" class="glass">
-    <b>Explore</b><br>
-    free camera: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Q</kbd><kbd>E</kbd> turn · <kbd>R</kbd><kbd>F</kbd> rise / sink · <kbd>⇧</kbd> fast<br>
-    <kbd>drag</kbd> look · <kbd>wheel</kbd> or <kbd>Z</kbd><kbd>X</kbd> zoom lens · <kbd>right-drag</kbd> pan<br>
-    <kbd>click</kbd> animal to lock on: drag / <kbd>WASD</kbd> look around it, <kbd>Esc</kbd> lets go<br>
-    🎮 controller: left stick move · right stick look · <kbd>RT</kbd>/<kbd>LT</kbd> rise / sink · <kbd>A</kbd> fast · <kbd>X</kbd> precise · d-pad ↑↓ zoom lens · ←→ places · <kbd>Y</kbd> lock on · <kbd>LB</kbd>/<kbd>RB</kbd> previous / next animal · hold <kbd>B</kbd> to release · <kbd>R3</kbd> reset lens · <kbd>Start</kbd> hide UI · <kbd>Back</kbd> walk<br>
-    <kbd>double-click</kbd> go there · <kbd>V</kbd> walk · <kbd>1</kbd>–<kbd>0</kbd> places · <kbd>Esc</kbd> release
-  </div>
-
-  <div id="follow" class="glass">
-    <div class="l">Locked on</div><div class="n"></div><div class="d"></div>
-    <div class="lockhint">drag or right stick: look around it · wheel / triggers: closer, farther<br>to let go: <kbd>Esc</kbd> or hold <kbd>B</kbd></div>
-    <div class="relwrap"><i id="relbar"></i></div>
-    <button id="unfollow">Release camera (Esc)</button>
-  </div>
   <div id="walkhint" class="glass"><b>First-person walk</b><br><span id="whmsg">Click the view to capture the mouse</span><br><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk · <kbd>⇧</kbd> run · <kbd>Space</kbd> jump · <kbd>C</kbd> crouch / dive<br><kbd>Q</kbd><kbd>E</kbd> turn · <kbd>0–9</kbd> teleport · scroll out, <kbd>V</kbd> or <kbd>Esc</kbd> to leave</div>
   <div id="toast" class="glass"><div class="k">Secret discovered</div><div class="n"></div><div class="d"></div></div>
 </div>
-
 <div id="boot"></div>
 
 <script src="music/playlist.js"></script>
