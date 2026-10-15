@@ -2,6 +2,10 @@
 // rosette of thick, glossy, spoon-shaped leaves that fold up along the midrib and droop a little; small white "half-flowers" (five
 // petals fanned to one side, as if the other half had been torn off) in the leaf axils; and clusters of round white berries.
 // Built with a local seeded generator, so the island's own random sequence is untouched.
+//
+// Three levels of detail come from the same plant (see vegetation_lod.js). Level 0 is the full shrub. Level 1 keeps every second leaf,
+// a little wider so the mound keeps its density, and drops the berries. Level 2 keeps every fourth leaf and no flowers. Every level
+// draws the same random numbers in the same order, so the leaves that remain are in the same places as in the full shrub.
 import * as THREE from 'three';
 import { MB, C, shade, tube, lumpy, mat4 } from './gfx.js';
 import { mulberry32, TAU } from './util.js';
@@ -9,15 +13,19 @@ import { mulberry32, TAU } from './util.js';
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const UP = V(0, 1, 0);
 
-export function makeNaupakaGeo(seed = 1) {
+export function makeNaupakaGeo(seed = 1, detail = 0) {
   const rng = mulberry32(seed * 9301 + 17), rr = (a, b) => a + (b - a) * rng(), pk = (a) => a[Math.floor(rng() * a.length)];
   const mb = new MB(), nectarFlowers = [];
   const BARK = [C('#8d8c6c'), C('#a09f7e'), C('#7c7a5e')];
   const LEAF = [C('#8cc152'), C('#7fb548'), C('#9bcf5e'), C('#86bb4c')];
   const tips = [];
+  const thin = detail === 0 ? 1 : detail === 1 ? 2 : 4, fill = detail === 0 ? 1 : detail === 1 ? 1.2 : 1.4;
+  let leafNo = 0;
 
   // a leaf: spoon-shaped (widest toward the rounded tip), folded up along the midrib, drooping under its own weight
   const leaf = (base, dir, len, wid, droop, fold, col, w) => {
+    if (leafNo++ % thin) return;
+    wid *= fill;
     const f = dir.clone().normalize(), s = new THREE.Vector3().crossVectors(f, UP);
     if (s.lengthSq() < 1e-4) s.set(1, 0, 0);
     s.normalize();
@@ -54,6 +62,7 @@ export function makeNaupakaGeo(seed = 1) {
     const t = new THREE.Vector3().crossVectors(axis, s).normalize();
     const white = C('#fbfaf2'), cream = C('#efe6c0'), line = C('#c9b6d6');
     const ph = rr(0, TAU), len = rr(0.045, 0.06);
+    if (detail >= 2) return;
     for (let k = 0; k < 5; k++) {
       const a = ph + (k / 4 - 0.5) * Math.PI * 0.95;
       const d = axis.clone().multiplyScalar(0.5).addScaledVector(s, Math.cos(a) * 0.85).addScaledVector(t, Math.sin(a) * 0.85).normalize();
@@ -101,7 +110,8 @@ export function makeNaupakaGeo(seed = 1) {
     if (rng() < 0.45) {                                                                           // a cluster of white berries on short stalks
       for (let k = 0; k < 5; k++) {
         const bp = p.clone().add(V(rr(-0.1, 0.1), rr(0.02, 0.12), rr(-0.1, 0.1)));
-        mb.addGeo(new THREE.IcosahedronGeometry(1, 0), mat4(bp.x, bp.y, bp.z, 0.022, 0.024, 0.022), shade(C('#f4f3e6'), rr(0.9, 1.05)), 0.7);
+        const bc = shade(C('#f4f3e6'), rr(0.9, 1.05));
+        if (detail === 0) mb.addGeo(new THREE.IcosahedronGeometry(1, 0), mat4(bp.x, bp.y, bp.z, 0.022, 0.024, 0.022), bc, 0.7);
       }
     }
   }

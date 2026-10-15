@@ -4,7 +4,7 @@
 // school fish, the jellyfish, the flocks) are left as they are.
 import { updaters, scene, creatures } from './core.js';
 
-const skip = (o) => o.name === 'school-fish' || o.name === 'anthias-fish' || o.name === 'instanced parts' || o.frustumCulled;
+const skip = (o) => o.name === 'school-fish' || o.name === 'anthias-fish' || o.name === 'instanced parts' || o.userData.lodBatch || o.frustumCulled;
 const sig = (im) => { const a = im.instanceMatrix.array; let h = 0; for (let i = 0; i < a.length; i += 3) h = (h * 31 + Math.round(a[i] * 100)) | 0; return h + '|' + im.visible; };
 export const staticCullStats = { checked: 0, culled: 0 };
 let state = 0, t = 0, snap = new Map();

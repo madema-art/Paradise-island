@@ -1,6 +1,7 @@
 // South Pacific vegetation: pandanus, banyan, breadfruit, plumeria, beach shrubs and a garden of tropical flowers.
 import * as THREE from 'three';
 import { makeNaupakaGeo } from './naupaka.js';
+import { lodFamily } from './vegetation_lod.js';
 import { scene } from './core.js';
 import { MB, C, shade, mat4, tube, lumpy, windify } from './gfx.js';
 import { addCollider, getHeight, getSlope, riverDist, lavaDist, TEMPLE, COVE, LAKE, SPRING, FAIRY, VOL, MOTU, falls } from './world.js';
@@ -359,7 +360,8 @@ function makeOrchid(col) {
 // Each naupaka the old way drew 580 numbers from the world's random stream. The new shrub (naupaka.js) has its own generator, but
 // those draws are still spent, so every later placement stays exactly where it was.
 let nauSeed = 0;
-function makeNaupaka() { burn(580); return makeNaupakaGeo(++nauSeed); }
+// the three levels of detail of one shrub (vegetation_lod.js), all from one seed
+function makeNaupaka() { burn(580); const seed = ++nauSeed; return [0, 1, 2].map((d) => makeNaupakaGeo(seed, d)); }
 
 /* ---------------------------------------------------------------- build + placement */
 export function buildFlora2() {
@@ -436,7 +438,7 @@ export function buildFlora2() {
   const nauList = place(170, (x, z, h) => h > 1.3 && h < 3.6 && getSlope(x, z) < 0.3 && clearOf(x, z, 2) ? 0.7 : false, 170 * 140);
   const nauB = [[], []];
   nauList.forEach((a) => nauB[Math.floor(rnd() * 2)].push(a));
-  nau.forEach((g, i) => instanced(g, vegMat, nauB[i], { inspect: 'naupaka', scale: [0.8, 1.5], cast: false }));
+  nau.forEach((g, i) => lodFamily(instanced(g[0], vegMat, nauB[i], { inspect: 'naupaka', scale: [0.8, 1.5], cast: false }), g, nauB[i]));
 
   const hib = F.FLOWER_COLORS.hibiscus.map((col) => bushWith((mb, p, dir) => F.hibiscus(mb, p, dir, col), { n: 4, R0: 0.95, flowers: 30, green: ['#2a8a38', '#35a044', '#2e9440'], flat: 0.9 }));
   const hibList = place(150, (x, z, h, s) => (h < 2.4 || h > 24 || s > 0.4 || !clearOf(x, z, 2)) ? false : 0.5 * (0.5 + 0.7 * smoothstep(2.2, 8, h)), 150 * 80);
@@ -604,7 +606,7 @@ export function buildSouthSeas() {
     pm[i].forEach((a) => { a.crown = new THREE.Vector3(); p.pt(1, a.crown); a.crown.multiplyScalar(a.sc).applyAxisAngle(UP, a.rot).add(new THREE.Vector3(a.x, a.y, a.z)); motuPalms.push(a); });
   });
   pans.forEach((g, i) => instanced(g, vegMat, pansL[i], { inspect: 'pandanus', scale: [0.8, 1.2] }));
-  nauS.forEach((g, i) => instanced(g, vegMat, nauL[i], { inspect: 'naupaka', scale: [0.8, 1.3], cast: false }));
+  nauS.forEach((g, i) => lodFamily(instanced(g[0], vegMat, nauL[i], { inspect: 'naupaka', scale: [0.8, 1.3], cast: false }), g, nauL[i]));
   instanced(glo, vegMat, gloL, { inspect: 'glory', scale: [0.9, 1.5], cast: false, tilt: 0.0, receive: false });
 
   // --- the beach belt: hibiscus and frangipani where the lagoon beach meets the jungle, and blossoms fallen on the sand
