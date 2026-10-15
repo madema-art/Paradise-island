@@ -240,7 +240,15 @@ window.addEventListener('resize', onResize);
 export const quality = { level: 'high' };
 export function setQuality(level) {
   quality.level = level;
-  const cfg = { low: { pr: 1, sh: 1024, ms: 0, bloom: false }, medium: { pr: 1.25, sh: 1536, ms: 2, bloom: true }, high: { pr: Math.min(window.devicePixelRatio, 1.75), sh: 2048, ms: 4, bloom: true } }[level];
+  // Rendering resolution: the screen's device pixel ratio, capped per level (a cap, so a level never renders more pixels than a higher one).
+  // high 1.75, medium 1.25, low 1.0. On a pixel-ratio-1 screen all three render at the screen's own size; they differ in anti-aliasing,
+  // bloom and shadow resolution. Measured in docs/PERFORMANCE.md.
+  const dpr = window.devicePixelRatio;
+  const cfg = {
+    low: { pr: Math.min(dpr, 1.0), sh: 1024, ms: 0, bloom: false },
+    medium: { pr: Math.min(dpr, 1.25), sh: 1536, ms: 2, bloom: true },
+    high: { pr: Math.min(dpr, 1.75), sh: 2048, ms: 4, bloom: true },
+  }[level];
   renderer.setPixelRatio(cfg.pr);
   rt.samples = cfg.ms; composer.renderTarget1.samples = cfg.ms; composer.renderTarget2.samples = cfg.ms;
   composer.renderTarget1.dispose(); composer.renderTarget2.dispose();

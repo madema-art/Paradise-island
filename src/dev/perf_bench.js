@@ -5,10 +5,11 @@
 // ?perf=1           shows the live overlay and waits for you to press Run
 // ?perf=1&bench=1   runs the whole benchmark when the game is ready and shows the report
 // Other options: &quality=high|medium|low (default high), &noauto is implied (the automatic quality change is switched off).
-import { updaters, camera, renderer, composer, scene, creatures, setQuality, quality } from '../core.js';
+import { updaters, camera, renderer, composer, scene, creatures, setQuality, quality, sun, bloom } from '../core.js';
 import { cam } from '../camera.js';
 import { perf } from '../perf_hooks.js';
-import { setSkeletonShare, setSkinnedMerge, mergeCheck } from '../skeleton_share.js';
+import { setSkeletonShare, setSkinnedMerge, mergeCheck, setRigidMerge, rigidStatsRef, setSkinCulling } from '../skeleton_share.js';
+import { setPartInstancing, partStats } from '../part_instancing.js';
 
 const q = new URLSearchParams(location.search);
 const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return +s[Math.min(s.length - 1, Math.floor(s.length * p))].toFixed(2); };
@@ -302,7 +303,7 @@ export async function runInterleaved(key = 'jungle48', variants = null, rounds =
   holdCamera(() => fn(0, performance.now() / 1000));
   await wait(3000);
   const acc = {};
-  for (const v of list) acc[v.name] = { fps: [], frameMs: [], gpu: [], update: [], render: [], calls: [] };
+  for (const v of list) acc[v.name] = { fps: [], frameMs: [], gpu: [], update: [], render: [], calls: [], tris: [] };
   for (let r = 0; r < rounds; r++) {
     for (const v of list) {
       v.apply();
@@ -311,13 +312,13 @@ export async function runInterleaved(key = 'jungle48', variants = null, rounds =
       await wait(secs * 1000);
       const s = summarise(st.frames, st.gpuDone, key, level);
       const a = acc[v.name];
-      a.fps.push(s.fpsAverage); a.frameMs.push(s.frameMsMedian); a.gpu.push(s.gpuMsMean); a.update.push(s.updateMsMean); a.render.push(s.renderMsMean); a.calls.push(s.drawCallsMean);
+      a.fps.push(s.fpsAverage); a.frameMs.push(s.frameMsMedian); a.gpu.push(s.gpuMsMean); a.update.push(s.updateMsMean); a.render.push(s.renderMsMean); a.calls.push(s.drawCallsMean); a.tris.push(s.trianglesMean);
     }
   }
   holdCamera(null);
   setSkeletonShare(true);
   const avg = (x) => (x.length ? +(x.reduce((p, q) => p + q, 0) / x.length).toFixed(2) : null);
-  const rows = list.map((v) => { const a = acc[v.name]; return { variant: v.name, fps: avg(a.fps), frameMsMedian: avg(a.frameMs), gpuMs: avg(a.gpu), updateMs: avg(a.update), renderCpuMs: avg(a.render), drawCalls: avg(a.calls), fpsRounds: a.fps }; });
+  const rows = list.map((v) => { const a = acc[v.name]; return { variant: v.name, fps: avg(a.fps), frameMsMedian: avg(a.frameMs), gpuMs: avg(a.gpu), updateMs: avg(a.update), renderCpuMs: avg(a.render), drawCalls: avg(a.calls), trianglesM: avg(a.tris) && +(avg(a.tris) / 1e6).toFixed(2), fpsRounds: a.fps }; });
   return { scenario: key, level, rounds, secs, rows };
 }
 window.__perfInterleave = runInterleaved;
@@ -348,3 +349,129 @@ window.__perfProfileUpdaters = profileUpdaters;
 window.__perfSkin = { setSkinnedMerge, setSkeletonShare, mergeCheck };
 // the last run's raw frames, for finding what the slow frames spend their time on
 window.__perfFramesDump = () => st.frames.map((f) => [+f.wall.toFixed(1), +f.update.toFixed(1), +f.render.toFixed(1), f.calls]);
+
+// ---- what the draw calls are: visible, in-frustum meshes by category, one draw per material group (the renderer's own rule) ---------------
+import * as THREE_ from 'three';
+export async function composition(key = 'lagoon') {
+  const sc = SCENARIOS[key];
+  const fn = sc.run(performance.now() / 1000);
+  holdCamera(() => fn(0, performance.now() / 1000));
+  await wait(2500);
+  const fr = new THREE_.Frustum();
+  camera.updateMatrixWorld();
+  fr.setFromProjectionMatrix(new THREE_.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  const creatureOf = new Map();
+  for (const c of creatures) if (c.group) c.group.traverse((o) => creatureOf.set(o, c));
+  const cats = {};
+  const add = (k, n) => { cats[k] = (cats[k] || 0) + n; };
+  const sphere = new THREE_.Sphere();
+  scene.traverse((o) => {
+    if (!o.isMesh || !o.visible) return;
+    let p = o, hidden = false;
+    for (; p; p = p.parent) if (!p.visible) { hidden = true; break; }
+    if (hidden) return;
+    if (o.geometry) { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); }
+    if (o.frustumCulled && o.geometry && o.geometry.boundingSphere) {
+      sphere.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+      if (!fr.intersectsSphere(sphere)) return;
+    }
+    const groups = Array.isArray(o.material) ? Math.max(1, o.geometry.groups.length) : 1;
+    const c = creatureOf.get(o);
+    let k;
+    if (o.name === 'school-fish' || o.name === 'anthias-fish') k = 'school fish (instanced)';
+    else if (o.isInstancedMesh) k = c ? 'creature instanced' : 'scenery instanced';
+    else if (c) k = (o.isSkinnedMesh ? 'creature skinned' : 'creature static') + ' / ' + c.name.split(' ')[0];
+    else if (o.material && o.material.type === 'ShaderMaterial') k = 'water/sky shader';
+    else k = 'scenery static';
+    add(k, groups);
+  });
+  const total = Object.values(cats).reduce((a, b) => a + b, 0);
+  const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+  holdCamera(null);
+  return { scenario: key, drawsEstimated: total, info: renderer.info.render.calls, categories: sorted };
+}
+window.__perfComposition = composition;
+window.__perfRigid = { setRigidMerge, rigidStats: () => rigidStatsRef() };
+// draw calls of the main pass alone and of the shadow pass alone, in a scenario's view (one render each, counted exactly)
+window.__perfShadowCalls = async (key) => {
+  const sc = SCENARIOS[key];
+  const fn = sc.run(performance.now() / 1000);
+  holdCamera(() => fn(0, performance.now() / 1000));
+  await wait(2500);
+  const info = renderer.info; const was = info.autoReset; info.autoReset = false;
+  const count = (sm) => { renderer.shadowMap.enabled = sm; info.reset(); if (st.mode === 'raw') renderer.render(scene, camera); else composer.render(); return info.render.calls; };
+  const withSh = count(true), noSh = count(false);
+  renderer.shadowMap.enabled = true; info.autoReset = was; holdCamera(null);
+  return { scenario: key, drawsWithShadows: withSh, drawsWithoutShadows: noSh, shadowPassDraws: withSh - noSh };
+};
+// the shadow pass's draws by category: visible casters inside the sun's shadow frustum (the same test the shadow pass applies)
+window.__perfShadowComposition = async (key) => {
+  const sc = SCENARIOS[key];
+  const fn = sc.run(performance.now() / 1000);
+  holdCamera(() => fn(0, performance.now() / 1000));
+  await wait(2500);
+  sun.shadow.camera.updateMatrixWorld();
+  const fr = new THREE_.Frustum();
+  fr.setFromProjectionMatrix(new THREE_.Matrix4().multiplyMatrices(sun.shadow.camera.projectionMatrix, sun.shadow.camera.matrixWorldInverse));
+  const creatureOf = new Map();
+  for (const c of creatures) if (c.group) c.group.traverse((o) => creatureOf.set(o, c));
+  const cats = {}; const sphere = new THREE_.Sphere(); const sizes = {};
+  scene.traverse((o) => {
+    if (!o.isMesh || !o.visible || !o.castShadow) return;
+    let p = o; for (; p; p = p.parent) if (!p.visible) return;
+    if (o.frustumCulled && o.geometry) { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); sphere.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld); if (!fr.intersectsSphere(sphere)) return; }
+    const groups = Array.isArray(o.material) ? Math.max(1, o.geometry.groups.length) : 1;
+    const c = creatureOf.get(o);
+    const k = o.name === 'merged skin' ? 'merged skin' : o.name === 'merged rigid parts' ? 'merged rigid' : o.isInstancedMesh ? 'instanced' : c ? (o.isSkinnedMesh ? 'creature skinned' : 'creature static') : (o.isSkinnedMesh ? 'skinned (other)' : 'scenery static');
+    cats[k] = (cats[k] || 0) + groups;
+  });
+  holdCamera(null);
+  return { scenario: key, categories: Object.entries(cats).sort((a, b) => b[1] - a[1]) };
+};
+// why a creature's static part was not merged: the first rule it fails
+window.__perfWhyNotMerged = () => {
+  const reasons = {}; const examples = {};
+  for (const c of creatures) {
+    if (!c.group) continue;
+    c.group.traverse((o) => {
+      if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || o.userData.mergedInto) return;
+      if (o.userData.creature) { reasons['proxy'] = (reasons['proxy'] || 0) + 1; return; }
+      let why = 'merged-or-ok';
+      if (o.children.length) why = 'has children';
+      else if (Array.isArray(o.material)) why = 'multi-material';
+      else if (o.geometry.groups.length) why = 'geometry groups';
+      else if (o.userData.inspect) why = 'inspectable';
+      else if (o.name === 'merged rigid parts' || o.name === 'merged skin') why = 'merged';
+      else why = 'candidate (stable or single per parent)';
+      const key = c.name + ' :: ' + why;
+      reasons[why] = (reasons[why] || 0) + 1;
+      examples[key] = (examples[key] || 0) + 1;
+    });
+  }
+  return { reasons, examples: Object.entries(examples).sort((a, b) => b[1] - a[1]).slice(0, 25) };
+};
+window.__perfRigidDebug = () => { const groups = {}; for (const c of creatures) { if (!c.group) continue; c.group.traverse(o => { if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || o.userData.mergedInto || o.userData.creature || o.children.length) return; const k = (o.parent ? (o.parent.name || o.parent.type) : 'none') + '|' + c.name; groups[k] = (groups[k] || 0) + 1; }); } return Object.entries(groups).sort((a, b) => b[1] - a[1]).slice(0, 25); };
+
+window.__perfParts = { setPartInstancing, partStats };
+
+
+window.__perfBloom = (on) => { bloom.enabled = !!on; };
+
+window.__perfCull = setSkinCulling;
+// interleaved GPU test: each variant restores everything, then hides one category (so the variants do not accumulate)
+window.__perfGpuVariants = () => {
+  const cat = categories();
+  const all = [...cat.water, ...cat.staticScenery, ...cat.instancedScenery, ...cat.schoolFish, ...cat.schools, ...cat.otherCreatures, ...cat.monkeys];
+  const restoreAll = () => showAll(all);
+  const v = (name, list) => ({ name, apply: () => { restoreAll(); if (list) hideAll(list); } });
+  return [
+    v('everything', null),
+    v('water hidden', cat.water),
+    v('static scenery hidden', cat.staticScenery),
+    v('instanced scenery hidden', cat.instancedScenery),
+    v('school fish hidden', [...cat.schoolFish, ...cat.schools]),
+    v('other creatures hidden', cat.otherCreatures),
+    v('monkeys hidden', cat.monkeys),
+  ];
+};
+
