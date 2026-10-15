@@ -10,6 +10,8 @@ const STRIP = (root) => {
   const dead = [];
   root.traverse((o) => { if ((o.userData && o.userData.creature) || (o.isMesh && o.material && o.material.visible === false)) dead.push(o); });
   for (const o of dead) o.removeFromParent();
+  // the live game draws a creature's rigid parts through instanced copies and keeps the originals on a layer no camera shows (part_instancing.js); this viewer draws the originals themselves
+  root.traverse((o) => { o.layers.set(0); });
 };
 
 export class SpecimenViewer {
