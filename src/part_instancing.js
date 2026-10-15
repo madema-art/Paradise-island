@@ -22,7 +22,7 @@ const candidate = (o) => o.isMesh && !o.userData.noMerge && !o.isSkinnedMesh && 
   && !Array.isArray(o.material) && o.geometry.groups.length === 0 && !o.userData.inspect && o.parent && o.name !== 'merged rigid parts' && o.name !== 'merged skin';
 
 // a part shows only while it is in the scene and every object above it is visible (a creature taken out of the scene shows nothing)
-function effectiveVisible(o) { let p = o; for (; p; p = p.parent) if (!p.visible) return false; return p === scene; }
+function effectiveVisible(o) { let p = o, top = o; for (; p; top = p, p = p.parent) if (!p.visible) return false; return top === scene; }
 
 function build() {
   built = true;

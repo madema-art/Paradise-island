@@ -13,7 +13,7 @@ const STRIP = (root) => {
   // the live game draws a creature's rigid parts through instanced copies and keeps the originals on a layer no camera shows (part_instancing.js); this viewer draws the originals themselves
   root.traverse((o) => {
     o.layers.set(0);
-    const r = o.userData && o.userData.rest;
+    const r = o.userData && o.userData.restPose;
     if (r && o !== root) { o.position.set(r.p[0], r.p[1], r.p[2]); o.quaternion.set(r.q[0], r.q[1], r.q[2], r.q[3]); o.scale.set(r.s[0], r.s[1], r.s[2]); }
   });
   root.visible = true;                         // a creature hidden in the game (a rat in its burrow) is still shown here
