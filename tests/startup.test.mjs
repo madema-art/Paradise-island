@@ -7,7 +7,7 @@ import net from 'node:net';
 import http from 'node:http';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { command, loadConfig, updatePlayable, prepareBuild, startServer } from '../startup.mjs';
+import { command, loadConfig, assertClean, updatePlayable, prepareBuild, startServer } from '../startup.mjs';
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const silent = () => {};
@@ -137,6 +137,43 @@ async function freePort() {
   const server = net.createServer(); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const port = server.address().port; await new Promise(resolve => server.close(resolve)); return port;
 }
+test('local audio/backups are ignored, still served, and never overwritten; source and tracked songs remain protected', async t => {
+  const f = fixture(t);
+  fs.writeFileSync(path.join(f.seed, 'music/library.mp3'), 'tracked library');
+  f.commit(f.seed, 'Existing library song');
+  fs.appendFileSync(path.join(f.seed, '.gitignore'), '\n' + fs.readFileSync(path.join(project, '.gitignore'), 'utf8'));
+  f.commit(f.seed, 'Local content ignores'); f.push(); updatePlayable(f.local, config, silent);
+  const audio = ['new.mp3', 'new.OGG', 'new.wav', 'new.m4a', 'new.flac', 'new.opus'];
+  for (const name of audio) fs.writeFileSync(path.join(f.local, 'music', name), 'local song');
+  fs.mkdirSync(path.join(f.local, 'notes/backups'), { recursive: true });
+  const backup = 'notes/backups/island-notes.r51.2026-10-15T15-05-07-643Z.json';
+  fs.writeFileSync(path.join(f.local, backup), '{"revision":51}');
+  assert.doesNotThrow(() => assertClean(f.local));
+  assert.equal(updatePlayable(f.local, config, silent).updated, false);
+  assert.equal(f.run(f.local, 'ls-files', 'music/library.mp3'), 'music/library.mp3');
+  for (const [file, text] of [['src/main.js', 'source edit'], ['music/library.mp3', 'tracked edit']]) {
+    const original = fs.readFileSync(path.join(f.local, file)); fs.writeFileSync(path.join(f.local, file), text);
+    assert.throws(() => updatePlayable(f.local, config, silent), /Local changes detected/); fs.writeFileSync(path.join(f.local, file), original);
+  }
+  for (const file of ['music/loader.js', 'music/README.md', 'notes/island-notes.json', 'notes/backups/research.json']) {
+    fs.writeFileSync(path.join(f.local, file), 'real project content');
+    assert.throws(() => assertClean(f.local), /Local changes detected/); fs.unlinkSync(path.join(f.local, file));
+  }
+  const port = await freePort(), server = await startServer(f.local, port, 'local-audio-test', silent);
+  try {
+    const songs = await (await fetch(`http://localhost:${port}/api/music/playlist`)).json();
+    assert.ok(audio.every(name => songs.items.some(song => song.id === name)));
+    assert.equal(await (await fetch(`http://localhost:${port}/music/new.mp3`)).text(), 'local song');
+  } finally { server.child.kill(); await server.exited; }
+  // A future publisher must not silently replace a local ignored song with the same name.
+  const head = f.run(f.local, 'rev-parse', 'HEAD');
+  fs.writeFileSync(path.join(f.seed, 'music/new.mp3'), 'remote collision');
+  f.run(f.seed, 'add', '-f', 'music/new.mp3'); f.run(f.seed, 'commit', '-m', 'Collision fixture'); f.push();
+  assert.throws(() => updatePlayable(f.local, config, silent), /failed/);
+  assert.equal(f.run(f.local, 'rev-parse', 'HEAD'), head);
+  assert.equal(fs.readFileSync(path.join(f.local, 'music/new.mp3'), 'utf8'), 'local song');
+  assert.equal(fs.readFileSync(path.join(f.local, backup), 'utf8'), '{"revision":51}');
+});
 test('existing real server: readiness, notebook/music/static GETs, same-version reuse, stale/foreign refusal', async t => {
   const f = fixture(t), port = await freePort();
   const revision = f.run(f.local, 'rev-parse', 'HEAD');

@@ -68,7 +68,7 @@ export function updatePlayable(root, config, log = console.log) {
     throw new Error('Local and remote history have diverged. Resolve this manually; the launcher will not merge or rebase.');
   }
   log('Update found. Downloading...');
-  git(root, ['-c', 'merge.autoStash=false', 'merge', '--ff-only', remote]);
+  git(root, ['-c', 'merge.autoStash=false', 'merge', '--ff-only', '--no-overwrite-ignore', remote]);
   assertClean(root);
   log('Update complete. Checking rebuild requirements...');
   return { updated: true, revision: remote };
