@@ -120,3 +120,111 @@ shared materials; and the creature update loops (distance-based update intervals
 Double-click **Run Performance Benchmark.bat** in the project folder. It starts the local server if needed and opens the game with
 the benchmark on. Keep the browser window at 1920 x 1080 and in front. When the game is ready, the benchmark runs its five scenes
 (about two minutes) and saves `paradise-island-benchmark.json` to your Downloads folder. Share that file to compare results.
+
+---
+
+## Phase 2: closing the gap to 60 fps
+
+Starting point: commit `a3c5258` (the sections above). Everything below was measured with the same benchmark (1920 x 1080, device
+pixel ratio 1, high quality, automatic quality off). The raw summaries are in `docs/performance/`.
+
+### Graphics quality (fixed)
+
+The old presets set medium to a fixed pixel ratio of 1.25 and low to a fixed 1.0, whatever the screen, so medium could render more
+pixels than high. Each level is now a cap on the screen's device pixel ratio: **high 1.75, medium 1.25, low 1.0** (`core.js`,
+`setQuality`).
+
+| Device pixel ratio | High buffer | Medium buffer | Low buffer |
+|---|---|---|---|
+| 1 | 1920 x 1080 (MSAA 4, bloom, shadow map 2048) | 1920 x 1080 (MSAA 2, bloom, 1536) | 1920 x 1080 (no MSAA, no bloom, 1024) |
+| 2 | 3360 x 1890 | 2400 x 1350 | 1920 x 1080 |
+
+On a pixel-ratio-1 screen the three levels now differ only in anti-aliasing, bloom and shadow resolution, which is what they cost.
+Medium never renders more pixels than high.
+
+### Draw calls, before and after (renderer draw calls per frame, averaged over the run)
+
+| Scene | Before | After (runs 1 and 2) |
+|---|---|---|
+| Lagoon | 2,054 | 1,346 / 1,645 |
+| Jungle (48 monkeys) | 1,306 | 785 / 883 |
+| Wide island | 2,874 | 1,840 / 1,705 |
+| Castaway, eye level | 1,936 | 1,139 / 937 |
+| Moving orbit | 2,456 | 1,539 / 1,213 |
+
+What changed the count:
+- **Material groups** (`skeleton_share.js`): the triangles of a merged skin are gathered per material, so each material is one draw.
+  Before, every part was a draw even when it shared a material with another part. Monkeys went from 144 draws to 96.
+- **Rigid creature parts** (`skeleton_share.js`): separate meshes that hang from one bone and never move relative to it are merged per
+  parent, after a check that their local transforms are unchanged over four seconds. 417 parts became 124 meshes.
+- **Part instancing** (`part_instancing.js`): a creature part that appears in several creatures (same geometry and material) is drawn
+  once, instanced, per 60 m cell. The creature keeps its own part meshes, moved to a layer no camera draws, so its bones still drive
+  them. Instance matrices are written after the scene's matrices are updated, once per frame.
+- **Skin culling** (`skeleton_share.js`): skinned creatures were never culled. Their bounds are now the bind pose with a generous margin,
+  so off-screen creatures are skipped. It is switched on at boot.
+- **Static instanced meshes** (`static_cull.js`): an instanced mesh that does not move is culled with a bounding sphere of its instances.
+
+### Frame time (average, 1% lows and percentiles), two runs
+
+| Scene | Average fps, run 1 / run 2 (was) | 1% low fps (was) | Median frame | 95th percentile frame |
+|---|---|---|---|---|
+| Lagoon | 58.2 / 51.6 (48.0) | 39.1 / 36.0 (33.8) | 16.8 / 18.8 ms | 19.3 / 23.0 ms |
+| Jungle (48 monkeys) | 59.8 / 59.2 (52.2) | 51.5 / 42.4 (45.7) | 16.6 / 16.6 ms | 18.1 / 18.9 ms |
+| Wide island | 52.3 / 50.9 (38.9) | 43.3 / 40.2 (34.1) | 18.9 / 19.4 ms | 20.7 / 21.6 ms |
+| Castaway, eye level | 59.3 / 58.8 (46.5) | 50.5 / 47.2 (30.2) | 16.7 / 16.8 ms | 18.6 / 18.9 ms |
+| Moving orbit | 55.4 / 55.7 (44.7) | 45.7 / 43.3 (40.0) | 17.8 / 17.7 ms | 19.7 / 19.4 ms |
+
+The spread between run 1 and run 2 (same build) is about 1 to 5 fps. **Not every scene holds 60 fps on average.** The jungle and the
+castaway view do. The lagoon, the wide island and the moving orbit average 52 to 58 fps, with median frames of 17 to 19 ms.
+
+### What was tried and not kept (measured)
+
+- **Instanced scenery chunks** (split into 40 m cells, each culled on its own): neutral. Frame rate, GPU time and triangles barely moved
+  (7%). The triangles are visible geometry, not culling waste. Removed (`ab-interleaved-instanced-chunks-rejected.json`).
+- **Detaching far creatures from the scene graph**: the average rose in two scenes and fell in the others, with periodic stalls
+  (95th percentile up to 33 ms). Removed.
+- **Bloom off**: about 0.5 ms of GPU. Not the cost.
+- **Shadow budget** (see above): rejected, and not reintroduced in any form.
+- **Freezing static objects' transforms**: about 1 ms, within the noise. Not kept, because it depends on knowing which objects never move.
+
+### Where the time goes now
+
+Measured in the lagoon view (the composition tool counts visible draws and triangles):
+
+- **Triangles: about 8.3 million in the lagoon and 10.7 million in the wide view, drawn per frame.** The largest share is the procedural
+  shrubs. Naupaka is about 6,000 triangles per shrub (about 1.0 million in the lagoon and 1.4 million in the wide view). Hibiscus, bush,
+  wildflower, palm and banyan follow. This geometry is visible, so culling cannot remove it. **Level of detail is the next lever.** Done
+  per cell it would pop, so it needs a crossfade or per-instance switching, and simplified meshes generated at boot add to the load time.
+  Not done in this phase.
+- **Update (simulation): 4 to 6 ms.** The creature update loops and the monkeys' animation. The matrix work (`updateMatrixWorld`, bone
+  recomposition) is still a large share of the JavaScript time.
+- **Shadow pass: 400 to 760 draws in the forest views**, against about 150 in the open ones. Its casters are mostly procedural props and
+  creatures inside the sun's shadow frustum.
+- **Tang school:** each rigged tang has seven materials, so a tang costs seven draws (about 224 for the school).
+- **Materials:** 346 material objects in the scene. Sharing identical ones would reduce state changes. Not done.
+
+### Verification status
+
+- **Merged skins:** checked numerically (255 merges: vertex count, index count and bounds identical). A monkey on the ground was checked
+  visually (fur, eyes, tail and feet right). Not yet checked in motion: climbing monkeys, swimming tangs, flapping birds, dolphins, or the
+  castaway's animation.
+- **Part instancing (rats, boars, crabs and others):** not checked visually. The framing attempts put the creatures behind rocks. The
+  instances use the same geometry, material and world matrices as the original parts, so the picture should not change, but I have not
+  seen it in a frame.
+- **Skin culling:** the bounds are the bind-pose sphere, three times the radius plus 1.2 m. Clipping at the extreme poses is not checked.
+- **Quality levels:** the buffer dimensions were checked at device pixel ratios 1 and 2 (above).
+- **Frame-time consistency:** the causes of the spikes seen during the experiments (the shadow-caster change and the detaching) are
+  removed. Garbage collection was not instrumented. The 95th percentile in the lagoon and wide views is 19 to 23 ms.
+
+### Remaining options for 60 fps everywhere
+
+1. Level of detail for the heavy procedural shrubs and palms (naupaka first), with a crossfade so nothing pops.
+2. Reduce the update cost: the creature update loops and the monkeys' bones (102 per monkey), through distance-based update rates that do
+   not slow or stop the animation.
+3. Share identical materials to cut state changes.
+4. Reduce the shadow pass in the forest views by batching the static casters, without changing which objects cast shadows.
+
+### Benchmark
+
+Double-click **Run Performance Benchmark.bat**. The game opens with `?perf=1&bench=1&noauto=1`, runs its five scenes, and saves
+`paradise-island-benchmark.json` to Downloads. Keep the window at 1920 x 1080 and in front.

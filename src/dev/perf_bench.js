@@ -475,3 +475,48 @@ window.__perfGpuVariants = () => {
   ];
 };
 
+// the instanced props that carry the triangles in a view: triangles drawn per mesh (instances inside the frustum, counted by sphere test)
+window.__perfTriangles = async (key) => {
+  const sc = SCENARIOS[key];
+  const fn = sc.run(performance.now() / 1000);
+  holdCamera(() => fn(0, performance.now() / 1000));
+  await wait(2500);
+  camera.updateMatrixWorld();
+  const fr = new THREE_.Frustum();
+  fr.setFromProjectionMatrix(new THREE_.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  const rows = {}; let total = 0; const m = new THREE_.Matrix4(), p = new THREE_.Vector3(), s = new THREE_.Sphere();
+  scene.traverse((o) => {
+    if (!o.isMesh || !o.visible) return;
+    let q = o; for (; q; q = q.parent) if (!q.visible) return;
+    const tris = (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+    if (o.isInstancedMesh) {
+      const k = (o.userData.inspect && o.userData.inspect.key) || o.name || 'instanced';
+      let inside = 0;
+      for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m); p.setFromMatrixPosition(m).applyMatrix4(o.matrixWorld); if (fr.containsPoint(p)) inside++; }
+      const t = tris * inside; total += t; rows[k] = (rows[k] || 0) + t;
+    } else if (o.frustumCulled && o.geometry) {
+      if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+      s.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+      if (!fr.intersectsSphere(s)) return;
+      total += tris; rows['(static/other meshes)'] = (rows['(static/other meshes)'] || 0) + tris;
+    } else { total += tris; rows['(unculled meshes)'] = (rows['(unculled meshes)'] || 0) + tris; }
+  });
+  holdCamera(null);
+  return { scenario: key, totalTrianglesMillions: +(total / 1e6).toFixed(2), byKey: Object.entries(rows).sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => [k, +(v / 1e6).toFixed(2)]) };
+};
+// the meshes that are drawn whether or not they are on screen (frustum culling off), with their triangles and where they are
+window.__perfUnculled = () => {
+  const out = [];
+  scene.traverse((o) => {
+    if (!o.isMesh || o.frustumCulled || !o.visible) return;
+    const tris = (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3 * (o.isInstancedMesh ? o.count : 1);
+    if (tris < 5000) return;
+    const cr = o.userData.creature ? 'creature' : '';
+    let p = o; for (; p && !p.userData.inspect; p = p.parent);
+    out.push({ tris: Math.round(tris), inst: o.isInstancedMesh ? o.count : 1, name: o.name || o.type, key: p ? p.userData.inspect.key : '', parent: o.parent && o.parent.name, cr, material: Array.isArray(o.material) ? 'multi' : o.material.type, size: (() => { const bb = o.geometry.boundingBox || (o.geometry.computeBoundingBox(), o.geometry.boundingBox); return [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z].map((v) => Math.round(v)).join('x'); })() });
+  });
+  return out.sort((a, b) => b.tris - a.tris);
+};
+
+import { staticCullStats } from '../static_cull.js';
+window.__perfStaticCull = staticCullStats;

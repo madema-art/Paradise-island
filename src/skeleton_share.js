@@ -141,6 +141,7 @@ updaters.push((dt) => {
   done = true;
   setSkeletonShare(true);
   for (const c of creatures) if (c.group) mergeGroup(c.group);
+  setSkinCulling(true);   // the merged and skinned creatures are culled like the rest (see setSkinCulling)
   rigidTick = 0;
 });
 

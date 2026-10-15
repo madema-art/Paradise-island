@@ -17,6 +17,7 @@ import { cam, updateCamera, flyTo, followCreature, release as releaseCamera } fr
 import { perf } from './perf_hooks.js';
 import './skeleton_share.js';
 import './part_instancing.js';
+import './static_cull.js';
 import { detachFish, attachFish } from './school_mind.js';
 import { spawnNear } from './walk.js';
 import { buildFlora } from './flora.js';
