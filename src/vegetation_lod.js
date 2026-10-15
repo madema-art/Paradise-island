@@ -12,6 +12,7 @@ const PX = [26, 10];   // on-screen radius in device pixels: below PX[0] the mid
 const HYST = 1.2;      // back to the finer level only past 1.2 x the threshold
 const RADIUS = 1.0;    // metres, at scale 1: a bounding radius for the shrub
 const families = [];
+const famOf = new Map();                     // proxy InstancedMesh -> its family
 
 /**
  * The three detail levels of one builder, [full, mid, far]. make(detail) runs once with the world's random stream (level 0, exactly as
@@ -45,7 +46,8 @@ export function lodFamily(proxy, geos, list) {
     return im;
   });
   proxy.visible = false;
-  const fam = { n, m, pos, sc, batches, level: new Uint8Array(n) };
+  const fam = { n, m, pos, sc, batches, level: new Uint8Array(n), hide: new Uint8Array(n), proxy };
+  famOf.set(proxy, fam);
   rebuild(fam, 0b111);
   families.push(fam);
   return fam;
@@ -57,11 +59,21 @@ function rebuild(f, mask) {
     if (!(mask & (1 << b))) continue;
     const im = f.batches[b], arr = im.instanceMatrix.array;
     let c = 0;
-    for (let i = 0; i < f.n; i++) if (f.level[i] === b) { arr.set(f.m.subarray(i * 16, i * 16 + 16), c * 16); c++; }
+    for (let i = 0; i < f.n; i++) if (f.level[i] === b && !f.hide[i]) { arr.set(f.m.subarray(i * 16, i * 16 + 16), c * 16); c++; }
     im.count = c;
     im.instanceMatrix.needsUpdate = true;
   }
 }
+
+/** take one instance out of the family's batches (the camera's occlusion fade draws it itself), or put it back. Returns false if the mesh is not a family's proxy. */
+export function setInstanceHidden(proxy, i, hidden) {
+  const f = famOf.get(proxy);
+  if (!f) return false;
+  f.hide[i] = hidden ? 1 : 0;
+  rebuild(f, 1 << f.level[i]);
+  return true;
+}
+export const lodFamilyOf = (proxy) => famOf.get(proxy) || null;
 
 function update(f) {
   const px = U.pxScale.value, cx = camera.position.x, cy = camera.position.y, cz = camera.position.z;

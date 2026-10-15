@@ -23,6 +23,9 @@ export function tagObject(obj, key, { model = true } = {}) {
   return obj;
 }
 
+/** the tagged objects and instanced meshes (read-only: the camera's occlusion fade finds the scenery it may fade here) */
+export const inspectTargets = () => targets;
+
 /** after the world is built: give every inspectable object its stable id and record where it is */
 export function indexInspectables() {
   registry.clear();

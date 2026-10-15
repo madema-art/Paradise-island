@@ -111,6 +111,8 @@ class Gull {
   }
   enter(state, t) { this.state = state; this.stateT = t; }
   takeOff() { if (this.state === 'perch' && this.perch && this.perch.water) fx.splash(this.pos.x, this.pos.y, this.pos.z, 0.25, { quiet: true }); this.enter('takeoff', 1.3); this.vy = 3.5; this.speed = 4; this.setClip('Flight_Takeoff'); }
+  /** the Field Guide picked this bird: a perched gull takes off (an event, not a scan; once airborne its own patrol takes over) */
+  observed() { if (this.state === 'perch') this.takeOff(); }
   moveForward(dt) { this.pos.x += Math.sin(this.heading) * this.speed * dt; this.pos.z += Math.cos(this.heading) * this.speed * dt; }
   /** a gliding gull holds its wings swept back with a slight lift at the wrist and a little dihedral, like a real one, not straight out like a plank */
   sweepWings(dt) {
@@ -256,6 +258,8 @@ class Eagle {
     const old = this.model.actions.get(this.actionName); if (old && old !== next) old.fadeOut(fade);
     this.actionName = name;
   }
+  /** picked in the Field Guide: a patrolling eagle turns to hunting sooner (it never perches; the stoop is the thing worth watching) */
+  observed() { if (this.isSeaEagle && !this.hunt && this.turning <= 0) this.huntIn = Math.min(this.huntIn, rr(5, 12)); }
   /** where he is on his patrol circle right now (the hunt leaves the circle and rejoins it) */
   orbit(t) {
     const wander = Math.sin(t * 0.11 + this.p) * 7;
@@ -1358,6 +1362,11 @@ class Tern {
     this.vel.x += (dx * v - this.vel.x) * a; this.vel.y += (dy * v - this.vel.y) * a; this.vel.z += (dz * v - this.vel.z) * a;
     this.pos.addScaledVector(this.vel, dt);
   }
+  /** picked in the Field Guide: a perched tern takes wing and, a few seconds later, tries a fishing dive over the lagoon */
+  observed() {
+    if (this.st === 'perched' || this.st === 'toperch') { this.st = 'air'; this.perchSpot = null; this.vel.set(Math.sin(this.hd) * 1.5, 3, Math.cos(this.hd) * 1.5); }
+    this.diveSoon = 7;
+  }
   startHover() {
     this.st = 'hover'; this.t = rr(1.2, 2.2); this.hx = this.pos.x; this.hz = this.pos.z;
   }
@@ -1386,6 +1395,7 @@ class Tern {
       case 'air': {
         const s = F.slot(this);
         this.steer(dt, s.x, s.y, s.z, 12);
+        if (this.diveSoon > 0 && (this.diveSoon -= dt) <= 0 && F.state === 'feed' && getHeight(this.pos.x, this.pos.z) < 0.3) this.startHover();
         this.fl = damp(this.fl, Math.sin(t * 0.8 + this.ph) > -0.1 ? 1 : 0, 2, dt);
         this.ph += dt * (7 + 6 * this.fl);
         flapWings(this.b, this.ph, lerp(0.14, 0.62, this.fl), 0, 1 - this.fl);

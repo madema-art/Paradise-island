@@ -35,6 +35,11 @@ export class BarnOwl {
       desc: 'A barn owl of the palm crowns. She sleeps by day and hunts the lowlands at night, hovering over a rustle in the leaf litter and dropping on it feet first.',
     });
   }
+  /** picked in the Field Guide: at night a roosting owl wakes and goes out (by day she sleeps on, whoever is watching) */
+  observed() {
+    const h = env.tod, night = h >= 18.3 || h < 5.3;
+    if (night && this.mode === 'roost') { this.fed = Math.min(this.fed, FED - 1); this.mode = 'preen'; this.t = 4; }
+  }
   hunting() { return this.mode === 'hunt' || this.mode === 'hover' || this.mode === 'strike'; }
   /** where a captured rat hangs: in the talons */
   heldPos(out) { return out.set(this.pos.x + Math.sin(this.heading) * 0.06, this.pos.y - 0.22, this.pos.z + Math.cos(this.heading) * 0.06); }

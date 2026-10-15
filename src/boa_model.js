@@ -26,7 +26,7 @@ export function makeBoaModel() {
   const segs = [], pieces = [];
   for (let i = 0; i < BOA_SEGS; i++) { segs.push(get('bd_s' + i)); pieces.push(get('bd_m' + i)); }
   const rest = segs.map((s) => s.position.clone());
-  const L = Math.hypot(rest[1].x - rest[0].x, rest[1].y - rest[0].y, rest[1].z - rest[0].z);
+  const L = Math.hypot(rest[2].x, rest[2].y, rest[2].z);       // the distance between two body joints (each joint's position is relative to the one before)
   const head = get('bd_head'), headZ = segs[0].position.z;
   root.position.z = -headZ;                       // the head joint sits at the group's origin
   return { root, segs, pieces, rest, L, head, jaw: get('bd_jaw'), tongue: get('bd_tongue') };

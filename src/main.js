@@ -13,7 +13,7 @@ import { buildTerrain } from './terrain.js';
 import { buildWater } from './water.js';
 import { initRipples } from './ripples.js';
 import * as RIP from './ripples.js';
-import { cam, updateCamera, flyTo, followCreature, release as releaseCamera } from './camera.js';
+import { cam, updateCamera, flyTo, followCreature, release as releaseCamera, occlusion } from './camera.js';
 import { perf } from './perf_hooks.js';
 import './skeleton_share.js';
 import './part_instancing.js';
@@ -164,9 +164,10 @@ async function boot() {
   import('./dev/display_diag.js').then((m) => m.startDisplayDiag());
   if (/[?&]sim=1/.test(location.search)) import('./dev/life_sim.js').then((m) => m.startLifeSim());
   if (/[?&]perf=1/.test(location.search)) import('./dev/perf_bench.js').then((m) => m.startPerfBench());
+  if (/[?&]shots=1/.test(location.search)) import('./dev/shots.js');
   window.__goto = (p, t) => cam.goto(p, t);
   // review hook: the game's own follow camera on any creature (used to inspect the monkeys in the running game)
-  window.__cam = { follow: (c) => followCreature(c), release: releaseCamera };
+  window.__cam = { follow: (c) => followCreature(c), release: releaseCamera, occlusion };
   window.__sizes = () => window.__dbg.creatures.filter((c) => c.sizeInfo).map((c) => ({ id: c.id, name: c.name, group: +c.group.scale.x.toFixed(3), info: c.sizeInfo }));
   window.render_game_to_text = () => {
     const man = creatures.find(c => c.id === 'castaway');

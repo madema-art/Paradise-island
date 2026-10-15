@@ -6,7 +6,11 @@ import { pollPad, rumble, BTN } from './gamepad.js';
 import { getHeight, inCave } from './world.js';
 import { clamp, lerp, angDiff } from './util.js';
 import { walk, spawnNear } from './walk.js';
+import { actors } from './fauna_common.js';
+import { createCameraOcclusion } from './camera_occlusion.js';
 
+export const occlusion = createCameraOcclusion();      // scenery that blocks the view of the followed animal fades (camera_occlusion.js)
+let occBuildT = 0;
 export const zones = { grotto: null };
 export { walk };
 export const cam = {
@@ -133,6 +137,7 @@ function flash() {
 }
 export function setMode(m, opts = {}) {
   if (m === cam.mode) return;
+  if (occlusion.active) occlusion.clear();         // a change of mode: everything whole at once
   tween = null;
   const prev = cam.mode;
   let leftWalk = null;
@@ -189,6 +194,7 @@ export function followCreature(c) {
     cam.follow = c;
   }
   if (cam.onFollow) cam.onFollow(c);
+  if (c.sim && c.sim.observed) c.sim.observed();      // an event to the one animal chosen: a gentle nudge to be doing something worth watching
 }
 export function release() {
   cam.follow = null; F.ready = false; cam.releaseProgress = 0;
@@ -377,8 +383,12 @@ window.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 /* ---------------------------------------------------------------- per-frame */
+// the free and follow cameras are an unseen observer: animals mind them only from close by. On foot (or in survival) the camera is a person.
+const OBSERVER = 0.38;
 export function updateCamera(dt) {
-  if (cam.suspended) return;           // survival mode drives the camera itself
+  actors.camScale = cam.suspended || cam.mode === 'walk' ? 1 : OBSERVER;
+  if (!occlusion.ready) { occBuildT += dt; if (occBuildT > 9 && creatures.length > 100) occlusion.buildStep(1.2); }
+  if (cam.suspended) { if (occlusion.active) occlusion.clear(); return; }          // survival mode drives the camera itself
   // the near plane follows the orbit distance: a near plane of 0.3 m with a far plane of 7 km makes palm fronds z-fight when zoomed out.
   // First person and free-fly keep the close near plane.
   if (cam.mode === 'orbit' && !tween) toFree();   // orbit is only for the glide between views
@@ -515,6 +525,10 @@ export function updateCamera(dt) {
   if (p.y > 4000) p.y = 4000;
   if (aimOn && cam.follow && cam.mode === 'fly' && !tween) camera.lookAt(aim);            // locked on means locked on, whatever nudged the camera
   aimOn = false;
+
+  // the followed animal stays readable: what blocks the view of it fades (a school is watched from under the water: nothing to fade)
+  const occT = cam.follow && cam.mode === 'fly' && !tween && !(cam.follow.sim && Array.isArray(cam.follow.sim.fish)) ? cam.follow : null;
+  occlusion.update(dt, occT, cam.target);
 
   if (cam.shake > 0.001) {
     camera.rotation.x += (Math.random() - 0.5) * cam.shake * 0.01;

@@ -7,6 +7,7 @@ import { fauna, register, orient, steer, canStand, randomSpot, limb, lookAtCamer
 import { makeMonkey, makeBoar, makeCrab, makeFlamingo } from './creatures.js';
 import { makeMonkeyRig, monkeyMeta } from './monkey_model.js';
 import { updateContests, monkeyTraits } from './monkey_contest.js';
+import { makeAiScheduler } from './ai_sched.js';
 import { spawnRats } from './rat.js';
 import { spawnOwls } from './owl.js';
 import { spawnBoas } from './boa.js';
@@ -912,15 +913,21 @@ export function buildLandFauna(ctx) {
   // the island rats (prey for everything), and the predators that live on them: barn owls and Pacific boas. All three place themselves with their own generators.
   const rats = spawnRats(ctx, falls.camp);
   const owls = spawnOwls(ctx);
-  const boas = spawnBoas();
+  const boas = spawnBoas(ctx);
   // the troop: 48 monkeys in all (?monkeys=N sets the count, for tests). Created after the rest of the island, so nothing else moves.
   const troop = Math.max(0, (Number(new URLSearchParams(location.search).get('monkeys')) || 48) - mk.length);
   for (let i = 0; i < troop; i++) mk.push(new Monkey(homes[i % 3], mi++, ctx));
   const all = [...mk, ...boars, ...crabs, flams, ...rats, ...owls, ...boas];
+  const sched = makeAiScheduler();                    // far creatures think less often (ai_sched.js); window.__aiStats reads the counts
+  window.__aiStats = sched.stats; window.__aiSched = sched;
   updaters.push((dt, t) => {
     const d = Math.min(dt, 0.05);
     updateContests(MONKEYS, d);
-    for (const a of all) a.update(d, t);
+    sched.begin();
+    for (let i = 0; i < all.length; i++) {
+      const a = all[i], k = sched.step(a, i, d);
+      if (k > 0) a.update(k, t);
+    }
   });
   makeButterflies(32);
   new BatFlock(16);

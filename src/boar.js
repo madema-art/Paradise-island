@@ -6,7 +6,7 @@ import { env, camera } from './core.js';
 import { fauna, register, orient, steer, canStand, randomSpot, lookAtCamera, blinkAt, nearestPerson } from './fauna_common.js';
 import { makeBoar } from './creatures.js';
 import { makeBoarModel } from './boar_model.js';
-import { getHeight, riverDist } from './world.js';
+import { getHeight, getSlope, riverDist } from './world.js';
 import { fx } from './props.js';
 import { eco } from './ecology.js';
 import { rnd, rr, damp, clamp, lerp, TAU, mulberry32 } from './util.js';
@@ -78,6 +78,7 @@ export class Boar {
     this.headDown = 0; this.headTarget = 0; this.lie = 0; this.alertK = 0; this.jawK = 0; this.roll = 0; this.rollT = 0;
     this.fleeT = 0; this.earT = 1; this.earK = [0, 0]; this.tailK = 0; this.hop = 0; this.rub = 0; this.shake = 0; this.dig = 0;
     this.lk = {};
+    this.kids = []; this.habit = 0; this.alertAcc = 0;
     // some adults stand their ground against the castaway rather than bolt (own generator: placement elsewhere is untouched)
     this.defends = !this.baby && (this.kind === 'wild' || this.kind === 'ginger') && mulberry32(104729 * (i + 5))() < 0.55;
     const label = this.baby ? 'Boar piglet' : K.name;
@@ -112,6 +113,17 @@ export class Boar {
     const rat = eco.ratNear(this.x, this.z, 2.4);
     if (rat && rnd() < 0.45) { rat.die(); this.ratsEaten = (this.ratsEaten || 0) + 1; this.rest('root', rr(3, 5)); }
   }
+  /** blocked by steep ground or a river bank: head for firm ground in the direction that gets back toward home */
+  unstick() {
+    let best = null, bs = -1e9;
+    for (let k = 0; k < 12; k++) {
+      const a = k * TAU / 12, x = this.x + Math.sin(a) * 4, z = this.z + Math.cos(a) * 4;
+      if (!canStand(x, z, { minH: 2.5, maxSlope: 0.62 }) || !canStand(this.x + Math.sin(a) * 1.8, this.z + Math.cos(a) * 1.8, { minH: 2.5, maxSlope: 0.62 })) continue;
+      const sc = -Math.hypot(x - this.home.x, z - this.home.z) * 0.3 - getSlope(x, z) * 20 + rnd();
+      if (sc > bs) { bs = sc; best = { x, z }; }
+    }
+    if (best) this.go(best.x, best.z, 'walk'); else this.rest('idle', 1.5);
+  }
   go(x, z, state) { this.tx = x; this.tz = z; this.state = state; }
   rest(state, t) { this.state = state; this.t = t; }
 
@@ -129,14 +141,22 @@ export class Boar {
       this.sleepNear('rest'); return;
     }
     if (this.baby && r < 0.3 && L) { this.go(L.x + rr(-5, 5), L.z + rr(-5, 5), 'zoom'); return; }
-    if (r < 0.4) { this.rest('root', rr(4, 9)); return; }
-    if (r < 0.5 && this.palmSpot()) { const p = this.palm, a = rnd() * TAU; this.go(p.x + Math.cos(a) * 0.95, p.z + Math.sin(a) * 0.95, 'toscratch'); this.scratchAt = p; return; }
-    if (r < 0.58 && this.waterSpot()) { this.go(this.water.x, this.water.z, 'todrink'); return; }
-    if (r < 0.88) {
+    if (r < 0.24) { this.rest('root', rr(5, 10)); return; }
+    if (r < 0.42) {                                                    // graze: a slow forage walk, nose down, to a nearby patch
+      const s = randomSpot(this.x, this.z, 3, 9, { minH: 3 }, 8);
+      if (s) { this.go(s.x, s.z, 'graze'); this.t = rr(7, 14); return; }
+    }
+    if (r < 0.48 && this.palmSpot()) { const p = this.palm, a = rnd() * TAU; this.go(p.x + Math.cos(a) * 0.95, p.z + Math.sin(a) * 0.95, 'toscratch'); this.scratchAt = p; return; }
+    if (r < 0.54 && this.waterSpot()) { this.go(this.water.x, this.water.z, 'todrink'); return; }
+    if (r < 0.62 && this.kids.length) {                                 // a mother goes to see how her piglets are
+      const k = this.kids[Math.floor(rnd() * this.kids.length)];
+      this.go(k.x + rr(-0.8, 0.8), k.z + rr(-0.8, 0.8), 'tocheck'); return;
+    }
+    if (r < 0.8) {
       const s = randomSpot(this.x, this.z, 5, 20, { minH: 3 });
       if (s && Math.hypot(s.x - this.home.x, s.z - this.home.z) < 55) { this.go(s.x, s.z, 'walk'); return; }
     }
-    this.rest('idle', rr(2, 5));
+    this.rest('idle', rr(1.5, 3.5));
   }
   sleepNear(mode = 'sleep') {
     const s = randomSpot(this.home.x, this.home.z, 1, 9, { minH: 3 }, 20) || { x: this.x, z: this.z };
@@ -158,8 +178,9 @@ export class Boar {
     } else {
       // ---- noticing people
       const asleep = this.state === 'sleep' || this.state === 'rest' || this.state === 'wallow';
-      const calm = this.state === 'idle' || this.state === 'root' || this.state === 'walk' || this.state === 'drink' || this.state === 'scratch' || this.state === 'zoom' || asleep || this.state === 'tosleep' || this.state === 'towallow' || this.state === 'todrink' || this.state === 'toscratch';
-      if (calm && cd < (asleep ? K.alert * 0.4 : K.alert) && !(this.state === 'walk' && this.fleeT > 0)) { this.state = 'alert'; this.t = rr(2.5, 4.5); this.alertCd = cd; }
+      const calm = this.state === 'idle' || this.state === 'root' || this.state === 'walk' || this.state === 'drink' || this.state === 'scratch' || this.state === 'zoom' || asleep || this.state === 'tosleep' || this.state === 'towallow' || this.state === 'todrink' || this.state === 'toscratch' || this.state === 'graze' || this.state === 'tocheck' || this.state === 'nuzzle';
+      this.habit -= dt;                                            // an animal that has watched something harmless for a while goes back to what it was doing
+      if (calm && this.habit <= 0 && cd < (asleep ? K.alert * 0.4 : K.alert) && !(this.state === 'walk' && this.fleeT > 0)) { this.state = 'alert'; this.t = rr(2.5, 4.5); this.alertCd = cd; this.alertAcc = 0; }
       if (L && L.state === 'alert' && calm && cd < 40) { this.state = 'alert'; this.t = rr(1.5, 3); }
       if (L && L.state === 'flee' && this.state !== 'flee') { this.flee(toCam + Math.PI, 14); }
     }
@@ -179,6 +200,8 @@ export class Boar {
           if (cd < K.alert * 1.15 && K.fear === 'curious' && cd > 3.2) { this.go(this.x + Math.sin(toCam) * (cd - 3), this.z + Math.cos(toCam) * (cd - 3), 'approach'); this.t = 6; }
           else if (cd > K.alert * 1.1) { this.rest('idle', rr(1, 3)); } else this.t = rr(1.5, 3);
         }
+        this.alertAcc += dt;
+        if (this.alertAcc > 8 && cd > K.flee * 1.3 && this.state === 'alert') { this.habit = rr(25, 45); this.rest('idle', rr(0.4, 1.2)); }     // nothing came of it: back to business
         break;
       }
       case 'bluff': {                                              // a short rush at the intruder, then a huff and a stand-off
@@ -204,20 +227,23 @@ export class Boar {
         if (this.t < 0) this.decide();
         break;
       }
-      case 'walk': case 'approach': case 'zoom': case 'tosleep': case 'towallow': case 'todrink': case 'toscratch': {
-        if (this.state === 'walk') this.snapRat(dt);
+      case 'walk': case 'approach': case 'zoom': case 'tosleep': case 'towallow': case 'todrink': case 'toscratch': case 'graze': case 'tocheck': {
+        if (this.state === 'walk' || this.state === 'graze') this.snapRat(dt);
         const dx = this.tx - this.x, dz = this.tz - this.z, d = Math.hypot(dx, dz);
-        const gait = this.state === 'zoom' ? 4.4 : this.state === 'approach' ? 1.2 : this.charge ? 5.6 : this.fast ? K.speed * 1.6 : K.speed;
+        const gait = this.state === 'zoom' ? 4.4 : this.state === 'approach' ? 1.2 : this.state === 'graze' ? 0.75 : this.state === 'tocheck' ? K.speed * 1.15 : this.charge ? 5.6 : this.fast ? K.speed * 1.6 : K.speed;
         this.heading = steer(this.heading, Math.atan2(dx, dz), dt * (this.charge ? 6 : this.state === 'zoom' ? 5 : 2.4));
         this.speed = damp(this.speed, gait, this.charge ? 6 : 3, dt);
-        this.headTarget = this.state === 'approach' ? 0.55 : this.charge ? 0.3 : 0;
+        this.headTarget = this.state === 'approach' ? 0.55 : this.state === 'graze' ? 0.85 : this.charge ? 0.3 : 0;
         run = gait > 3.3;
         const nx = this.x + Math.sin(this.heading) * this.speed * dt, nz = this.z + Math.cos(this.heading) * this.speed * dt;
         const river = this.state === 'towallow' || this.state === 'todrink' ? 1.8 : 1.5;
-        if (canStand(nx, nz, { minH: 2.5, river })) { this.x = nx; this.z = nz; } else if (this.state === 'towallow' || this.state === 'todrink') { d < 7 ? this.arrive() : (this.state = 'idle', this.t = 1); } else { this.state = 'idle'; this.t = 1; }
+        if (canStand(nx, nz, { minH: 2.5, river, maxSlope: 0.62 })) { this.x = nx; this.z = nz; this.blocked = 0; }
+        else if (this.state === 'towallow' || this.state === 'todrink') { d < 7 ? this.arrive() : (this.state = 'idle', this.t = 1); }
+        else { this.blocked = (this.blocked || 0) + dt; this.speed = damp(this.speed, 0, 8, dt); if (this.blocked > 0.6) { this.blocked = 0; this.unstick(); } }   // blocked: find a way off the slope, rather than standing there
         moving = true;
         if (this.state === 'approach' && cd < 3.4) { this.rest('alert', rr(3, 6)); }
         else if (d < (this.state === 'zoom' ? 2 : 1.2)) this.arrive();
+        if (this.state === 'graze' && this.t < 0) this.arrive();
         if (this.state === 'zoom' && this.t < -6) this.rest('idle', 1);
         if (this.state === 'zoom') this.t = Math.max(this.t, -7);
         break;
@@ -227,6 +253,12 @@ export class Boar {
         if (this.state === 'wallow') this.wallowFx(dt, t);
         if (this.t < 0 && !(L && (L.state === 'sleep' || L.state === 'rest' || L.state === 'wallow') && !this.leader.charge)) { this.shake = 1.2; this.rest('idle', rr(1, 3)); }
         if (night(env.tod) === false && this.state === 'sleep' && this.t > 12) this.t = rr(3, 8);
+        break;
+      }
+      case 'nuzzle': {                                             // beside a piglet: head low, a gentle nose-to-nose
+        this.speed = damp(this.speed, 0, 6, dt);
+        this.headTarget = 0.5 + 0.15 * Math.sin(t * 1.3 + this.ph);
+        if (this.t < 0) this.rest('idle', rr(1, 2.5));
         break;
       }
       case 'drink': case 'scratch': {
@@ -254,8 +286,10 @@ export class Boar {
     } else if (st === 'toscratch') {
       const p = this.scratchAt; if (p) this.heading = Math.atan2(p.x - this.x, p.z - this.z) + (rnd() < 0.5 ? 1 : -1) * Math.PI / 2;
       this.rest('scratch', rr(5, 9));
-    } else if (st === 'zoom') { this.rest('idle', rr(0.5, 2)); }
-    else this.rest('idle', rr(1.5, 4.5));
+    } else if (st === 'graze') { this.rest('root', rr(3, 6)); }
+    else if (st === 'tocheck') { this.rest('nuzzle', rr(3, 5)); }
+    else if (st === 'zoom') { this.rest('idle', rr(0.5, 2)); }
+    else this.rest('idle', rr(0.8, 2.5));
     this.speed = 0;
   }
 
@@ -308,14 +342,14 @@ export class Boar {
     const by = this.bodyY ?? 0.82;
     const lieDrop = this.rigged ? 0.24 : 0.42;
     this.body.position.y = by + bob + hop + breathe - lieDrop * this.lie;
-    this.body.rotation.x = (st === 'root' || st === 'drink' ? 0.1 * this.headDown : 0) + (st === 'bluff' ? 0.08 : 0) + (moving && run ? 0.04 * Math.sin(this.ph) : 0);
+    this.body.rotation.x = (st === 'root' || st === 'drink' || st === 'graze' ? 0.1 * this.headDown : 0) + (st === 'bluff' ? 0.08 : 0) + (moving && run ? 0.04 * Math.sin(this.ph) : 0);
     this.body.rotation.z = this.rollK * 0.9 + (st === 'scratch' ? Math.sin(this.rub) * 0.09 : 0) + (this.shake > 0 ? Math.sin(t * 40) * 0.08 * Math.min(1, this.shake) : 0);
     this.body.rotation.y = st === 'scratch' ? Math.sin(this.rub * 0.5) * 0.08 : this.shake > 0 ? Math.sin(t * 34) * 0.1 * Math.min(1, this.shake) : 0;
     if (st === 'scratch') this.body.position.x = Math.sin(this.rub) * 0.04; else this.body.position.x = 0;
 
     // head
     lookAtCamera(this.group, this.lk, dt, 0.9, st === 'alert' ? 30 : 12, 0.9);
-    const rootNudge = st === 'root' ? Math.sin(t * 7 + this.ph) * 0.11 : 0;
+    const rootNudge = st === 'root' || st === 'graze' ? Math.sin(t * 7 + this.ph) * 0.11 : 0;
     const digging = st === 'root' ? Math.max(0, Math.sin(t * 1.1 + this.ph * 2)) : 0;
     this.hp.rotation.x = this.headDown * (1.38 + rootNudge * 0.7) - this.alertK * 0.1 + (moving ? 0.05 * Math.sin(this.ph * 2) : 0) + this.lk.p * 0.55 * (1 - this.headDown) + (st === 'bluff' ? Math.sin(t * 14) * 0.1 : 0);
     this.hp.rotation.y = this.lk.y * (1 - this.headDown) + (st === 'root' ? Math.sin(t * 2 + this.ph) * 0.3 : 0) + (this.warn > 0 ? Math.sin(t * 6) * 0.4 : 0) + (st === 'alert' && K.fear === 'bold' ? Math.sin(t * 2.3) * 0.18 : 0);
@@ -354,7 +388,7 @@ export class Boar {
 export function spawnBoars(ctx) {
   const homes = [{ x: -30, z: 20 }, { x: 25, z: 45 }, { x: -55, z: 70 }, { x: 40, z: 5 }];
   const out = []; let id = 0;
-  const add = (home, opts) => { const b = new Boar(home, id++, opts, ctx); out.push(b); return b; };
+  const add = (home, opts) => { const b = new Boar(home, id++, opts, ctx); out.push(b); if (opts.leader && b.baby) opts.leader.kids.push(b); return b; };
   // a grizzled sounder by the old camp: sow, yearling and three piglets, plus a boar nearby
   let sow = add(homes[0], { kind: 'wild', sex: 'Female' });
   add(homes[0], { kind: 'yearling', sex: 'Male', leader: sow });

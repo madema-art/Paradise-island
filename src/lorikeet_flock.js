@@ -33,6 +33,13 @@ class LorikeetBird {
       desc: 'A fast, social nectar-feeding parrot. Loose flocks visit flowers, rest in the canopy, and depart in staggered bursts.', pickR: .34, pickY: .15 });
   }
   enter(state) { this.state = state; this.elapsed = 0; }
+  /** picked in the Field Guide: a perched flock leaves for the next flowers or canopy now, this bird first */
+  observed() {
+    const f = this.flock;
+    if (AIR.has(this.state) || !f.members.every((m) => !AIR.has(m.state))) return;
+    f.depart(f.now || 0);
+    this.departAt = Math.min(this.departAt, f.now || 0);
+  }
   update(dt, t, snapshot) {
     this.elapsed += dt;
     if (!AIR.has(this.state)) {

@@ -24,12 +24,22 @@ export class IslandRat {
     this.state = 'hidden'; this.t = 4 + rng() * 25; this.holder = null; this.alive = true; this.eaten = 0;
     this.tx = this.x; this.tz = this.z; this.pose = { sit: 0, groom: 0, crouch: 0, alert: 0, limp: 0 };
     this.sniffT = rr(1, 3); this.lookY = 0; this.lookT = 0; this.danger = null; this.scanT = rnd() * 0.3;
+    this.pauseT = 0; this.dashT = rr(0.4, 1); this.listen = false; this.panic = false; this.transit = null; this.curious = 0; this.lastDanger = null;
     this.group.visible = false;
     register({
       id: 'rat' + i, name: 'Island rat', cat: 'Mammals', group: this.group, sim: this, viewDist: 1.6, pickR: 0.5, pickY: 0.05,
       desc: 'A small, quick Polynesian rat that lives in burrows at the foot of the palms and comes out at night for fallen seeds and fruit. Every predator on the island eats them.',
     });
   }
+
+  /** the Field Guide has picked this rat: a hidden one takes a short, cautious look out, whatever the hour (a nudge, not an override: danger and
+   *  the night still decide the rest) */
+  observed() {
+    if (this.state === 'hidden' && this.alive) { this.t = Math.min(this.t, rr(0.4, 1.6)); this.curious = 40; }
+  }
+
+  /** what the Field Guide shows: the state, with a pause to listen told apart */
+  get doing() { return this.pauseT > 0 && this.listen && this.state === 'forage' ? 'listen' : this.state; }
 
   /** out in the open and catchable */
   exposed() { return this.alive && !this.holder && this.state !== 'hidden' && this.state !== 'dead'; }
@@ -68,11 +78,19 @@ export class IslandRat {
 
   /** run for the nearest burrow */
   flee(from) {
-    this.state = 'flee'; this.t = 0;
+    this.state = 'flee'; this.t = 0; this.panic = false; this.transit = null;
     let best = this.burrow, bd = Math.hypot(this.burrow.x - this.x, this.burrow.z - this.z);
     for (const b of eco.burrows) { const d = Math.hypot(b.x - this.x, b.z - this.z); if (d < bd) { bd = d; best = b; } }
     this.fleeTo = best; this.tx = best.x; this.tz = best.z;
     if (from) { const away = Math.atan2(this.x - from.x, this.z - from.z); if (Math.abs(wrap(Math.atan2(best.x - this.x, best.z - this.z) - away)) > 2.2) this.heading = away; }
+  }
+
+  /** a different burrow within reach to run across to (cover points the rat knows); sets the run target */
+  otherBurrow() {
+    let best = null, bd = 70;
+    for (const b of eco.burrows) { if (b === this.burrow) continue; const d = Math.hypot(b.x - this.x, b.z - this.z); if (d < bd && d > 12) { bd = d; best = b; } }
+    if (!best) return false;
+    this.transit = best; this.tx = best.x; this.tz = best.z; return true;
   }
 
   forageTarget() {
@@ -101,7 +119,7 @@ export class IslandRat {
       return;
     }
     const bold = boldness(env.tod);
-    this.t -= dt;
+    this.t -= dt; this.curious -= dt;
     this.scanT -= dt;
     if (this.scanT < 0 && this.state !== 'hidden') { this.scanT = 0.25; this.scan(); }
     const dg = this.danger;
@@ -115,7 +133,9 @@ export class IslandRat {
     }
     // danger takes priority over whatever it is doing
     if (dg && this.state !== 'flee' && this.state !== 'emerge' && this.state !== 'freeze') {
-      if (dg.kind === 'owl' && rnd() < 0.55) { this.state = 'freeze'; this.t = rr(0.8, 2.2); }
+      this.lastDanger = dg;
+      if (dg.kind === 'owl' && rnd() < 0.55) { this.state = 'freeze'; this.t = rr(0.8, 2.2); this.panic = false; }
+      else if (dg.kind !== 'owl' && this.speed < 0.6 && dg.d !== 0 && rnd() < 0.7) { this.state = 'freeze'; this.t = rr(0.3, 0.7); this.panic = true; }       // a start, then the sprint
       else this.flee(dg);
     }
     let moving = false, spd = 0;
@@ -123,29 +143,39 @@ export class IslandRat {
     switch (this.state) {
       case 'emerge': {
         this.speed = damp(this.speed, 0, 6, dt); P.alert = damp(P.alert, 1, 6, dt);
-        if (this.t < 0) { P.alert = 0; if (bold < 0.3 && rnd() < 0.7) this.hide(); else { this.forageTarget(); this.state = 'forage'; } }
+        if (this.t < 0) { P.alert = 0; if (bold < 0.3 && this.curious <= 0 && rnd() < 0.7) this.hide(); else { this.forageTarget(); this.state = 'forage'; } }
         break;
       }
       case 'freeze': {
         this.speed = damp(this.speed, 0, 12, dt); P.crouch = damp(P.crouch, 1, 8, dt);
-        if (this.t < 0 || !dg) { P.crouch = 0; if (dg) this.flee(dg); else this.state = 'forage'; }
+        if (this.t < 0 || !dg) { P.crouch = 0; if (dg || this.panic) this.flee(dg || this.lastDanger); else { this.state = 'forage'; this.pauseT = 0.3; } }
         break;
       }
       case 'forage': case 'run': {
-        const sp = this.state === 'run' ? 2.4 : 0.55 + 0.3 * bold;
-        this.heading = turn(this.heading, toT, dt * (this.state === 'run' ? 7 : 4.5));
+        const isRun = this.state === 'run';
+        this.heading = turn(this.heading, toT, dt * (isRun ? 7 : 6));
         // now and then it stops to sniff
         this.sniffT -= dt;
         if (this.state === 'forage' && this.sniffT < 0) { this.state = 'sniff'; this.t = rr(0.6, 1.8); break; }
-        this.speed = damp(this.speed, sp, 5, dt); moving = true; spd = this.speed;
+        // quick and nervous: a dash of about a second, then a stop to listen (sitting up now and then), then off again
+        let sp = 2.6;
+        if (!isRun) {
+          if (this.pauseT > 0) { this.pauseT -= dt; sp = 0; if (this.pauseT <= 0) this.dashT = rr(0.5, 1.2); }
+          else { this.dashT -= dt; sp = 1.4 + 1.0 * bold; if (this.dashT <= 0) { this.pauseT = rr(0.35, 1.3); this.listen = rnd() < 0.55; this.lookT = 0; } }
+        }
+        this.speed = damp(this.speed, sp, isRun ? 6 : 14, dt); moving = this.speed > 0.05; spd = this.speed;
         const nx = this.x + Math.sin(this.heading) * this.speed * dt, nz = this.z + Math.cos(this.heading) * this.speed * dt;
         if (canStand(nx, nz, { minH: 0.8, river: 0.6 })) { this.x = nx; this.z = nz; } else { this.heading += rr(1.2, 2.4); }
         if (dT < 0.4) {
-          if (this.state === 'run') { this.hide(); break; }
+          if (isRun) {
+            if (this.transit) { this.burrow = this.transit; this.transit = null; this.forageTarget(); this.state = 'forage'; break; }     // it has a new home
+            this.hide(); break;
+          }
           const r = rnd();
-          if (bold < 0.25) { this.tx = this.burrow.x; this.tz = this.burrow.z; this.state = 'run'; }
-          else if (r < 0.5) { this.state = 'eat'; this.t = rr(4, 8); }
-          else if (r < 0.65) { this.state = 'groom'; this.t = rr(3, 6); }
+          if (bold < 0.25 && this.curious <= 0) { this.tx = this.burrow.x; this.tz = this.burrow.z; this.state = 'run'; }
+          else if (r < 0.4) { this.state = 'eat'; this.t = rr(3, 6); }
+          else if (r < 0.52) { this.state = 'groom'; this.t = rr(2.5, 5); }
+          else if (r < 0.62 && this.otherBurrow()) { this.state = 'run'; }                                       // across to another cover point
           else { this.forageTarget(); this.state = rnd() < 0.3 ? 'run' : 'forage'; }
         }
         break;
@@ -159,7 +189,7 @@ export class IslandRat {
         this.speed = damp(this.speed, 0, 9, dt);
         P.sit = damp(P.sit, 1, 5, dt);
         if (this.state === 'groom') P.groom = damp(P.groom, 1, 6, dt); else P.groom = damp(P.groom, 0, 6, dt);
-        if (this.t < 0) { P.sit = 0; P.groom = 0; if (bold < 0.25) { this.tx = this.burrow.x; this.tz = this.burrow.z; this.state = 'run'; } else { this.forageTarget(); this.state = 'forage'; } }
+        if (this.t < 0) { P.sit = 0; P.groom = 0; if (bold < 0.25 && this.curious <= 0) { this.tx = this.burrow.x; this.tz = this.burrow.z; this.state = 'run'; } else { this.forageTarget(); this.state = 'forage'; } }
         break;
       }
       case 'flee': {
@@ -174,9 +204,10 @@ export class IslandRat {
       }
       default: this.state = 'forage';
     }
-    if (this.state !== 'eat' && this.state !== 'groom') { P.sit = damp(P.sit, 0, 7, dt); P.groom = damp(P.groom, 0, 7, dt); }
+    const listening = this.pauseT > 0 && this.listen && this.state === 'forage';
+    if (this.state !== 'eat' && this.state !== 'groom') { P.sit = damp(P.sit, listening ? 0.5 : 0, 7, dt); P.groom = damp(P.groom, 0, 7, dt); }
     if (this.state !== 'freeze') P.crouch = damp(P.crouch, 0, 6, dt);
-    if (this.state !== 'emerge') P.alert = damp(P.alert, this.state === 'sniff' ? 0.6 : 0, 6, dt);
+    if (this.state !== 'emerge') P.alert = damp(P.alert, listening ? 1 : this.state === 'sniff' ? 0.6 : 0, 8, dt);
     P.limp = 0;
     this.group.visible = true;
     orient(this.group, this.x, this.z, this.heading, 0.08, 0.05);

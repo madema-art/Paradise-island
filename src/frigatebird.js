@@ -44,6 +44,8 @@ export class Frigatebird {
     if (mode === 'perch') { this.rest = 24 + this.random() * 26; this.idleIn = 4; this.displayed = false; }
     if (mode === 'takeoff') { this.trips++; this.target.copy(this.home).add(V(Math.sin(this.heading) * 24, 14, Math.cos(this.heading) * 24)); }
   }
+  /** picked in the Field Guide: a perched frigatebird takes off into the wind */
+  observed() { if (this.mode === 'perch') this.rest = 0; }
   seaTarget() {
     // Actual open-water targets; the bird never chooses a landing on the sea.
     for (let j = 0; j < 40; j++) {

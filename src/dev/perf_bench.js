@@ -5,8 +5,9 @@
 // ?perf=1           shows the live overlay and waits for you to press Run
 // ?perf=1&bench=1   runs the whole benchmark when the game is ready and shows the report
 // Other options: &quality=high|medium|low (default high), &noauto is implied (the automatic quality change is switched off).
-import { updaters, camera, renderer, composer, scene, creatures, setQuality, quality, sun, bloom } from '../core.js';
-import { cam } from '../camera.js';
+import { updaters, camera, renderer, composer, scene, creatures, setQuality, quality, sun, bloom, env } from '../core.js';
+import { cam, followCreature, release } from '../camera.js';
+import { eco } from '../ecology.js';
 import { perf } from '../perf_hooks.js';
 import { setSkeletonShare, setSkinnedMerge, mergeCheck, setRigidMerge, rigidStatsRef, setSkinCulling } from '../skeleton_share.js';
 import { setPartInstancing, partStats } from '../part_instancing.js';
@@ -85,6 +86,12 @@ export const SCENARIOS = {
   castawayEye: { label: 'Eye level beside the castaway', secs: 12, run: () => {
     const c = at(one('The Castaway'));
     return (dt, t) => { camera.position.set(c.x + 3.5, c.y + 1.6, c.z - 4.5); camera.lookAt(c.x, c.y + 1.1, c.z); cam.target.set(c.x, c.y + 1, c.z); }; } },
+  // wildlife-observation scenes (follow camera, night rats, boas): the camera is the game's own follow camera where a creature is followed
+  followPig: { label: 'Following a wild boar (follow camera, daytime)', secs: 14, tod: 10, run: () => { const c = creatures.find((x) => x.name === 'Wild boar'); followCreature(c); return () => {}; }, end: () => release() },
+  followBird: { label: 'Following a sea eagle (follow camera, daytime)', secs: 14, tod: 10, run: () => { const c = creatures.find((x) => x.name === 'Sea eagle'); followCreature(c); return () => {}; }, end: () => release() },
+  followGull: { label: 'Following a silver gull (follow camera, daytime)', secs: 14, tod: 10, run: () => { const c = creatures.find((x) => x.name === 'Silver gull'); followCreature(c); return () => {}; }, end: () => release() },
+  nightRats: { label: 'Night, beside a rat burrow', secs: 16, tod: 22, run: () => { const b = (eco.rats[0] || {}).burrow || { x: 0, z: 0 }; return () => { camera.position.set(b.x + 3, 3.2, b.z + 5); camera.lookAt(b.x, 0.5, b.z); cam.target.set(b.x, 0.5, b.z); }; } },
+  followBoa: { label: 'Night, following a Pacific boa', secs: 16, tod: 22, run: () => { const c = creatures.find((x) => x.name === 'Pacific boa'); followCreature(c); return () => {}; }, end: () => release() },
   moving: { label: 'Moving: a slow orbit over the island', secs: 16, run: (t0) => (dt, t) => { const a = (t - t0) * 0.05; camera.position.set(Math.cos(a) * 120, 55, Math.sin(a) * 120); camera.lookAt(0, 6, 0); cam.target.set(0, 6, 0); } },
 };
 
@@ -93,6 +100,8 @@ async function runScenario(key, quality_ = 'high') {
   const sc = SCENARIOS[key];
   setQuality(quality_);
   await new Promise((r) => setTimeout(r, 2500));
+  const savedTod = env.tod, savedPaused = env.paused;
+  if (sc.tod !== undefined) { env.tod = sc.tod; env.paused = true; }
   const t0 = performance.now() / 1000;
   const fn = sc.run(t0);
   holdCamera(() => fn(0, performance.now() / 1000));   // scenarios run on the wall clock
@@ -101,6 +110,8 @@ async function runScenario(key, quality_ = 'high') {
   st.frames = []; st.gpuDone = [];
   await new Promise((r) => setTimeout(r, sc.secs * 1000));
   holdCamera(null);
+  if (sc.end) sc.end();
+  env.tod = savedTod; env.paused = savedPaused;
   return summarise(st.frames, st.gpuDone, key, quality_);
 }
 function summarise(frames, gpu, key, quality_) {
@@ -520,3 +531,77 @@ window.__perfUnculled = () => {
 
 import { staticCullStats } from '../static_cull.js';
 window.__perfStaticCull = staticCullStats;
+
+// ---- manual stepping: the same scenarios without the browser's frame callback (it is paused while a window is hidden, and software rendering
+// would hide the simulation's cost). Steps the real game a fixed 1/30 s at a time and times the update; then renders a few frames for the
+// draw-call count and render-side CPU time. Used for before/after comparisons: run the same scenario on both builds.
+export async function runManual(key, { frames = 600, warm = 120, renderFrames = 30, dt = 1 / 30 } = {}) {
+  const sc = SCENARIOS[key];
+  setQuality('high');
+  const savedTod = env.tod, savedPaused = env.paused;
+  if (sc.tod !== undefined) { env.tod = sc.tod; env.paused = true; }
+  const fn = sc.run(performance.now() / 1000);
+  holdCamera(() => fn(0, performance.now() / 1000));
+  const yieldNow = () => new Promise((r) => setTimeout(r, 0));
+  for (let i = 0; i < warm; i++) { window.__step(dt); if (i % 30 === 0) await yieldNow(); }
+  const u = [], heap = [];
+  for (let i = 0; i < frames; i++) {
+    const t0 = performance.now(); window.__step(dt); u.push(performance.now() - t0);
+    if (performance.memory) heap.push(performance.memory.usedJSHeapSize);
+    if (i % 30 === 0) await yieldNow();
+  }
+  st.frames = []; st.gpuDone = []; st.last = 0;
+  for (let i = 0; i < renderFrames; i++) { perf.begin(); window.__step(dt); perf.mid(); perf.render(); perf.end(); if (i % 5 === 0) await yieldNow(); }
+  const rf = st.frames.slice(5);
+  holdCamera(null);
+  if (sc.end) sc.end();
+  env.tod = savedTod; env.paused = savedPaused;
+  let drops = 0, dropMB = 0, grew = 0;
+  for (let i = 1; i < heap.length; i++) if (heap[i] > heap[i - 1]) grew += heap[i] - heap[i - 1];
+  for (let i = 1; i < heap.length; i++) if (heap[i] < heap[i - 1] - 200000) { drops++; dropMB += (heap[i - 1] - heap[i]) / 1048576; }
+  const med = pct(u, 0.5);
+  return {
+    scenario: key, frames, updateMsMean: mean(u), updateMsMedian: med, updateMsP95: pct(u, 0.95), updateMsP99: pct(u, 0.99), updateMsMax: +Math.max(...u).toFixed(2),
+    spikesOver3xMedian: u.filter((x) => x > med * 3 + 0.3).length,
+    heapDrops: drops, heapDropMB: +dropMB.toFixed(1), allocKBPerFrame: heap.length ? +(grew / 1024 / heap.length).toFixed(1) : null, heapMB: heap.length ? +(heap[heap.length - 1] / 1048576).toFixed(1) : null,
+    renderCpuMsMean: mean(rf.map((f) => f.render)), drawCallsMean: mean(rf.map((f) => f.calls)), trianglesMean: mean(rf.map((f) => f.tris)),
+  };
+}
+window.__perfManual = runManual;
+window.__perfManualAll = async (list = ['wideIsland', 'jungle48', 'followPig', 'followBird', 'followGull', 'nightRats', 'followBoa'], opts = {}) => {
+  window.__perfManualOut = [];
+  for (const k of list) { const r = await runManual(k, opts); window.__perfManualOut.push(r); }
+  window.__perfManualDone = true;
+};
+
+/** which updaters cost what, with manual stepping (see runManual) */
+window.__perfProfileManual = async (key = 'followPig', frames = 300, dt = 1 / 30) => {
+  const sc = SCENARIOS[key];
+  const savedTod = env.tod, savedPaused = env.paused;
+  if (sc.tod !== undefined) { env.tod = sc.tod; env.paused = true; }
+  const fn = sc.run(performance.now() / 1000);
+  holdCamera(() => fn(0, performance.now() / 1000));
+  for (let i = 0; i < 90; i++) { window.__step(dt); if (i % 30 === 0) await new Promise((r) => setTimeout(r, 0)); }
+  const costs = new Map(), originals = updaters.slice();
+  const wrapped = originals.map((u, i) => {
+    const label = '#' + i + ' ' + u.toString().replace(/\s+/g, ' ').slice(0, 90);
+    return function timed(a, b) { const t0 = performance.now(); u(a, b); const d = performance.now() - t0; const c = costs.get(label) || { ms: 0, n: 0 }; c.ms += d; c.n++; costs.set(label, c); };
+  });
+  updaters.length = 0; wrapped.forEach((w) => updaters.push(w));
+  for (let i = 0; i < frames; i++) { window.__step(dt); if (i % 30 === 0) await new Promise((r) => setTimeout(r, 0)); }
+  updaters.length = 0; originals.forEach((u) => updaters.push(u));
+  holdCamera(null); if (sc.end) sc.end(); env.tod = savedTod; env.paused = savedPaused;
+  return [...costs.entries()].map(([label, c]) => ({ updater: label, msPerFrame: +(c.ms / Math.max(1, c.n)).toFixed(3) })).sort((a, b) => b.msPerFrame - a.msPerFrame).slice(0, 14);
+};
+
+/** the same scenario with a feature switched on and off, alternately in one page (the simulation is random, so only back-to-back runs compare).
+ *  set(on) flips the feature; returns the mean update ms, render CPU ms and draw calls of each setting. */
+window.__perfToggle = async (key, set, rounds = 2, opts = { frames: 240, warm: 90, renderFrames: 24 }) => {
+  const rows = { on: [], off: [] };
+  for (let r = 0; r < rounds; r++) for (const on of [true, false]) { set(on); const x = await runManual(key, opts); rows[on ? 'on' : 'off'].push(x); }
+  const avg = (a, f) => +(a.reduce((s, x) => s + x[f], 0) / a.length).toFixed(2);
+  const out = {};
+  for (const k of ['on', 'off']) out[k] = { update: avg(rows[k], 'updateMsMean'), p99: avg(rows[k], 'updateMsP99'), render: avg(rows[k], 'renderCpuMsMean'), calls: avg(rows[k], 'drawCallsMean'), tris: avg(rows[k], 'trianglesMean') };
+  set(true);
+  return out;
+};
