@@ -64,7 +64,7 @@ const MOON_AGE0 = 12;                  // the game opens with a waxing gibbous m
 export const SUN_TURN = -(7 * Math.PI) / 12; // the sun and moon arc is turned about the vertical axis by this much: they rise from a new bearing, the elevation curve and times stay the same
 const TURN_C = Math.cos(SUN_TURN), TURN_S = Math.sin(SUN_TURN);
 /** turn a direction about the vertical axis by SUN_TURN */
-function turnArc(v) { const x = v.x, z = v.z; v.x = x * TURN_C + z * TURN_S; v.z = -x * TURN_S + z * TURN_C; return v; }
+function turnArc(v) { const x = v.x, z = v.z; v.x = x * TURN_C - z * TURN_S; v.z = x * TURN_S + z * TURN_C; return v; }
 
 /* ---------- postprocessing ---------- */
 const rt = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
