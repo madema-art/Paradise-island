@@ -88,7 +88,9 @@ export const env = {
   moonDir: new THREE.Vector3(0, 1, 0), // where the moon is in the sky: it rises and sets, lagging the sun by its age
   moonK: 0.5, // illuminated fraction, 0 new .. 1 full
   moonAge: 0, // days since new moon
-  fill: 1, // the night fill is dimmed while the opening sun comes up (1 otherwise)
+  fill: 1, // the night fill: the opening reveal lifts it (1 otherwise)
+  reveal: 1, // the opening reveal phase, 0 at the first frame to 1 at the handoff: it lifts the sky from full night (1 leaves the sky as the sun has it)
+  sunGate: 1, // scales the directional sun during the opening reveal (1 otherwise)
   tide: 0, // sea level offset in metres; positive is high water
   tideRising: false,
   elev: 0.4,
@@ -98,7 +100,7 @@ export const env = {
 };
 export const updaters = [];
 /** the sky values the wildlife schedules and night glow read: they mirror env, except during the opening reveal, when the animals keep the handoff sky (main.js) */
-export const wildlife = { tod: 6.5, day: 0.16, dusk: 0.84, night: 0 };
+export const wildlife = { tod: 5.978, day: 0, dusk: 0.997, night: 0.003 };
 /** tiny event bus (sound effects, UI) */
 export const events = {
   h: {},
@@ -165,6 +167,7 @@ export function applyTimeOfDay() {
   env.elev = se;
   env.day = smoothstep(0.05, 0.35, se);
   env.night = smoothstep(0.0, -0.2, se);
+  const revealK = env.reveal * env.reveal; env.night = 1 + (env.night - 1) * revealK; env.day *= revealK;   // the reveal lifts the sky from full night (revealK = 1 leaves it be)
   env.dusk = clamp(1 - env.day - env.night, 0, 1);
   U.night.value = env.night;
 
@@ -181,7 +184,7 @@ export function applyTimeOfDay() {
   U.sunDir.value.copy(dir);
   const warm = smoothstep(0.5, 0.02, se);
   const sc = new THREE.Color(1, 0.97, 0.9).lerp(new THREE.Color(1, 0.45, 0.14), warm);
-  const sunI = 3.4 * smoothstep(-0.04, 0.12, se);
+  const sunI = 3.4 * smoothstep(-0.04, 0.12, se) * env.sunGate;
   const moonI = env.fill * 0.9 * (0.1 + 0.9 * env.moonK) * smoothstep(0.04, -0.12, se) * (moonUp ? 1 : 0.3);
   sun.color.copy(sunUp ? sc : new THREE.Color(0.55, 0.68, 1.0));
   sun.intensity = sunUp ? sunI : moonI;

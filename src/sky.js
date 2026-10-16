@@ -14,7 +14,7 @@ void main(){
 const frag = /* glsl */ `
 varying vec3 vDir;
 uniform vec3 uSun, uMoon, uZenith, uHorizon, uSunColor, uCloudLit, uCloudDark;
-uniform float uTime, uNight, uDay, uCover, uStorm, uFlash, uTw, uAM;
+uniform float uTime, uNight, uDay, uCover, uStorm, uFlash, uTw, uAM, uGlow;
 float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
 float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
   return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }
@@ -52,7 +52,7 @@ void main(){
   // sun (swells and reddens as it nears the horizon)
   float sd = max(dot(d,uSun),0.);
   float veil = 1.0 - 0.88*smoothstep(0.45, 1.0, uCover);
-  col += uSunColor*(pow(sd,mix(900.,500.,uTw))*mix(14.,6.,uTw) + pow(sd,40.)*mix(0.5,0.3,uTw) + pow(sd,6.)*mix(0.18,0.1,uTw) + pow(sd,2.)*0.05*uTw)*veil;
+  col += uSunColor*(pow(sd,mix(900.,500.,uTw))*mix(14.,6.,uTw) + pow(sd,40.)*mix(0.5,0.3,uTw) + pow(sd,6.)*mix(0.18,0.1,uTw) + pow(sd,2.)*0.05*uTw)*veil*uGlow;
   // light shafts fanning from the low sun
   vec3 sxv = normalize(cross(vec3(0.,1.,0.), uSun)), syv = cross(uSun, sxv);
   float ang = atan(dot(d,syv), dot(d,sxv));
@@ -182,7 +182,7 @@ export function initSky() {
       uZenith: { value: U.skyZ.value }, uHorizon: { value: U.skyH.value },
       uSunColor: { value: U.sunColor.value },
       uCloudLit: { value: new THREE.Color(1, 1, 1) }, uCloudDark: { value: new THREE.Color(0.6, 0.65, 0.75) },
-      uTime: U.time, uTw: { value: 0 }, uAM: { value: 0 }, uNight: U.night, uDay: { value: 1 }, uCover: U.cover, uStorm: U.storm, uFlash: U.flash,
+      uTime: U.time, uTw: { value: 0 }, uAM: { value: 0 }, uGlow: { value: 1 }, uNight: U.night, uDay: { value: 1 }, uCover: U.cover, uStorm: U.storm, uFlash: U.flash,
     },
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(3500, 48, 24), mat);
@@ -193,7 +193,8 @@ export function initSky() {
     sky.position.copy(camera.position);
     const se = env.sunDir.y;
     const st = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-    mat.uniforms.uTw.value = st(-0.24, -0.02, se) * st(0.46, 0.05, se);
+    mat.uniforms.uTw.value = st(-0.24, -0.02, se) * st(0.46, 0.05, se) * env.reveal;
+    mat.uniforms.uGlow.value = env.reveal * env.reveal;   // the sun halo and the sky colour come up slowly through the reveal
     mat.uniforms.uAM.value = env.tod < 12 ? 1 : 0;
     mat.uniforms.uMoon.value.set(0, 0, 0);   // the moon is drawn as a body by buildCelestials
     // keep the sun disc visible in dusk, dim clouds at night

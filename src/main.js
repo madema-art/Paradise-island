@@ -3,10 +3,10 @@ import { scene, camera, renderer, composer, bloom, sun, U, env, updaters, applyT
 
 /** the sky values at a time of day, as applyTimeOfDay computes them; env is put back to its own time afterwards */
 function skyAt(tod) {
-  const keep = env.tod;
-  env.tod = tod; applyTimeOfDay();
+  const keep = env.tod, keepReveal = env.reveal;
+  env.tod = tod; env.reveal = 1; applyTimeOfDay();   // the handoff sky is the full sky, whatever the reveal is doing
   const sky = { tod, day: env.day, dusk: env.dusk, night: env.night };
-  env.tod = keep; applyTimeOfDay();
+  env.tod = keep; env.reveal = keepReveal; applyTimeOfDay();
   return sky;
 }
 import { initClimbRoute } from './climb.js';
@@ -185,17 +185,19 @@ async function boot() {
   if (location.search.includes('lifeReview')) {
     window.advanceTime = ms => { const n = Math.max(1, Math.ceil(ms / (1000 / 60))); for (let i = 0; i < n; i++) step(ms / 1000 / n); composer.render(); };
   }
-  const DAWN = { tod: 6.5, speed: 0.4 };           // where the normal clock resumes after the reveal: the sun is up, and the day runs at its usual pace
-  // the reveal: the world opens in pre-dawn dark and the sun comes up over the approved horizon within about three seconds, on its own clock
-  const INTRO = { t: 0, dur: 5.5, tod0: 4.0, hold: null };   // hold: a fixed reveal time for review frames (window.__intro.hold = seconds)
-  window.__intro = INTRO;
+  // the handoff: normal game time resumes here, with the sun about 40% of its disc above the horizon, at the usual pace
+  const DAWN = { tod: 5.978, speed: 0.4 };
+  // the opening reveal: a 7.5 s cinematic of the first moments of sunrise. The sun itself moves only from just below the horizon (5.945)
+  // to that handoff; the light, sky and fill carry the rest of the reveal. hold: a fixed reveal time for review frames (window.__intro.hold = seconds)
+  const REVEAL = { t: 0, dur: 7.5, tod0: 5.945, hold: null };
+  window.__intro = REVEAL;
   const VIEW = { pos: [0, 70, 270], tgt: [5, 20, 40] };   // the opening view: from the south over the water, looking back at the island as the sun comes up
   const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
 
   // no start screen: the island opens in the dark, the first light of dawn comes up over the sea, and the camera is yours
   // from the first frame, out over the western sea looking east at the island as the sun comes up
   msg('the island is ready', 100);
-  env.tod = INTRO.tod0; env.speed = 0;   // the clock is driven by the reveal below until it ends
+  env.tod = REVEAL.tod0; env.speed = 0; env.reveal = 0; env.sunGate = 0; env.fill = 0.12;   // the reveal drives these until it ends
   flyTo(VIEW.pos, VIEW.tgt, 0.05);
   setFov(50);   // the opening lens: the view is framed at 50 degrees, the wheel and the View slider still change it after this
   audio.start();
@@ -203,17 +205,24 @@ async function boot() {
   // the reveal: the clock eases from pre-dawn to the normal dawn (an ease-out, so the first light comes quickly); then the normal pace takes over
   // from the same time of day, so nothing jumps
   // the animals keep the handoff sky for the whole reveal: their schedules and night glow read `wildlife`, which holds this sky until
-  // the reveal ends and then mirrors env. Nothing wakes at night during the sweep, and at the handoff the clock is already at 6.5, so no pop
+  // the reveal ends and then mirrors env. Nothing wakes at night during the reveal, and at the handoff the clock is already at the handoff solar time, so no pop
   const handoffSky = skyAt(DAWN.tod);
   updaters.push((dt) => {
-    if (!INTRO.done) {
-      INTRO.t = INTRO.hold ?? INTRO.t + dt;
-      const u = Math.min(1, INTRO.t / INTRO.dur), e = 1 - (1 - u) * (1 - u);
-      env.tod = INTRO.tod0 + (DAWN.tod - INTRO.tod0) * e;
-      env.fill = 0.12 + 0.88 * e;   // the night fill is low at the first frame, so the island starts as a dark silhouette, and the sun brings the light up
-      if (INTRO.hold === null && INTRO.t >= INTRO.dur) { INTRO.done = true; env.speed = DAWN.speed; env.fill = 1; }
+    if (!REVEAL.done) {
+      REVEAL.t = REVEAL.hold ?? REVEAL.t + dt;
+      const p = Math.min(1, REVEAL.t / REVEAL.dur);
+      // the sun: slow at first, a fifth of its solar range by the middle, arriving at the normal rate (its speed matches env.speed at the handoff)
+      env.tod = REVEAL.tod0 + (DAWN.tod - REVEAL.tod0) * (1.84 * p * p - 3.32 * p ** 3 + 2.48 * p ** 4);
+      // the light: the sky lifts from full night, the fill brings the island up, and the sunlight gates in after the first edge of the disc
+      env.reveal = 1 - (1 - p) * (1 - p);
+      env.fill = 0.12 + 0.88 * env.reveal;
+      const g = Math.min(1, Math.max(0, (p - 0.25) / 0.75));
+      env.sunGate = g * g * (3 - 2 * g);
+      if (REVEAL.hold === null && REVEAL.t >= REVEAL.dur) {
+        REVEAL.done = true; env.tod = DAWN.tod; env.reveal = 1; env.fill = 1; env.sunGate = 1; env.speed = DAWN.speed;
+      }
     }
-    const sky = INTRO.done ? env : handoffSky;
+    const sky = REVEAL.done ? env : handoffSky;
     wildlife.tod = sky.tod; wildlife.day = sky.day; wildlife.dusk = sky.dusk; wildlife.night = sky.night;
   });
   // browsers hold audio back until the visitor's first touch: the first click, key, wheel or touch unlocks it
