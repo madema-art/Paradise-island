@@ -2,7 +2,7 @@
 // and the forest edge. An owl hovers over a rat it has heard, drops on it feet first, and if it connects, carries it to a palm to swallow it whole.
 // Each owl takes about three rats a night, then goes home; at dawn they are all back on their roosts.
 import * as THREE from 'three';
-import { env, events } from './core.js';
+import { events, wildlife } from './core.js';
 import { fauna, register } from './fauna_common.js';
 import { getHeight, VOL, lavaDist } from './world.js';
 import { makeOwlModel } from './owl_model.js';
@@ -41,7 +41,7 @@ export class BarnOwl {
   }
   /** picked in the Field Guide: at night a roosting owl wakes and goes out (by day she sleeps on, whoever is watching) */
   observed() {
-    const h = env.tod, night = h >= 18.3 || h < 5.3;
+    const h = wildlife.tod, night = h >= 18.3 || h < 5.3;
     if (night && this.mode === 'roost') { this.fed = Math.min(this.fed, FED - 1); this.mode = 'preen'; this.t = 4; }
   }
   hunting() { return this.mode === 'hunt' || this.mode === 'hover' || this.mode === 'strike'; }
@@ -113,7 +113,7 @@ export class BarnOwl {
   }
 
   update(dt, t) {
-    const h = env.tod, night = h >= 18.3 || h < 5.3, m = this.model;
+    const h = wildlife.tod, night = h >= 18.3 || h < 5.3, m = this.model;
     this.t += dt; this.cool -= dt;
     if (!this.hunting()) m.hd.rotation.y = damp(m.hd.rotation.y, 0, 4, dt);
     switch (this.mode) {

@@ -1,5 +1,14 @@
 import * as THREE from 'three';
-import { scene, camera, renderer, composer, bloom, sun, U, env, updaters, applyTimeOfDay, followShadow, creatures, setQuality, quality, events } from './core.js';
+import { scene, camera, renderer, composer, bloom, sun, U, env, updaters, applyTimeOfDay, followShadow, creatures, setQuality, quality, events, wildlife } from './core.js';
+
+/** the sky values at a time of day, as applyTimeOfDay computes them; env is put back to its own time afterwards */
+function skyAt(tod) {
+  const keep = env.tod;
+  env.tod = tod; applyTimeOfDay();
+  const sky = { tod, day: env.day, dusk: env.dusk, night: env.night };
+  env.tod = keep; applyTimeOfDay();
+  return sky;
+}
 import { initClimbRoute } from './climb.js';
 import { buildAscentProps } from './ascent.js';
 import { buildCave, loadCaveModel } from './cave.js';
@@ -156,7 +165,7 @@ async function boot() {
   const audio = createAudio(volcano);
   initUI({ presets, secrets, volcano, audio, labels });
 
-  window.__dbg = { schoolMind: { detachFish, attachFish }, events, fx, RIP, falls, THREE, scene, camera, cam, flora, env, volcano, secrets, renderer, composer, bloom, sun, updaters, WORLD, creatures, dolphinPod: seaFauna.dolphinPod, dolphinPods: seaFauna.dolphinPods, audio, WX, lorikeetFlocks: seaFauna.lorikeetFlocks, frigatebirdColony: seaFauna.frigatebirdColony };
+  window.__dbg = { schoolMind: { detachFish, attachFish }, events, fx, RIP, falls, THREE, scene, camera, cam, flora, env, volcano, secrets, renderer, composer, bloom, sun, updaters, WORLD, creatures, dolphinPod: seaFauna.dolphinPod, dolphinPods: seaFauna.dolphinPods, audio, WX, lorikeetFlocks: seaFauna.lorikeetFlocks, frigatebirdColony: seaFauna.frigatebirdColony, wildlife };
   // development only: ?inspect= holds the camera on one school (src/dev/school_inspect.js); normal play never loads it
   if (/[?&]inspect=/.test(location.search)) import('./dev/school_inspect.js').then((m) => m.startSchoolInspect());
   import('./dev/display_diag.js').then((m) => m.startDisplayDiag());
@@ -176,18 +185,37 @@ async function boot() {
   if (location.search.includes('lifeReview')) {
     window.advanceTime = ms => { const n = Math.max(1, Math.ceil(ms / (1000 / 60))); for (let i = 0; i < n; i++) step(ms / 1000 / n); composer.render(); };
   }
-  const DAWN = { tod: 5.0, speed: 0.4 };           // a slow sunrise: the sun clears the horizon in about a minute and a half
+  const DAWN = { tod: 6.5, speed: 0.4 };           // where the normal clock resumes after the reveal: the sun is up, and the day runs at its usual pace
+  // the reveal: the world opens in pre-dawn dark and the sun comes up over the approved horizon within about three seconds, on its own clock
+  const INTRO = { t: 0, dur: 5.5, tod0: 4.0, hold: null };   // hold: a fixed reveal time for review frames (window.__intro.hold = seconds)
+  window.__intro = INTRO;
   const VIEW = { pos: [0, 70, 270], tgt: [5, 20, 40] };   // the opening view: from the south over the water, looking back at the island as the sun comes up
   const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
 
   // no start screen: the island opens in the dark, the first light of dawn comes up over the sea, and the camera is yours
   // from the first frame, out over the western sea looking east at the island as the sun comes up
   msg('the island is ready', 100);
-  env.tod = DAWN.tod; env.speed = DAWN.speed;
+  env.tod = INTRO.tod0; env.speed = 0;   // the clock is driven by the reveal below until it ends
   flyTo(VIEW.pos, VIEW.tgt, 0.05);
   setFov(50);   // the opening lens: the view is framed at 50 degrees, the wheel and the View slider still change it after this
   audio.start();
-  requestAnimationFrame(() => document.getElementById('boot').classList.add('done'));   // the black lifts slowly, in step with the light
+  requestAnimationFrame(() => document.getElementById('boot').classList.add('done'));   // the loading black lifts onto the dark pre-dawn world
+  // the reveal: the clock eases from pre-dawn to the normal dawn (an ease-out, so the first light comes quickly); then the normal pace takes over
+  // from the same time of day, so nothing jumps
+  // the animals keep the handoff sky for the whole reveal: their schedules and night glow read `wildlife`, which holds this sky until
+  // the reveal ends and then mirrors env. Nothing wakes at night during the sweep, and at the handoff the clock is already at 6.5, so no pop
+  const handoffSky = skyAt(DAWN.tod);
+  updaters.push((dt) => {
+    if (!INTRO.done) {
+      INTRO.t = INTRO.hold ?? INTRO.t + dt;
+      const u = Math.min(1, INTRO.t / INTRO.dur), e = 1 - (1 - u) * (1 - u);
+      env.tod = INTRO.tod0 + (DAWN.tod - INTRO.tod0) * e;
+      env.fill = 0.12 + 0.88 * e;   // the night fill is low at the first frame, so the island starts as a dark silhouette, and the sun brings the light up
+      if (INTRO.hold === null && INTRO.t >= INTRO.dur) { INTRO.done = true; env.speed = DAWN.speed; env.fill = 1; }
+    }
+    const sky = INTRO.done ? env : handoffSky;
+    wildlife.tod = sky.tod; wildlife.day = sky.day; wildlife.dusk = sky.dusk; wildlife.night = sky.night;
+  });
   // browsers hold audio back until the visitor's first touch: the first click, key, wheel or touch unlocks it
   const unlock = () => { audio.unlock(); for (const ev of UNLOCK_EVENTS) window.removeEventListener(ev, unlock); };
   for (const ev of UNLOCK_EVENTS) window.addEventListener(ev, unlock, { passive: true });

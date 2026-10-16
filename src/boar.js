@@ -2,7 +2,7 @@
 // each with its own size, coat, tusks and temper, and a daily routine: forage at dawn and dusk, wallow in the heat of the day,
 // sleep in a heap at night, scratch on palm trunks, drink at the river. They notice people and react by temperament.
 import * as THREE from 'three';
-import { env, camera } from './core.js';
+import { camera, wildlife } from './core.js';
 import { fauna, register, orient, steer, canStand, randomSpot, lookAtCamera, blinkAt, nearestPerson } from './fauna_common.js';
 import { makeBoar } from './creatures.js';
 import { makeBoarModel } from './boar_model.js';
@@ -128,7 +128,7 @@ export class Boar {
   rest(state, t) { this.state = state; this.t = t; }
 
   decide() {
-    const L = this.leader, h = env.tod;
+    const L = this.leader, h = wildlife.tod;
     if (L && (L.state === 'sleep' || L.state === 'wallow' || L.state === 'rest') && Math.hypot(L.x - this.x, L.z - this.z) < 16) {
       this.go(L.x + rr(-1.2, 1.2), L.z + rr(-1.2, 1.2), 'tosleep'); this.sleepMode = L.state === 'wallow' ? 'rest' : L.state; return;
     }
@@ -252,7 +252,7 @@ export class Boar {
         this.speed = damp(this.speed, 0, 6, dt);
         if (this.state === 'wallow') this.wallowFx(dt, t);
         if (this.t < 0 && !(L && (L.state === 'sleep' || L.state === 'rest' || L.state === 'wallow') && !this.leader.charge)) { this.shake = 1.2; this.rest('idle', rr(1, 3)); }
-        if (night(env.tod) === false && this.state === 'sleep' && this.t > 12) this.t = rr(3, 8);
+        if (night(wildlife.tod) === false && this.state === 'sleep' && this.t > 12) this.t = rr(3, 8);
         break;
       }
       case 'nuzzle': {                                             // beside a piglet: head low, a gentle nose-to-nose
@@ -277,7 +277,7 @@ export class Boar {
 
   arrive() {
     const st = this.state;
-    if (st === 'tosleep') { this.rest(this.sleepMode === 'rest' ? 'rest' : 'sleep', night(env.tod) ? rr(50, 130) : rr(18, 45)); if (this.baby) this.t = rr(30, 90); }
+    if (st === 'tosleep') { this.rest(this.sleepMode === 'rest' ? 'rest' : 'sleep', night(wildlife.tod) ? rr(50, 130) : rr(18, 45)); if (this.baby) this.t = rr(30, 90); }
     else if (st === 'towallow') { this.rest('wallow', rr(25, 60)); this.rollT = rr(3, 6); }
     else if (st === 'todrink') {
       let best = this.heading, bd = 1e9;

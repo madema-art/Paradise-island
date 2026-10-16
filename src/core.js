@@ -88,6 +88,7 @@ export const env = {
   moonDir: new THREE.Vector3(0, 1, 0), // where the moon is in the sky: it rises and sets, lagging the sun by its age
   moonK: 0.5, // illuminated fraction, 0 new .. 1 full
   moonAge: 0, // days since new moon
+  fill: 1, // the night fill is dimmed while the opening sun comes up (1 otherwise)
   tide: 0, // sea level offset in metres; positive is high water
   tideRising: false,
   elev: 0.4,
@@ -96,6 +97,8 @@ export const env = {
   bloomOn: true,
 };
 export const updaters = [];
+/** the sky values the wildlife schedules and night glow read: they mirror env, except during the opening reveal, when the animals keep the handoff sky (main.js) */
+export const wildlife = { tod: 6.5, day: 0.16, dusk: 0.84, night: 0 };
 /** tiny event bus (sound effects, UI) */
 export const events = {
   h: {},
@@ -179,7 +182,7 @@ export function applyTimeOfDay() {
   const warm = smoothstep(0.5, 0.02, se);
   const sc = new THREE.Color(1, 0.97, 0.9).lerp(new THREE.Color(1, 0.45, 0.14), warm);
   const sunI = 3.4 * smoothstep(-0.04, 0.12, se);
-  const moonI = 0.9 * (0.1 + 0.9 * env.moonK) * smoothstep(0.04, -0.12, se) * (moonUp ? 1 : 0.3);
+  const moonI = env.fill * 0.9 * (0.1 + 0.9 * env.moonK) * smoothstep(0.04, -0.12, se) * (moonUp ? 1 : 0.3);
   sun.color.copy(sunUp ? sc : new THREE.Color(0.55, 0.68, 1.0));
   sun.intensity = sunUp ? sunI : moonI;
   sun.userData.dir = dir;
@@ -188,7 +191,7 @@ export function applyTimeOfDay() {
 
   hemi.color.setRGB(0.55 * env.day + 0.7 * env.dusk + 0.07 * env.night, 0.72 * env.day + 0.5 * env.dusk + 0.1 * env.night, 0.98 * env.day + 0.6 * env.dusk + 0.25 * env.night);
   hemi.groundColor.setRGB(0.32 * env.day + 0.3 * env.dusk + 0.02 * env.night, 0.28 * env.day + 0.2 * env.dusk + 0.025 * env.night, 0.2 * env.day + 0.12 * env.dusk + 0.04 * env.night);
-  hemi.intensity = 0.95 * env.day + 0.55 * env.dusk + 0.95 * env.night;
+  hemi.intensity = (0.95 * env.day + 0.55 * env.dusk + 0.95 * env.night) * env.fill;
   scene.fog.density = FOG_BASE * (1 + 0.8 * env.dusk);
   // light multiplier for unlit surfaces (ocean body, smoke...)
   U.light.value.setRGB(

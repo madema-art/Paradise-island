@@ -8,7 +8,7 @@
 //    bat flares up under its own roost spot, throws its feet up, hooks on, and folds its wings around itself
 //  - a wingbeat of about three a second: a deep downstroke with the wing fully spread, an upstroke with the wrist flexed and the span shortened
 import * as THREE from 'three';
-import { scene, camera, env, events, updaters } from './core.js';
+import { scene, camera, events, updaters, wildlife } from './core.js';
 import { fauna, register } from './fauna_common.js';
 import { cave } from './cave.js';
 import { CAVE, caveFloorAt, caveLocal, falls } from './world.js';
@@ -109,7 +109,7 @@ export function buildBats(ctx = {}) {
   function roostAct(b, dt, t) {
     b.actT -= dt;
     if (b.act === 'none' && b.actT <= 0) {
-      const r = rnd(), hot = env.tod > 10.5 && env.tod < 16.5;
+      const r = rnd(), hot = wildlife.tod > 10.5 && wildlife.tod < 16.5;
       b.act = r < 0.4 ? 'groom' : r < 0.58 ? 'stretch' : r < 0.74 ? 'shift' : hot && r < 0.95 ? 'fan' : 'groom';
       b.actDur = b.act === 'stretch' ? rr(3.2, 4.4) : b.act === 'fan' ? rr(4, 7) : b.act === 'shift' ? 1.6 : rr(2.5, 5);
       b.actT = b.actDur; b.actK = 0;
@@ -226,8 +226,8 @@ export function buildBats(ctx = {}) {
       if (!close) for (const b of list) if (b.home.distanceTo(cam) < 6.5 && cave.inside(cam.x, cam.y, cam.z)) { close = true; break; }
       colony.disturb = close ? colony.disturb + dt : Math.max(0, colony.disturb - dt * 0.6);
       if (colony.disturb > 1.3 && colony.cool <= 0) { colony.disturb = 0; let nb = list[0], nd = 1e9; for (const b of list) { const d = b.home.distanceTo(cam); if (d < nd) { nd = d; nb = b; } } flush(nb.home, 'visitor'); }
-      if (env.tod < 12) colony.duskDone = false;
-      if (!colony.duskDone && env.tod >= 18.4 && env.tod < 23 && colony.cool <= 0) { colony.duskDone = true; startDusk(); }
+      if (wildlife.tod < 12) colony.duskDone = false;
+      if (!colony.duskDone && wildlife.tod >= 18.4 && wildlife.tod < 23 && colony.cool <= 0) { colony.duskDone = true; startDusk(); }
     } else if (colony.mode === 'out') {
       // the flock ranges over the island; at night it works from fruit tree to fruit tree
       colony.centerT -= dt;
@@ -237,7 +237,7 @@ export function buildBats(ctx = {}) {
         else colony.center.copy(OUT0);
       }
       const far = cam.distanceTo(cave.hall) > 26;
-      const back = colony.dusk ? (env.tod >= 5.0 && env.tod < 12) : t > colony.outUntil;
+      const back = colony.dusk ? (wildlife.tod >= 5.0 && wildlife.tod < 12) : t > colony.outUntil;
       if (back && far) {
         colony.mode = 'return'; colony.returning = true; colony.returnT = t;
         list.forEach((b) => { b.homeAt = t + rr(0, 28); b.landWait = t + rr(0, 20); });

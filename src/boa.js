@@ -6,7 +6,7 @@
 // the head's track with no sideways slip), lying on the terrain. On a palm the head leads along a helix up (or down) the trunk and the body simply follows
 // the head's track (a trail of points), so it winds round the trunk exactly as the head went, and nothing is placed on a branch by a jump.
 import * as THREE from 'three';
-import { env, camera } from './core.js';
+import { camera, wildlife } from './core.js';
 import { fauna, register, canStand, nearestPerson } from './fauna_common.js';
 import { getHeight, VOL, lavaDist, riverDist, TEMPLE, falls } from './world.js';
 import { makeBoaModel, BOA_SEGS } from './boa_model.js';
@@ -105,7 +105,7 @@ export class PacificBoa {
   }
 
   update(dt, t) {
-    const h = env.tod, night = h >= 18.4 || h < 5.2, S = this.state;
+    const h = wildlife.tod, night = h >= 18.4 || h < 5.2, S = this.state;
     this.t -= dt; this.cool -= dt; this.scanT -= dt; this.ph += dt; this.roam -= dt;
     this.tongue = 0; this.jaw = damp(this.jaw, 0, 8, dt); this.neck = damp(this.neck, 0, 3, dt);
     let target = 1;                                                                    // 1 = coiled, 0 = out and moving

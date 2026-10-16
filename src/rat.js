@@ -2,7 +2,7 @@
 // By day they stay down, at dusk and dawn they come out cautiously, and at night they are bold. They freeze under an owl, bolt from a boa, a boar or a
 // person, and every predator on the island lives off them: a rat that is caught is held by its captor until eaten, then a new one is born in the burrow.
 import * as THREE from 'three';
-import { env, camera } from './core.js';
+import { camera, wildlife } from './core.js';
 import { fauna, register, orient, canStand, nearestPerson } from './fauna_common.js';
 import { getHeight, riverDist, VOL, lavaDist } from './world.js';
 import { makeRatModel } from './rat_model.js';
@@ -55,7 +55,7 @@ export class IslandRat {
   /** killed on the spot (a boar, say): same as eaten */
   die() { this.consume(); }
 
-  hide() { this.state = 'hidden'; this.group.visible = false; this.t = rr(10, 30) / Math.max(0.15, boldness(env.tod)); this.speed = 0; }
+  hide() { this.state = 'hidden'; this.group.visible = false; this.t = rr(10, 30) / Math.max(0.15, boldness(wildlife.tod)); this.speed = 0; }
 
   /** what is near enough to worry about: a person, a boa, a boar or an owl overhead */
   scan() {
@@ -118,7 +118,7 @@ export class IslandRat {
       this.limbs(dt, t, 0, true);
       return;
     }
-    const bold = boldness(env.tod);
+    const bold = boldness(wildlife.tod);
     this.t -= dt; this.curious -= dt;
     this.scanT -= dt;
     if (this.scanT < 0 && this.state !== 'hidden') { this.scanT = 0.25; this.scan(); }

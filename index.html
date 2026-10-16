@@ -109,7 +109,7 @@
   #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 40; }
   /* start / loading screen: the artwork is laid out at a fixed 16:9, scaled to cover, with live UI lined up on the painted bar and plaque */
   #boot { position: fixed; inset: 0; z-index: 50; overflow: hidden; background: #000; transition: opacity 1.2s ease; }
-  #boot.done { opacity: 0; pointer-events: none; transition: opacity 22s linear; }
+  #boot.done { opacity: 0; pointer-events: none; transition: opacity 1.2s ease-out; }
   #art { position: absolute; left: 50%; top: 50%; width: var(--aw); height: calc(var(--aw) * 0.5628); transform: translate(-50%, -50%);
     background: #07222c url(artwork/loading.jpg) center / 100% 100% no-repeat; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
   #art > * { position: absolute; }

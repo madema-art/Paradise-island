@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { scene, updaters, U, env, camera, events, creatures } from './core.js';
+import { scene, updaters, U, env, camera, events, creatures, wildlife } from './core.js';
 import { M, box, cyl, mesh, MB, C, shade, mat4, lumpy } from './gfx.js';
 import { blob as sphere, cone, eye, makeBird, BIRD_SPECS } from './creatures.js';
 import { FrigatebirdColony } from './frigatebird.js';
@@ -907,7 +907,7 @@ class Shark {
   }
   update(dt, t) {
     // resting in the warm day, active at dusk and through the night
-    const h = env.tod, dim = h < 6.5 || h > 17.5 ? 1 : 0;
+    const h = wildlife.tod, dim = h < 6.5 || h > 17.5 ? 1 : 0;
     this.act = damp(this.act, dim ? 1 : 0.45, 0.5, dt);
     this.modeT -= dt; this.modeAge += dt;
     if (this.modeT <= 0) this.pickMode();
@@ -1216,13 +1216,13 @@ function buildYellowTangSchool() {
       }
       return;
     }
-    const night = env.night;
+    const night = wildlife.night;
     grazeT -= dt;
-    if (!grazing && grazeT <= 0 && env.day > .35) {
+    if (!grazing && grazeT <= 0 && wildlife.day > .35) {
       grazing = true; grazeT = rr(7,12);
       grazeX = cx + Math.sin(t*.12) * 9; grazeZ = cz + Math.cos(t*.10) * 6;
     } else if (grazing && grazeT <= 0) { grazing = false; grazeT = rr(18,36); }
-    const pathT = t * (.035 + env.day*.018);
+    const pathT = t * (.035 + wildlife.day*.018);
     const shelterBlend = smoothstep(.12,.78,night);
     const patrolX = cx + Math.cos(pathT)*12, patrolZ = cz + Math.sin(pathT*.73)*9;
     center.set(lerp(patrolX,cx+1,shelterBlend), -1.45, lerp(patrolZ,cz-2,shelterBlend));
@@ -1311,7 +1311,7 @@ function buildJellies() {
   fauna.add(mesh);
   const dummy = new THREE.Object3D(), q = new THREE.Quaternion();
   updaters.push((dt, t) => {
-    const glow = 0.12 + 0.88 * Math.min(1, env.night * 1.15 + env.dusk * 0.3);
+    const glow = 0.12 + 0.88 * Math.min(1, wildlife.night * 1.15 + wildlife.dusk * 0.3);
     mat.opacity = 0.2 + 0.75 * glow;
     mesh.visible = true;
     for (let i = 0; i < list.length; i++) {

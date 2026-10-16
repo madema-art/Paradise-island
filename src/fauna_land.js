@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createCoconut, setCoconutState } from './coconut.js';
-import { scene, updaters, U, env, camera } from './core.js';
+import { scene, updaters, U, camera, wildlife } from './core.js';
 import { M, sphere, box, cyl, cone, mesh, windify, MB, C } from './gfx.js';
 import { getHeight, getSlope, riverDist, volcanoDist, lavaDist, perchesNear, TEMPLE, COVE, VOL, FAIRY, falls } from './world.js';
 import { fauna, register, orient, steer, canStand, randomSpot, limb, lookAtCamera, blinkAt, nearestPerson } from './fauna_common.js';
@@ -794,7 +794,7 @@ function makeButterflies(n) {
   scene.add(im);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), sc = new THREE.Vector3(1.4, 1.4, 1.4);
   updaters.push((dt, t) => {
-    const vis = env.day > 0.25;
+    const vis = wildlife.day > 0.25;
     im.visible = vis;
     if (!vis) return;
     for (let i = 0; i < n; i++) {
@@ -837,7 +837,7 @@ class BatFlock {
     this.dummy = { group: this.bats[0].g };
   }
   update(dt, t) {
-    const a = clamp((env.night + env.dusk * 0.6 - 0.35) * 2.5, 0, 1);
+    const a = clamp((wildlife.night + wildlife.dusk * 0.6 - 0.35) * 2.5, 0, 1);
     for (const b of this.bats) {
       b.g.visible = a > 0.05;
       if (!b.g.visible) continue;
@@ -864,7 +864,7 @@ function makeFireflies() {
   add(-30, 20, 40, 25); add(10, 40, 30, 25); add(TEMPLE.x, TEMPLE.z, 24, 25);
   for (let i = 0; i < n; i++) ps.emit({ x: 0, y: 0, z: 0, life: 1e9, s0: 0.4, s1: 0.4, c0: [0.8, 1, 0.4, 0] });
   updaters.push((dt, t) => {
-    const a = clamp((env.night + env.dusk * 0.3 - 0.2) * 2, 0, 1);
+    const a = clamp((wildlife.night + wildlife.dusk * 0.3 - 0.2) * 2, 0, 1);
     for (let i = 0; i < n; i++) {
       const f = anchors[i % anchors.length];
       const x = f.x + Math.sin(t * 0.5 * f.s + f.p) * 3.5 + Math.sin(t * 1.3 + f.p) * 0.8, z = f.z + Math.cos(t * 0.43 * f.s + f.p) * 3.5;
