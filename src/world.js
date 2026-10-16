@@ -7,7 +7,9 @@ export const SIZE = 500, SEG = 400, HALF = SIZE / 2, CELL = SIZE / SEG, N = SEG 
 
 export const VOL = { x: 62, z: -62, R: 92, H: 114, craterR: 11, lavaY: 66.2, rim: 118 };
 /** the Ascent: a switchback trail up the lower cone to a basecamp ledge, then a bare-rock climb up the south buttress to the rim */
-export const ASCENT = { theta: 66 * Math.PI / 180, rBase: 44, rTop: 15.7, ledgeR: [34, 25], trail: [], stations: [], bc: null, top: null, rim: [] };
+// the footpath up Mount Ignis: a spiral from the foot (theta, rBase) to the crater rim (rTop), turning anticlockwise `loops` times.
+// path, index and the foot and top points are filled in by buildAscent below.
+export const ASCENT = { theta: 62 * Math.PI / 180, rBase: 80, rTop: 16.5, loops: 3.6, path: [], trail: [], index: null, bc: null, top: null };
 export const PLAT = { x: -78, z: -6, rx: 62, rz: 48, h: 32 };
 export const COVE = { x: 40, z: 116, r: 34 };
 export const LAKE = { x: -88, z: -24, r: 17, y: 0, shape: null };
@@ -80,27 +82,25 @@ function volcanoH(x, z) {
   const ang = Math.atan2(dz, dx);
   const rn = r * (1 + 0.07 * noise2(Math.cos(ang) * 2.2 + 3, Math.sin(ang) * 2.2 + 1) + 0.04 * noise2(x * 0.03, z * 0.03));
   let c = VOL.H * Math.pow(Math.max(0, 1 - rn / VOL.R), 1.55);
-  c += noise2(ang * 4.0, r * 0.012) * 2.8 * smoothstep(12, 40, r) * smoothstep(VOL.R * 0.9, 40, r);
-  c += (6 + 3 * noise2(ang * 3 + 9, 0.5)) * Math.exp(-(((r - 14) / 3.4) ** 2));
-  c = lerp(c, 62.5, smoothstep(14, 8.5, r));
+  c += noise2(ang * 4.0, r * 0.012) * 1.6 * smoothstep(12, 40, r) * smoothstep(VOL.R * 0.9, 40, r);
+  c += (2.5 + 1.2 * noise2(ang * 3 + 9, 0.5)) * Math.exp(-(((r - 15) / 5.5) ** 2));       // the rim: a broad, low lip, not spires
+  c = lerp(c, 62.5, smoothstep(18, 7.5, r));                                       // the crater floor: the inner wall slopes down over a wider ring
   return volcanoUpper(c - 3 - 0.15 * Math.max(0, r - VOL.R), x, z, r, ang);
 }
 
 /** Everything below 48 m is exactly the old cone (so the jungle and every placement on the lower slopes stay put); above it the cone
- *  steepens toward a tall crown, grows radial ribs and gullies, and the crater rim gets horns and saddles. */
+ *  steepens toward a crown, with a few broad gullies down the flanks and a soft, rounded crater rim. */
 function volcanoUpper(base, x, z, r, ang) {
   const U0 = 48;
   if (base <= U0) return base;
   const k = smoothstep(U0, 94, base);
   let h = U0 + (base - U0) * (1 + 0.6 * k);
   const up = smoothstep(U0, 74, base);
-  const fade = smoothstep(19, 31, r);
-  const ridge = 1 - Math.abs(noise2(ang * 5.0 + 3, r * 0.004));
-  h += up * fade * (ridge * 9 - 4.5 + noise2(ang * 11.0 + 7, r * 0.01) * 3);
-  let da = ang - ASCENT.theta; da = Math.atan2(Math.sin(da), Math.cos(da));
-  h += up * Math.exp(-((da / 0.07) ** 2)) * 5.5 * smoothstep(20, 36, r) * (1 - smoothstep(40, 48, r));        // the rib the climbing route follows
-  const crest = Math.exp(-(((r - 15.5) / 3.2) ** 2));
-  h += crest * (5 * noise2(ang * 2.5 + 1, 0.7) + 3.5 * noise2(ang * 6.0, 1.3));                              // horns and saddles on the rim
+  h += up * smoothstep(20, 34, r) * noise2(ang * 3.0 + 3, r * 0.006) * 3.0;             // a few broad gullies, not ribs
+  h += Math.exp(-(((r - 15.5) / 4.0) ** 2)) * 1.6 * noise2(ang * 2.0 + 1, 0.7);          // the rim: a soft crest with a little give
+  // the crown is softly capped, so the rim is a rounded lip rather than a tall, knife-edged wall
+  const cap = 97, kb = 7;
+  if (h > cap - kb) h = cap - kb + kb * Math.tanh((h - cap + kb) / kb);
   return h;
 }
 
@@ -373,67 +373,54 @@ export function caveHole(x, y, z) {
   return Math.abs(q.bx) < 2.15 && q.by > 0.4 && q.by < 6.4 && dy > 0.15 && dy < 4.2;
 }
 
-/** the Ascent: benches cut into the cone make a walkable switchback to a basecamp ledge; rest ledges and a rim walk are cut the same way */
+/** The footpath: one spiral from the foot of the cone up to the crater rim. It turns anticlockwise ASCENT.loops times, and its height climbs
+ *  evenly with the turn, so the grade is gentle on the wide lower turns and steeper only near the top. Each point sits on the cone's own
+ *  surface at that height (found by bisection on the radius), so the path is cut into the mountain rather than built up from it. */
 function buildAscent() {
-  const A = ASCENT, DEG = Math.PI / 180;
-  const th1 = A.theta, r1 = A.rBase;
-  // four legs of switchback across the south-east face (clear of the temple, the spring and the lava), hairpins at each end;
-  // each leg is [r from, r to, theta from, theta to] in degrees, the last arriving under the climb
-  const legs = [[80, 71, 46, 86], [71, 62, 86, 46], [62, 53, 46, 86], [53, r1, 86, th1 / DEG]];
-  const pts = []; let prev = null;
-  const push = (x, z) => { if (!prev || Math.hypot(x - prev.x, z - prev.z) >= 1.7) { pts.push({ x, z }); prev = { x, z }; } };
-  legs.forEach((lg, k) => {
-    const [ra, rb, ta, tb] = lg, n = Math.max(8, Math.ceil(Math.abs(tb - ta) * DEG * (ra + rb) / 2 / 1.2));
-    for (let i = 0; i <= n; i++) {
-      const f = i / n, th = (ta + (tb - ta) * f) * DEG, rr = ra + (rb - ra) * f + (k < 3 ? 0.9 * Math.sin(f * 9 + k * 2) : 0);
-      push(VOL.x + Math.cos(th) * rr, VOL.z + Math.sin(th) * rr);
-    }
-    if (k < legs.length - 1) {                       // the hairpin: a half circle from the end of this leg to the start of the next
-      const nx = legs[k + 1], Ax = prev.x, Az = prev.z, Bx = VOL.x + Math.cos(nx[2] * DEG) * nx[0], Bz = VOL.z + Math.sin(nx[2] * DEG) * nx[0];
-      const q = pts[pts.length - 2], tx = Ax - q.x, tz = Az - q.z, tl = Math.hypot(tx, tz) || 1;
-      const cx = (Ax + Bx) / 2, cz = (Az + Bz) / 2, rad = Math.hypot(Bx - Ax, Bz - Az) / 2;
-      for (let j = 1; j <= 8; j++) { const ph = (j / 9) * Math.PI; push(cx + (Ax - cx) * Math.cos(ph) + (tx / tl) * rad * Math.sin(ph), cz + (Az - cz) * Math.cos(ph) + (tz / tl) * rad * Math.sin(ph)); }
-    }
-  });
-  // bench height: the cone under the centre line, smoothed, with the climb rate capped so it is always walkable
-  const raw = pts.map((p) => rawNoFlat(p.x, p.z));
-  const sm = raw.map((_, i) => { let s = 0, n = 0; for (let j = Math.max(0, i - 4); j <= Math.min(raw.length - 1, i + 4); j++) { s += raw[j]; n++; } return s / n; });
-  for (let i = 1; i < sm.length; i++) { const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z); sm[i] = Math.min(sm[i], sm[i - 1] + 0.5 * d); sm[i] = Math.max(sm[i], sm[i - 1] - 0.2 * d); }
-  pts.forEach((p, i) => { A.trail.push({ x: p.x, z: p.z, y: sm[i] }); flats.push({ x: p.x, z: p.z, r0: 1.5, r1: 3.6, y: sm[i] }); });
-  // basecamp ledge at the end of the trail, directly under the climb
-  const dx = Math.cos(th1), dz = Math.sin(th1);
-  const bc = { x: VOL.x + dx * r1, z: VOL.z + dz * r1 };
-  const bcY = Math.max(sm[sm.length - 1], rawNoFlat(bc.x, bc.z) - 0.5);
-  A.bc = { x: bc.x, z: bc.z, y: bcY };
-  flats.push({ x: bc.x, z: bc.z, r0: 4.2, r1: 7.5, y: bcY });
-  // the trail's last metres run into the ledge
-  const last = A.trail[A.trail.length - 1];
-  for (let q = 1; q <= 4; q++) { const f = q / 5; flats.push({ x: last.x + (bc.x - last.x) * f, z: last.z + (bc.z - last.z) * f, r0: 1.5, r1: 3.6, y: last.y + (bcY - last.y) * f }); }
-  // rest ledges on the wall, and the crest
-  const stations = [{ id: 'base', r: r1, x: bc.x, z: bc.z }];
-  for (const r of A.ledgeR) {
-    const x = VOL.x + dx * r, z = VOL.z + dz * r, y = rawNoFlat(x, z) - 0.4;
-    flats.push({ x, z, r0: 2.2, r1: 4.6, y });
-    stations.push({ id: 'ledge' + r, r, x, z });
+  const A = ASCENT, TURN = Math.PI * 2;
+  const surf = (th, r) => finalHeight(VOL.x + Math.cos(th) * r, VOL.z + Math.sin(th) * r);   // the ground as it is now: hills, the temple and spring flats, the lake (the path is not yet cut)
+  const th0 = A.theta, dth = A.loops * TURN;
+  const yFoot = surf(th0, A.rBase), yRim = surf(th0 + dth, A.rTop);
+  const N = Math.ceil(dth / 0.02), pts = [];
+  for (let i = 0; i <= N; i++) {
+    const f = i / N, th = th0 + dth * f, y = yFoot + (yRim - yFoot) * f;
+    // the surface falls outward, so the radius where it reaches y is found by bisection between the rim and the foot
+    let lo = A.rTop, hi = A.rBase;
+    for (let it = 0; it < 22; it++) { const mid = (lo + hi) / 2; if (surf(th, mid) > y) lo = mid; else hi = mid; }
+    const r = (lo + hi) / 2;
+    pts.push({ x: VOL.x + Math.cos(th) * r, z: VOL.z + Math.sin(th) * r, y: surf(th, r), th, r });
   }
-  const tx = VOL.x + dx * A.rTop, tz = VOL.z + dz * A.rTop;
-  const topY = rawNoFlat(tx, tz) - 0.2;
-  flats.push({ x: tx, z: tz, r0: 2.6, r1: 5, y: topY });
-  stations.push({ id: 'top', r: A.rTop, x: tx, z: tz });
-  A.stations = stations; A.top = { x: tx, z: tz, y: topY };
-  A.index = new PolyIndex([...A.trail, ...stations.map((q) => ({ x: q.x, z: q.z }))], 6);
-  // a walk along the crest of the rim, so the mouth can be seen from all round
-  const rimPts = [];
-  for (let a = -46; a <= 46; a += 7) {
-    const ang = th1 + a * DEG, x = VOL.x + Math.cos(ang) * A.rTop, z = VOL.z + Math.sin(ang) * A.rTop;
-    rimPts.push({ x, z, y: rawNoFlat(x, z) });
+  // the heights are smoothed over about 12 m of the path, then limited to a 28% grade, so the tread never climbs a wall
+  const S = [0];
+  for (let i = 1; i < pts.length; i++) S.push(S[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z));
+  let ys = pts.map((p) => p.y);
+  for (let pass = 0; pass < 2; pass++) {
+    const sm = ys.slice(); let lo = 0, hi = 0, acc = 0, cnt = 0;
+    for (let i = 0; i < pts.length; i++) {
+      while (hi < pts.length && S[hi] - S[i] <= 6) { acc += ys[hi]; cnt++; hi++; }
+      while (lo < i && S[i] - S[lo] > 6) { acc -= ys[lo]; cnt--; lo++; }
+      sm[i] = acc / cnt;
+    }
+    ys = sm;
   }
-  const rs = rimPts.map((p, i) => { let s = 0, n = 0; for (let j = Math.max(0, i - 2); j <= Math.min(rimPts.length - 1, i + 2); j++) { s += rimPts[j].y; n++; } return s / n; });
-  rimPts.forEach((p, i) => { const y = Math.min(rs[i], topY + 3.0); A.rim.push({ x: p.x, z: p.z, y }); flats.push({ x: p.x, z: p.z, r0: 1.9, r1: 3.8, y }); });
+  const G = 0.28;
+  for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i - 1] - G * (S[i] - S[i - 1]), Math.min(ys[i - 1] + G * (S[i] - S[i - 1]), ys[i]));
+  for (let i = ys.length - 2; i >= 0; i--) ys[i] = Math.max(ys[i + 1] - G * (S[i + 1] - S[i]), Math.min(ys[i + 1] + G * (S[i + 1] - S[i]), ys[i]));
+  pts.forEach((p, i) => { p.y = ys[i]; });
+  A.path = pts;
+  A.trail = pts;
+  A.index = new PolyIndex(pts, 12);
+  A.bc = pts[0];                                             // the basecamp at the foot
+  A.top = pts[pts.length - 1];                               // the summit, on the rim
 }
 
 function finalHeight(x, z) {
   let h = rawNoFlat(x, z);
+  // the footpath: the ground under it takes the path's own height, blended out over a few metres either side
+  if (ASCENT.index && Math.hypot(x - VOL.x, z - VOL.z) < ASCENT.rBase + 6) {
+    const n = ASCENT.index.nearest(x, z);
+    if (n && n.d < 4.5) h = lerp(h, ASCENT.path[n.i].y, 1 - smoothstep(1.4, 4.5, n.d));
+  }
   for (let k = 0; k < flats.length; k++) {
     const f = flats[k];
     const r = Math.hypot(x - f.x, z - f.z);

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { scene, U } from './core.js';
-import { grid, N, SEG, SIZE, HALF, CELL, VOL, TEMPLE, SPRING, FAIRY, LAKE, lakeRho, falls, getHeight, getSlope, lavaDist, riverDist, riverNear, caveHole } from './world.js';
+import { grid, N, SEG, SIZE, HALF, CELL, VOL, TEMPLE, SPRING, FAIRY, LAKE, lakeRho, falls, getHeight, getSlope, lavaDist, riverDist, riverNear, caveHole, ascentDist, ASCENT } from './world.js';
 import { noise2, fbm } from './noise.js';
 import { clamp, lerp, smoothstep } from './util.js';
 
@@ -11,6 +11,7 @@ const K = {
   rock: col('#9a9285'), rockD: col('#625b52'), basalt: col('#2e2a28'), ash: col('#5a544e'), lavaRock: col('#1a1717'),
   red: col('#6b3a2b'), mud: col('#5b5240'), pave: col('#7d7b68'), crust: col('#ddd5a4'),
   scoria: col('#8a3b22'), ashPale: col('#a39a8d'), sulphur: col('#d9c04a'),
+  basaltDark: col('#1f1c1b'), trail: col('#8c8478'), talus: col('#6d665e'),
 };
 const tmp = new THREE.Color(), tmp2 = new THREE.Color();
 
@@ -44,23 +45,31 @@ function tint(x, z, h, slope, out) {
     if (h > 88) tmp.lerp(K.lavaRock, smoothstep(88, 98, h) * 0.6);
     out.lerp(tmp, bare);
   }
-  // the upper cone of the volcano: strata, scoria, ribs dusted with ash, sulphur around the mouth
+  // the upper cone of the volcano: layered flows in broad bands round the cone, darker gullies, ash on the ledges, sulphur round the mouth
   if (vr < VOL.R + 6 && h > 42) {
     const up = smoothstep(42, 62, h), ang = Math.atan2(z - VOL.z, x - VOL.x);
-    const strata = 0.5 + 0.5 * Math.sin(h * 0.62 + noise2(ang * 3 + 1, h * 0.05) * 4.0);
-    const rib = noise2(ang * 5.0 + 3, vr * 0.004);
-    tmp.copy(K.basalt).lerp(K.scoria, strata * 0.5 + 0.28 * (0.5 + 0.5 * noise2(x * 0.09, z * 0.09)));
-    tmp.lerp(K.ashPale, smoothstep(0.05, 0.8, rib) * 0.38);
-    out.lerp(tmp, up * 0.92);
-    out.lerp(K.sulphur, smoothstep(34, 17, vr) * smoothstep(0.05, 0.5, noise2(x * 0.22 + 3, z * 0.22 - 1)) * 0.85 * up);
-    if (h > 96) out.lerp(K.ashPale, smoothstep(96, 114, h) * 0.5);
+    const layer = 0.5 + 0.5 * Math.sin(h * 0.42 + noise2(ang * 2.0 + 1, h * 0.03) * 3.0);
+    const gully = smoothstep(-0.25, 0.55, noise2(ang * 3.0 + 3, vr * 0.006));
+    tmp.copy(K.basalt).lerp(K.scoria, layer * 0.42);
+    tmp.lerp(K.basaltDark, gully * 0.55);
+    tmp.lerp(K.ashPale, smoothstep(0.3, 0.9, noise2(x * 0.05, z * 0.05)) * 0.26);
+    out.lerp(tmp, up * 0.95);
+    out.lerp(K.sulphur, smoothstep(30, 16, vr) * smoothstep(0.1, 0.6, noise2(x * 0.22 + 3, z * 0.22 - 1)) * 0.6 * up);
+    if (h > 96) out.lerp(K.ashPale, smoothstep(96, 114, h) * 0.45);
   }
+  // the scree at the foot of the cone: grey talus, from the bare ground up to the jungle line
+  if (vr < VOL.R + 12 && h > 4 && h < 40) out.lerp(K.talus, smoothstep(4, 9, h) * smoothstep(40, 26, h) * 0.45 * smoothstep(VOL.R + 8, VOL.R - 6, vr));
   // rock on slopes
   const rock = smoothstep(0.2, 0.5, slope + 0.07 * n2);
   if (rock > 0 && h > 0.5) {
     tmp.copy(K.rock).lerp(K.rockD, clamp(0.5 + 0.4 * Math.sin(h * 0.8 + n1 * 5) + 0.3 * n2, 0, 1));
     if (vr < VOL.R) tmp.lerp(K.basalt, 0.6);
     out.lerp(tmp, rock);
+  }
+  // the footpath: trodden earth on the tread, a lighter edge either side
+  if (ASCENT.index && vr < ASCENT.rBase + 6) {
+    const pd = ascentDist(x, z);
+    if (pd < 3.2) out.lerp(K.trail, smoothstep(3.2, 0.9, pd) * 0.85);
   }
   // lava channels -> cooled crust
   const ld = lavaDist(x, z);

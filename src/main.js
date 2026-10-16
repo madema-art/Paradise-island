@@ -9,7 +9,6 @@ function skyAt(tod) {
   env.tod = keep; env.reveal = keepReveal; applyTimeOfDay();
   return sky;
 }
-import { initClimbRoute } from './climb.js';
 import { buildAscentProps } from './ascent.js';
 import { buildCave, loadCaveModel } from './cave.js';
 import { buildBats } from './bats.js';
@@ -76,7 +75,6 @@ const frame = () => new Promise((r) => { let d = false; const f = () => { if (!d
 async function boot() {
   msg('raising the island from the sea…', 5); await frame();
   buildWorld();
-  initClimbRoute();
   msg('painting the terrain…', 20); await frame();
   const { heightTex } = buildTerrain();
   initSky();

@@ -494,7 +494,7 @@ export function buildFlora() {
     const set = ROCK_SETS[a.k];
     a.v = set[Math.floor(rnd() * set.length)];                    // one draw, as before: the shape depends on the setting, never on the placement
     a.syMul *= ROCK_VARIANTS[a.v].sy;
-    rBy[a.v].push(a);
+    if (a.k !== 'volcano' && !(a.k === 'cliff' && Math.hypot(a.x - VOL.x, a.z - VOL.z) < VOL.R + 10)) rBy[a.v].push(a);    // no boulders on the mountain (the draws above are kept, so nothing else moves)                     // the volcano's boulders are no longer placed; the draws above are kept, so nothing else moves
   });
   rBy.forEach((l, i) => {
     const V = ROCK_VARIANTS[i];

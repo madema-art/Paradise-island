@@ -50,6 +50,8 @@ function lavaMat(lake) {
   return new THREE.ShaderMaterial({ vertexShader: vert, fragmentShader: frag, uniforms: u, fog: true, transparent: true, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
 }
 
+// how often the mountain erupts: every five minutes of play (paused time does not count). The first one comes two minutes after the start.
+const ERUPT_EVERY = 300, ERUPT_FIRST = 120;
 export const volcano = { state: 'idle', intensity: 0.1, time: 0, erupt: null, craterTop: new THREE.Vector3(VOL.x, VOL.lavaY, VOL.z) };
 
 export function buildVolcano() {
@@ -114,18 +116,20 @@ export function buildVolcano() {
     }
   }
 
-  let major = false, forceMajor = false, eruptN = 0, nextErupt = 12, phaseT = 0, tAcc = { smoke: 0, glow: 0, bomb: 0 };
+  let major = false, forceMajor = false, eruptN = 0, playT = 0, nextErupt = ERUPT_FIRST, phaseT = 0, tAcc = { smoke: 0, glow: 0, bomb: 0 };
   volcano.erupt = () => {
-    if (volcano.state === 'idle') { forceMajor = true; volcano.state = 'build'; phaseT = 0; nextErupt = volcano.time + 24; events.emit('eruptWarn'); }
+    if (volcano.state === 'idle') { forceMajor = true; volcano.state = 'build'; phaseT = 0; nextErupt = playT + ERUPT_EVERY; events.emit('eruptWarn'); }
   };
 
   updaters.push((dt, t) => {
     volcano.time = t;
+    if (!env.paused) playT += dt;
+    volcano.playT = playT; volcano.nextAt = nextErupt;                  // for the development readout: when the next eruption is due, in play seconds
     // ---- state machine
     phaseT += dt;
     let target = 0.12;
     if (volcano.state === 'idle') {
-      if (t > nextErupt) { volcano.state = 'build'; phaseT = 0; nextErupt = t + 24; events.emit('eruptWarn'); }
+      if (playT > nextErupt) { volcano.state = 'build'; phaseT = 0; nextErupt = playT + ERUPT_EVERY; events.emit('eruptWarn'); }
     } else if (volcano.state === 'build') {
       target = 0.3 + 0.3 * (phaseT / 3.5);
       if (phaseT > 3.5) { volcano.state = 'erupt'; phaseT = 0; crater.intensity = 14000; major = forceMajor || (++eruptN % 5) === 0; forceMajor = false; events.emit('eruptBlast'); }
@@ -182,7 +186,7 @@ export function buildVolcano() {
     if (volcano.state === 'build') tAcc.bomb += dt * 0.5;
     else if (volcano.state === 'erupt') tAcc.bomb += dt * 2.6;
     else if (volcano.state === 'wane') tAcc.bomb += dt * 1.2 * (1 - phaseT / 9);
-    else tAcc.bomb += dt * 0.04;
+    else tAcc.bomb = 0;                                                   // quiet between eruptions: no bursts, only the smoke
     while (tAcc.bomb > 1) { tAcc.bomb--; spawnBomb(I); }
 
     for (let i = bombs.length - 1; i >= 0; i--) {

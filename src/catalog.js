@@ -53,7 +53,7 @@ export const CATALOG = {
   lagoon: { name: 'Lagoon', category: 'Water', status: 'feature', desc: 'Shallow water enclosed by the reef, between the beach and the open sea.' },
   sea: { name: 'Open sea', category: 'Water', status: 'feature', desc: 'Deep open ocean beyond the reef.' },
   // ---- volcano
-  volcano: { name: 'Mount Ignis', category: 'Terrain', status: 'game', unique: true, desc: 'The island volcano. A game feature; it can erupt.' },
+  volcano: { name: 'Mount Ignis', category: 'Terrain', status: 'game', unique: true, desc: 'Mount Ignis, the island volcano. A footpath spirals up its flanks to the crater rim. It erupts about every five minutes of play.' },
 };
 
 export const CATEGORY_ORDER = ['Trees', 'Foliage', 'Flowers', 'Rocks', 'Reef', 'Structures', 'Props', 'Water', 'Terrain', 'Creatures'];

@@ -54,6 +54,7 @@ other field, keep the file valid JSON, and set the status as the rule above allo
 - The world's random stream is shared and seeded (`rnd`, `rr`, `pick` in `src/util.js`), and **placement depends on how many numbers each builder
   draws from it**. When you replace a builder (a wreck, a shrub, a rock shape), give the new one its own generator (`mulberry32`) and call
   `burn(n)` for the draws the old one used, so nothing built after it moves. Measure `n` by counting draws around the old code first.
+- Mount Ignis: the footpath is a spiral built on the cone in `src/world.js` (`buildAscent`), marked by `src/ascent.js`. The eruptions are scheduled in play seconds (`src/volcano.js`, every 300 s, paused time does not count); the Erupt button still starts one at once.
 - Boulder crowns that can be climbed are registered as perches (`addPerch` / `perchesNear` in `src/world.js`, filled by `src/flora.js` from the shapes in `src/rocks.js`).
   The castaway (linger), monkeys and gulls use them.
 - The castaway's mind (`src/castaway_mind.js`) has no needs and no meters. It chooses each activity from the moment (time of day, weather, place, wildlife, recency, weighted randomness); a boar or heavy rain are the only interrupts. `src/human.js` runs the activities. Boars and monkeys react to him through `nearestPerson` in `src/fauna_common.js`.
