@@ -34,7 +34,7 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
   const dock = $('#dock');
   presets.forEach((p, i) => {
     const b = document.createElement('button');
-    b.innerHTML = `<b>${i === presets.length - 1 && presets.length > 9 ? 0 : i + 1}</b><span>${p.name}</span>`;
+    b.innerHTML = `<b>${i < 9 ? i + 1 : i === 9 ? 0 : ''}</b><span>${p.name}</span>`;   // keys 1-9 and 0 for the first ten presets; the rest are clicked or cycled
     b.addEventListener('click', () => goPreset(i));
     dock.appendChild(b);
   });
@@ -118,7 +118,7 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
   window.addEventListener('keydown', (e) => {
     if (menu.keyMenu(e, isTyping(e))) return;
     if (isTyping(e)) return;
-    if (e.code.startsWith('Digit')) { const dg = parseInt(e.code.slice(5)), i = dg === 0 ? presets.length - 1 : dg - 1; if (presets[i]) goPreset(i); }
+    if (e.code.startsWith('Digit')) { const dg = parseInt(e.code.slice(5)), i = dg === 0 ? 9 : dg - 1; if (presets[i]) goPreset(i); }
     else if (e.code === 'Escape') { if (document.fullscreenElement) return; if (!control.ctrl.on) release(); }
     else if (e.code === 'KeyH') hide();
     else if (e.code === 'KeyP') { env.paused = !env.paused; }

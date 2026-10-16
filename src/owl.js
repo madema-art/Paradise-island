@@ -12,12 +12,16 @@ import { rnd, rr, damp, clamp, lerp, angDiff, mulberry32, TAU } from './util.js'
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const FED = 3;                                           // rats an owl takes before she goes home for the night
 
-/** the same wing beat the other birds use: shoulders flap about the forward axis, the hands trail */
+// the folded perch: the wing hangs straight down the flank (shoulder at 90 degrees) and the hand stays in line with it, so the
+// primaries lie along the body instead of flaring up and out; chosen from a pose sheet of the barn owl rig (shoulder -1.57, hand 0.1)
+const FOLD_SH = -1.57, FOLD_HAND = 0.1;
+
+/** the same wing beat the other birds use: shoulders flap about the forward axis, the hands trail; fold 0..1 folds the wings onto the body */
 function flap(b, phase, amp, glide = 0, fold = 0) {
   for (const w of b.wings) {
     const f = Math.sin(phase) * amp;
-    w.sh.rotation.z = lerp(w.sg * (f + 0.08 + glide * 0.12), w.sg * -1.3, fold);
-    w.el.rotation.z = lerp(w.sg * (Math.sin(phase - 0.9) * amp * 0.75 - 0.05), w.sg * 2.0, fold);
+    w.sh.rotation.z = lerp(w.sg * (f + 0.08 + glide * 0.12), w.sg * FOLD_SH, fold);
+    w.el.rotation.z = lerp(w.sg * (Math.sin(phase - 0.9) * amp * 0.75 - 0.05), w.sg * FOLD_HAND, fold);
   }
 }
 
@@ -27,7 +31,7 @@ export class BarnOwl {
     this.group = new THREE.Group(); this.group.add(this.model.root); this.group.scale.setScalar(1.0); fauna.add(this.group);
     this.roost = roost.clone(); this.pos = roost.clone(); this.vel = V(); this.heading = rng() * TAU; this.pitch = 0; this.bank = 0;
     this.mode = 'roost'; this.t = 0; this.fed = 0; this.catches = 0; this.prey = null; this.way = V(); this.cool = 0; this.scanT = 0;
-    this.wake = 18.3 + i * 0.6; this.ph = rng() * 6; this.upright = 1; this.perch = this.roost.clone(); this.after = 'roost';
+    this.wake = 18.3 + i * 0.6; this.ph = rng() * 6; this.upright = 1; this.fold = 1; this.perch = this.roost.clone(); this.after = 'roost';
     this.group.position.copy(this.pos);
     this.sit(1, 0, true);                                              // roosting pose first, so the registry records the owl at rest (wings folded)
     register({
@@ -50,7 +54,8 @@ export class BarnOwl {
     this.upright = damp(this.upright, 1, 5, dt);
     m.body.rotation.x = damp(m.body.rotation.x, -1.15 * this.upright, 6, dt);
     m.legs.forEach((l) => { l.rotation.x = damp(l.rotation.x, 0.9 * this.upright, 6, dt); l.knee.rotation.x = damp(l.knee.rotation.x, 0, 6, dt); });
-    flap(m, 0, 0, 0, 1);                                              // wings folded
+    this.fold = damp(this.fold, 1, 6, dt);                            // wings fold in over the perch
+    flap(m, 0, 0, 0, this.fold);
     m.tail.rotation.x = damp(m.tail.rotation.x, 0.2, 5, dt);
     // a sleeper tucks its face; an awake owl turns its head right round, and bobs it to judge a sound
     const awake = !calm;
@@ -95,7 +100,8 @@ export class BarnOwl {
     m.legs.forEach((l) => { l.rotation.x = damp(l.rotation.x, this.mode === 'strike' ? -1.1 : 1.3, 8, dt); l.knee.rotation.x = damp(l.knee.rotation.x, this.mode === 'strike' ? 0.1 : 0.9, 8, dt); });
     m.tail.rotation.x = damp(m.tail.rotation.x, this.mode === 'strike' ? 0.5 : -0.05, 5, dt);
     this.ph += dt * (3.2 + flapAmp * 2.2);
-    flap(m, this.ph, flapAmp, glide, 0);
+    this.fold = damp(this.fold, 0, 6, dt);                            // and open out for flight (eases, so takeoff and landing do not snap)
+    flap(m, this.ph, flapAmp, glide, this.fold);
     this.group.position.copy(this.pos);
     this.group.rotation.set(this.pitch, this.heading, this.bank, 'YXZ');
     m.hd.rotation.x = damp(m.hd.rotation.x, 0, 5, dt);

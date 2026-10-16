@@ -61,6 +61,10 @@ export const TIDE_AMP = 0.42;          // metres either side of mean sea level
 export const TIDE_PERIOD = 12.42;      // hours between high waters
 export const MOON_CYCLE = 29.53;       // days from new moon to new moon
 const MOON_AGE0 = 12;                  // the game opens with a waxing gibbous moon, up through the night
+export const SUN_TURN = -(7 * Math.PI) / 12; // the sun and moon arc is turned about the vertical axis by this much: they rise from a new bearing, the elevation curve and times stay the same
+const TURN_C = Math.cos(SUN_TURN), TURN_S = Math.sin(SUN_TURN);
+/** turn a direction about the vertical axis by SUN_TURN */
+function turnArc(v) { const x = v.x, z = v.z; v.x = x * TURN_C + z * TURN_S; v.z = -x * TURN_S + z * TURN_C; return v; }
 
 /* ---------- postprocessing ---------- */
 const rt = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
@@ -142,11 +146,11 @@ export function todLabel() {
 
 export function applyTimeOfDay() {
   const a = ((env.tod - 6) / 24) * Math.PI * 2;
-  env.sunDir.set(Math.cos(a), Math.sin(a), 0.28).normalize();
+  turnArc(env.sunDir.set(Math.cos(a), Math.sin(a), 0.28).normalize());
   // the moon rides the same daily arc, displaced from the sun by its elongation: that elongation is its phase
   const age = (MOON_AGE0 + env.hours / 24) % MOON_CYCLE;
   const e = (age / MOON_CYCLE) * Math.PI * 2;
-  env.moonDir.set(Math.cos(a + e), Math.sin(a + e), 0.28).normalize();
+  turnArc(env.moonDir.set(Math.cos(a + e), Math.sin(a + e), 0.28).normalize());
   env.moonK = (1 - Math.cos(e)) / 2;
   env.moonAge = age;
   // tide: two highs and two lows a day, following the game clock

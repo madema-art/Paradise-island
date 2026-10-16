@@ -13,7 +13,7 @@ import { buildTerrain } from './terrain.js';
 import { buildWater } from './water.js';
 import { initRipples } from './ripples.js';
 import * as RIP from './ripples.js';
-import { cam, updateCamera, flyTo, followCreature, release as releaseCamera, occlusion } from './camera.js';
+import { cam, updateCamera, flyTo, setFov, followCreature, release as releaseCamera, occlusion } from './camera.js';
 import { perf } from './perf_hooks.js';
 import './skeleton_share.js';
 import './part_instancing.js';
@@ -134,6 +134,7 @@ async function boot() {
       const m = MOTU[0], dx = m.x - reef.x, dz = m.z - reef.z, l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l;
       return { name: 'South Seas', pos: [reef.x - ux * 15, 3.6, reef.z - uz * 15], tgt: [reef.x + ux * 60, 1.2, reef.z + uz * 60], dur: 4, walk: sp(reef.x - ux * 24, reef.z - uz * 24, m.x, m.z) };
     })(),
+    { name: 'Lagoon sunset', pos: [30, 3, 120], tgt: [12, 1.5, 230], dur: 4 },   // a camera move only: the time of day is left as it is
   ];
   cam.presets = presets;
 
@@ -176,7 +177,7 @@ async function boot() {
     window.advanceTime = ms => { const n = Math.max(1, Math.ceil(ms / (1000 / 60))); for (let i = 0; i < n; i++) step(ms / 1000 / n); composer.render(); };
   }
   const DAWN = { tod: 5.0, speed: 0.4 };           // a slow sunrise: the sun clears the horizon in about a minute and a half
-  const VIEW = { pos: [-230, 60, -20], tgt: [0, 30, -10] };   // over the western sea, facing east: the volcano and the falls, the sun coming up behind them
+  const VIEW = { pos: [0, 70, 270], tgt: [5, 20, 40] };   // the opening view: from the south over the water, looking back at the island as the sun comes up
   const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
 
   // no start screen: the island opens in the dark, the first light of dawn comes up over the sea, and the camera is yours
@@ -184,6 +185,7 @@ async function boot() {
   msg('the island is ready', 100);
   env.tod = DAWN.tod; env.speed = DAWN.speed;
   flyTo(VIEW.pos, VIEW.tgt, 0.05);
+  setFov(50);   // the opening lens: the view is framed at 50 degrees, the wheel and the View slider still change it after this
   audio.start();
   requestAnimationFrame(() => document.getElementById('boot').classList.add('done'));   // the black lifts slowly, in step with the light
   // browsers hold audio back until the visitor's first touch: the first click, key, wheel or touch unlocks it
