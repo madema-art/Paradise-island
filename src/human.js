@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { createCoconut, setCoconutState } from './coconut.js';
 import { scene, env, camera, updaters, creatures, events } from './core.js';
+import { butterflyState } from './fauna_land.js';
 import { makeHuman, blob, seg, cone, at } from './creatures.js';
 import { fauna, register, actors } from './fauna_common.js';
 import { getHeight, getSlope, walkHeight, resolveColliders, perchesNear, lavaDist, riverSurface, riverDist, river, falls, TEMPLE, FAIRY, SPRING, COVE, VOL } from './world.js';
@@ -1275,7 +1276,7 @@ export function buildCastaway() {
     const nutT = eco.coconuts ? eco.coconuts.free(x, z, 80, true) : null;
     let freshNear = false;
     for (const q of freshSpots) if (Math.hypot(q.stand.x - x, q.stand.z - z) < 45) { freshNear = true; break; }
-    return { hour: env.tod, rain: wx.rain, justCaught: mind.clock - mind.memory.lastGood < 0.6, napSpotOK: !unsafeAt(x, z, 24), shallowOK: shallowNear(), fishOK: !!(fishSpots && fishSpots.length) && !life.fishing.available(mind.clock), anglingOK: life.fishing.available(mind.clock), fishingPending: !!life.fishing.pending(), canoeOK: !!cn && wx.rain < 0.2, calm: wx.rain < 0.1, wildlife: wild, watchable: nearC ? nearC.name : null, watchC: nearC,
+    return { hour: env.tod, rain: wx.rain, justCaught: mind.clock - mind.memory.lastGood < 0.6, napSpotOK: !unsafeAt(x, z, 24), shallowOK: shallowNear(), fishOK: !!(fishSpots && fishSpots.length) && !life.fishing.available(mind.clock), anglingOK: life.fishing.available(mind.clock), fishingPending: !!life.fishing.pending(), canoeOK: !!cn && wx.rain < 0.2, calm: wx.rain < 0.1, wildlife: wild, watchable: nearC ? nearC.name : (butterflyNear() ? 'butterflies' : null), watchC: nearC || (butterflyNear() ? butterflyWatch() : null),
       projectOK: life.project.available(mind.clock), quest: lf.propose(), drives: lf.drivesNow(), huntBoost: mind.clock < huntBoostUntil, novel: (mind.memory.tries.hike || 0) < 5, rockNear: perchesNear(x, z, 35, (p) => p.kind !== 'volcano' && p.r >= 0.45 && p.y - getHeight(p.x, p.z) > 0.5 && p.y - getHeight(p.x, p.z) < 1.5 && !unsafeAt(p.x, p.z, 22)).length > 0, threat: !!threatC, threatC, monkeyC, unsafeCamp: unsafeAt(camp.x, camp.z, 30), unsafeHut: unsafeAt(hut.mat.x, hut.mat.z, 24), freshOK: freshSpots.some((q) => !unsafeAt(q.stand.x, q.stand.z, 22)), freshNear, ratC: !!ratT, coconutOK: !!nutT, caught: caught.length };
   }
   let ctx = null, ctxT = 0, curDh = 0, sessionCatch = 0;
@@ -1396,7 +1397,7 @@ export function buildCastaway() {
   /* ================================================================ direct control (control.js): he is driven, and autonomy waits */
   // Taking control stops what he was doing where he stands: nothing is teleported or restarted. The body is the same rig, driven by the
   // same clips (clipFor), so the animation is his own. Releasing control leaves him where he is, and his autonomy chooses from that spot.
-  let pickT = -1;
+  let pickT = -1, jumpVy = 0;
   const isSleeping = () => act === 'sleep' || act === 'nap';
   function takeControl() {
     if (act === 'angling') life.fishing.pause('taken over by the player');
@@ -1431,6 +1432,10 @@ export function buildCastaway() {
       const got = lf.pickupNear(x, z, 2.2);
       if (got) { pickT = 0; events.emit('sfx', 'pickup'); mind.note(got.text, null, 0, true); settleY(dt); apply(dt); return; }
     }
+    if (ctrl.jumpQueued) {                                 // a jump, from the ground and not from the water
+      ctrl.jumpQueued = false;
+      if (!inWater && jumpVy === 0 && y <= walkHeight(x, z, y + 0.6, info) + 0.05) { jumpVy = 5.2; events.emit('jump', 'grass'); }
+    }
     const inp = ctrl.input, fx0 = Math.sin(ctrl.yaw), fz0 = Math.cos(ctrl.yaw);
     // the view's own forward and right (right is (-cos, sin)): the stick and the keys walk relative to the view
     let mx = fx0 * inp.fwd - fz0 * inp.side, mz = fz0 * inp.fwd + fx0 * inp.side;
@@ -1445,9 +1450,17 @@ export function buildCastaway() {
       const dist = speedNow * dt;
       if (!(moveBy(dist, mx, mz) || moveBy(dist, mx, 0) || moveBy(dist, 0, mz))) speedNow = damp(speedNow, 0, 12, dt);
     }
-    settleY(dt);
+    verticalStep(dt);
     if (inWater && speedNow > 0.3) swimGait(dt);
     apply(dt);
+  }
+  // his height: settled on the ground, or followed along a jump's arc until he lands
+  function verticalStep(dt) {
+    if (inWater) { jumpVy = 0; settleY(dt); return; }
+    const ground = walkHeight(x, z, y + 0.6, info), air = jumpVy !== 0 || y > ground + 0.05;
+    if (!air) { settleY(dt); return; }
+    y += jumpVy * dt; jumpVy -= 16 * dt;
+    if (y <= ground && jumpVy <= 0) { y = ground; jumpVy = 0; events.emit('land', 1, 'grass'); }
   }
 
   /* ================================================================ NAP, STARGAZE, WADE, RUN: short voluntary activities built from the existing clips */
@@ -1526,6 +1539,26 @@ export function buildCastaway() {
     return near.length ? near.map((s) => ({ x: s.stand.x, z: s.stand.z, name: s.name })) : [{ x: x + Math.sin(heading) * 25, z: z + Math.cos(heading) * 25, name: 'the coast' }];
   }
 
+  /* ================================================================ butterflies: wildlife he can watch by day (fauna_land.js) */
+  // the watch logic reads a group's position, so the nearest butterfly is given a proxy group at its place
+  const bfWatch = { name: 'butterflies', cat: 'Insects', group: new THREE.Object3D() };
+  // the nearest butterfly within sight, or null (by day only: the butterflies are hidden at night)
+  function butterflyNear() {
+    if (!butterflyState.day) return null;
+    let best = null, bd = 24;
+    for (let i = 0; i < butterflyState.x.length; i++) {
+      const d = Math.hypot(butterflyState.x[i] - x, butterflyState.z[i] - z);
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+  function butterflyWatch() {
+    const i = butterflyNear();
+    if (i === null) return null;
+    bfWatch.group.position.set(butterflyState.x[i], butterflyState.y[i], butterflyState.z[i]);
+    return bfWatch;
+  }
+
   /* ================================================================ his inner life: goals from his own drives (castaway_life.js), run here step by step */
   const lf = createLife({
     camp, hut, mind, pois: () => pois, fire: () => life.actor.structs[0] || null, pos: () => ({ x, z }), ctxNow: () => ctx,
@@ -1564,7 +1597,8 @@ export function buildCastaway() {
   if (nb && window.__castaway) window.__castaway.life = lf;
   if (window.__castaway) window.__castaway.activity = (a) => { devActivity = a; };
   if (window.__castaway) window.__castaway.scores = () => ({ scores: mind.scores(ctx), act: mind.current && mind.current.act });
-  if (window.__castaway) window.__castaway.state = () => ({ act, phase, sub, meal, x: +x.toFixed(1), z: +z.toFixed(1), y: +y.toFixed(2), stuck: +stuck.toFixed(1), speed: +speedNow.toFixed(2), caught: caught.length, hurry, sleepWake, logPos: { x: +logPos.x.toFixed(1), z: +logPos.z.toFixed(1) } });
+  if (window.__castaway) window.__castaway.butterflies = butterflyState;
+  if (window.__castaway) window.__castaway.state = () => ({ act, phase, sub, meal, watch: watchName, jumpVy: +jumpVy.toFixed(2), controlled: ctrl.on, x: +x.toFixed(1), z: +z.toFixed(1), y: +y.toFixed(2), stuck: +stuck.toFixed(1), speed: +speedNow.toFixed(2), caught: caught.length, hurry, sleepWake, logPos: { x: +logPos.x.toFixed(1), z: +logPos.z.toFixed(1) } });
   // every clip that a behaviour is wired to (the coverage report compares this with what has actually played)
   coverage.declare({
     idle_relaxed: 'idle rotation; linger', idle_breathe: 'idle rotation', idle_weight_shift: 'idle rotation', idle_look_around: 'idle rotation; quest thinking; linger', walk: 'locomotion', walk_brisk: 'locomotion', run: 'locomotion', sprint_away: 'locomotion; flee',
@@ -1776,6 +1810,7 @@ export function buildCastaway() {
       case 'wade': return phase === 'wade' && speedNow < 0.2 ? ['idle_relaxed'] : L();
       case 'control':                            // the player's castaway: the same clips the logic would play for the same state
         if (pickT >= 0) return pickT < 0.6 ? ['kneel_down'] : pickT < 1.5 ? ['kneel_idle'] : ['kneel_rise'];
+        if (jumpVy !== 0 || (!inWater && y > walkHeight(x, z, y + 0.6, info) + 0.15)) return ['run', 1];   // no jump clip yet: the run carries the arc
         if (inWater) return speedNow > 0.25 ? ['swim_breaststroke', Math.max(0.7, speedNow / 1.6)] : ['tread_water'];
         return L();
       case 'sleep':

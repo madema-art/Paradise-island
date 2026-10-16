@@ -8,6 +8,7 @@ import { clamp, lerp, angDiff } from './util.js';
 import { actors } from './fauna_common.js';
 import { createCameraOcclusion } from './camera_occlusion.js';
 import * as menu from './menu.js';
+import { setDevice } from './input_device.js';
 import { cycleFocus } from './creature_cycle.js';
 import * as control from './control.js';
 
@@ -332,9 +333,11 @@ export function updateCamera(dt) {
   if (!occlusion.ready) { occBuildT += dt; if (occBuildT > 9 && creatures.length > 100) occlusion.buildStep(1.2); }
   // while the menu is open the menu reads the pad and the keys, and nothing moves: not the camera, and not the castaway
   const rawPad = pollPad(dt);
-  menu.noteInput(rawPad.connected, rawPad.active);
+  if (rawPad.connected && rawPad.active < 0.05) setDevice('pad');          // a pad in use (a stick or a button this frame) makes the hints show the pad
   const inMenu = menu.isOpen();
   const pad = inMenu ? IDLE_PAD : rawPad;
+  // Back takes the castaway or lets him go: handled once a frame, before the hand-over, so a release is not undone in the same frame
+  if (pad.connected && pad.pressed[BTN.BACK]) control.toggleControl();
   if (inMenu && rawPad.connected) menu.padMenu(rawPad);
   // the hand-over: taking control drops any creature he was following; letting go brings the free camera back where the view is
   if (control.ctrl.on !== wasControl) {
@@ -345,7 +348,6 @@ export function updateCamera(dt) {
   if (control.ctrl.on) {
     if (pad.connected) {
       if (pad.pressed[BTN.START]) menu.openMenu();
-      if (pad.pressed[BTN.BACK]) control.toggleControl();
     }
     control.frame(dt, pad, keys, inMenu);
     if (control.ctrl.on) {
@@ -382,7 +384,6 @@ export function updateCamera(dt) {
     if (pad.pressed[BTN.LEFT]) cycleCreature(-1);
     if (pad.pressed[BTN.R3]) { S.fovG = 55; }
     if (pad.pressed[BTN.START]) menu.openMenu();
-    if (pad.pressed[BTN.BACK]) control.toggleControl();
     // the lens: d-pad up zooms in, down zooms out
     const lens = (pad.held[BTN.UP] ? 1 : 0) - (pad.held[BTN.DOWN] ? 1 : 0);
     if (lens) zoomBy(-lens * 0.9 * dt);

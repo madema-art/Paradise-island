@@ -11,6 +11,7 @@ import { speciesInfo, STATUS, liveFacts } from './species.js';
 import { getHeight } from './world.js';
 import { initNotebook, onFollowed } from './notebook.js';
 import * as menu from './menu.js';
+import { onDevice } from './input_device.js';
 import { focusMeta } from './creature_cycle.js';
 
 const $ = (s) => document.querySelector(s);
@@ -226,6 +227,7 @@ export function initUI({ presets, secrets, volcano, audio, labels }) {
     onFollowed(c);
   };
   $('#unfollow').addEventListener('click', release);
+  onDevice((d) => { $('#unfollow').textContent = d === 'pad' ? 'Let go (hold B)' : 'Let go (Esc)'; });
 
   /* ---------- field guide ---------- */
   const species = new Map();

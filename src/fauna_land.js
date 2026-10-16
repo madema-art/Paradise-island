@@ -766,6 +766,8 @@ class FlamingoFlock {
 }
 
 /* ====================================================================== BUTTERFLIES, BATS, FIREFLIES */
+// the butterflies as the rest of the game sees them: where each one is, and whether they are out (daylight). The castaway watches them from here.
+export const butterflyState = { x: [], y: [], z: [], day: false };
 function makeButterflies(n) {
   const g = new THREE.BufferGeometry();
   const pos = [0, 0, 0.12, 0.34, 0, 0.1, 0.3, 0, -0.18, 0, 0, 0.12, 0.3, 0, -0.18, 0.0, 0, -0.14,
@@ -795,7 +797,7 @@ function makeButterflies(n) {
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), sc = new THREE.Vector3(1.4, 1.4, 1.4);
   updaters.push((dt, t) => {
     const vis = wildlife.day > 0.25;
-    im.visible = vis;
+    im.visible = vis; butterflyState.day = vis;
     if (!vis) return;
     for (let i = 0; i < n; i++) {
       const d = data[i];
@@ -804,6 +806,7 @@ function makeButterflies(n) {
       const hx = x - d.x, hz = z - d.z;
       if (hx * hx + hz * hz > 1e-6) { d.hx = hx; d.hz = hz; }
       d.x = x; d.z = z;
+      butterflyState.x[i] = x; butterflyState.y[i] = y; butterflyState.z[i] = z;
       e.set(0.2 * Math.sin(t * 3 + d.p), Math.atan2(d.hx, d.hz), 0.3 * Math.sin(t * 2 + d.p));
       q.setFromEuler(e);
       m.compose(p.set(x, y, z), q, sc);

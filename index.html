@@ -231,6 +231,16 @@
   #collection-view th { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 650; }
   #collection-view td + td, #collection-view th + th { text-align: right; }
   #collection-view .note { font-size: 11.5px; color: var(--dim); margin-top: 8px; }
+  #collection-view .coll-head, #collection-view .coll-row { display: grid; grid-template-columns: 1fr 74px 74px; gap: 6px; align-items: center; }
+  #collection-view .coll-head { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 650; padding: 4px 8px; }
+  #collection-view .coll-head span + span, #collection-view .coll-row span + span { text-align: right; }
+  #collection-view .coll-row { width: 100%; text-align: left; padding: 7px 8px; margin: 3px 0; font-size: 12.5px; }
+  #collection-view .coll-star { color: #ffd27a; }
+  .coll-detail { margin-top: 8px; padding: 9px 10px; border-radius: 10px; background: rgba(255,255,255,.05); font-size: 12px; line-height: 1.45; color: var(--ink); min-height: 48px; }
+  .coll-detail small { color: var(--dim); }
+  /* the on-screen help follows the family in use (input_device.js): only one list shows */
+  body.input-pad .kbd-only { display: none !important; }
+  body.input-kbd .pad-only { display: none !important; }
 
 </style>
 </head>
@@ -265,11 +275,16 @@
         <div class="ctl"><label>Place labels</label><label class="switch"><input type="checkbox" id="labels-t"><i></i></label></div>
         <div class="row"><button id="hideui">Hide interface (H)</button></div>
         <h3>Controls</h3>
-        <div class="ref">
-          <b>Camera</b> left stick move · right stick look · D-pad ◀▶ creature · LB RB places · Y nearest · hold B let go · Back take the castaway · Start menu<br>
-          <b>Castaway</b> left stick walk · RT run · LT slow · A pick up · R3 first / third person · Back or hold B let go<br>
-          <b>Keyboard</b> WASD move · Q E turn · R F rise / sink · [ ] creature · <span class="nw">1–0 places</span> · Tab menu · H hide · Esc release · V take the castaway<br>
-          <b>Castaway, keyboard</b> WASD walk · Shift run · Ctrl slow · F pick up · T first / third person · V or Esc let go
+        <div class="ref kbd-only">
+          <b>Mouse</b> drag to look · wheel zooms the camera · click a creature to follow it<br>
+          <b>Camera</b> WASD move · Q E turn · R F rise and sink · arrows look · [ ] creature · <span class="nw">1–0 places</span> · Esc let go of a creature<br>
+          <b>Castaway</b> V take him over or let go · then WASD walk · Shift run · Ctrl walk slowly · Space jump · F pick up · T first or third person · Esc let go<br>
+          <b>Menu</b> Tab opens and closes it · arrows move · Q E change section · Enter selects · Esc closes
+        </div>
+        <div class="ref pad-only">
+          <b>Camera</b> left stick move · right stick look · D-pad ◀▶ creature · LB RB places · Y nearest · hold B let go a creature · Start menu<br>
+          <b>Castaway</b> Back take him over or let go · left stick walk · RT run · LT walk slowly · A jump · X pick up · R3 first or third person · hold B let go<br>
+          <b>Menu</b> Start opens and closes it · D-pad or left stick move · ◀▶ change · LB RB section · A select · B close
         </div>
       </div>
 

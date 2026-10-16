@@ -5,9 +5,9 @@
 //
 // Keyboard, under control: W S walk forward and back, A D sidestep (both are relative to the view), Q E or Left Right turn the view,
 //   Up Down tilt it, the mouse drags to look, the wheel moves the camera in and out (third person), Shift runs, Ctrl walks slowly,
-//   F picks up a keepsake in reach, T switches third and first person, V (or Esc) lets go.
-// Controller, under control: left stick walks, right stick looks, RT runs, LT walks slowly, A picks up, R3 switches the view,
-//   Back lets go (or hold B). Start and Tab open the menu; while it is open the castaway reads no input.
+//   Space jumps, F picks up a keepsake in reach, T switches third and first person, V (or Esc) lets go.
+// Controller, under control: left stick walks, right stick looks, RT runs, LT walks slowly, A jumps, X picks up, R3 switches the view,
+//   Back lets go (or hold B). Start opens the menu; while it is open the castaway reads no input.
 // Creature cycling and following are not used under control; following a creature lets him go first.
 import * as THREE from 'three';
 import { camera } from './core.js';
@@ -19,7 +19,7 @@ import { isTyping } from './typing.js';
 
 // view: yaw is the way he faces (and the view looks) on the level; pitch is how far the view tilts down (positive looks down)
 export const ctrl = {
-  on: false, view: 'third', yaw: 0, pitch: 0.16, dist: 4.2, holdB: 0, actQueued: false,
+  on: false, view: 'third', yaw: 0, pitch: 0.16, dist: 4.2, holdB: 0, actQueued: false, jumpQueued: false,
   input: { fwd: 0, side: 0, run: false, slow: false },
 };
 const IDLE = { fwd: 0, side: 0, run: false, slow: false };
@@ -35,7 +35,7 @@ export function attachCastaway(b) { body = b; }
 export function takeControl() {
   if (ctrl.on || !body) return false;
   const p = body.pose();
-  ctrl.yaw = p.heading; ctrl.pitch = 0.16; ctrl.holdB = 0; ctrl.actQueued = false;
+  ctrl.yaw = p.heading; ctrl.pitch = 0.16; ctrl.holdB = 0; ctrl.actQueued = false; ctrl.jumpQueued = false;
   body.take();
   ctrl.on = true; ctrl.input = { ...IDLE };
   body.show(ctrl.view !== 'first');
@@ -45,7 +45,7 @@ export function takeControl() {
 /** let go: he stays where he is, and his autonomy takes over from that spot */
 export function releaseControl() {
   if (!ctrl.on) return;
-  ctrl.on = false; ctrl.input = { ...IDLE }; ctrl.holdB = 0; ctrl.actQueued = false;
+  ctrl.on = false; ctrl.input = { ...IDLE }; ctrl.holdB = 0; ctrl.actQueued = false; ctrl.jumpQueued = false;
   body.release();
   body.show(true);
   menu.setControl(null);
@@ -76,6 +76,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'Escape' && ctrl.on) releaseControl();
   else if (ctrl.on && e.code === 'KeyT') toggleView();
   else if (ctrl.on && e.code === 'KeyF') ctrl.actQueued = true;
+  else if (ctrl.on && e.code === 'Space') { e.preventDefault(); ctrl.jumpQueued = true; }
 });
 
 // the castaway's side: the camera follows him from the latest pose, and the input is read once a frame
@@ -92,7 +93,8 @@ export function frame(dt, pad, keys, inMenu) {
   inp.side = inMenu ? 0 : clamp(kd('KeyD') - kd('KeyA') + pad.lx, -1, 1);
   inp.run = !inMenu && (kd('ShiftLeft', 'ShiftRight') > 0 || pad.rt > 0.5);
   inp.slow = !inMenu && (kd('ControlLeft') > 0 || pad.lt > 0.5);
-  if (!inMenu && pad.pressed[BTN.A]) ctrl.actQueued = true;
+  if (!inMenu && pad.pressed[BTN.A]) ctrl.jumpQueued = true;
+  if (!inMenu && pad.pressed[BTN.X]) ctrl.actQueued = true;
   if (!inMenu && pad.pressed[BTN.R3]) toggleView();
   if (!inMenu && pad.held[BTN.B]) { ctrl.holdB += dt; if (ctrl.holdB > HOLD_RELEASE) { releaseControl(); return; } } else ctrl.holdB = 0;
 
