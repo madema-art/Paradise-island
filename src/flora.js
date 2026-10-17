@@ -684,7 +684,7 @@ export function buildFlora() {
   let nextDrop = 6;
   updaters.push((dt, t) => {
     if (t < nextDrop || !palms.length) return;
-    nextDrop = t + rr(9, 22);
+    nextDrop = t + rr(90, 200);   // a palm lets one go only now and then, not in a steady rain
     const a = pick(palms);
     result.coconuts.drop(a.crown.x, a.crown.y - 0.6, a.crown.z);
   });

@@ -71,14 +71,14 @@ class Monkey {
   /** a boulder close by with a crown worth sitting on */
   pickRock() {
     const g = (p) => p.y - getHeight(p.x, p.z);
-    const near = perchesNear(this.x, this.z, 28, (p) => p.kind !== 'volcano' && p.r >= 0.4 && g(p) < 1.9 && g(p) > 0.5).slice(0, 4);
+    const near = perchesNear(this.x, this.z, 28, (p) => p.kind !== 'volcano' && p.r >= 0.4 && (p.kind === 'temple' || (g(p) < 1.9 && g(p) > 0.5))).slice(0, 4);
     return near.length ? near[Math.floor(rnd() * near.length)] : null;
   }
   pickTree(any = false) {
     let best = null, bd = 1e9;
     for (const p of this.ctx.palms) {
       const d = Math.hypot(p.x - this.x, p.z - this.z);
-      if (d < (any ? 22 : 38) && p.y > 2.2 && d < bd && (any || rnd() < 0.2)) { best = p; bd = d; }
+      if (d < (any ? 26 : 46) && p.y > 2.2 && d < bd && (any || rnd() < 0.5)) { best = p; bd = d; }
     }
     return best;
   }
@@ -217,15 +217,15 @@ class Monkey {
         const tx = this.x + (dxc / dc) * 12, tz = this.z + (dzc / dc) * 12;
         if (canStand(tx, tz, { minH: 2.5 })) { this.tx = tx; this.tz = tz; this.state = 'walk'; st = 'walk'; this.fleeT = 3; this.chased = who.cast; }
         // chased by the castaway, a monkey will sometimes dash up the nearest palm instead
-        if (who.cast && this.cooldown < 0 && rnd() < 0.35 && (this.tree = this.pickTree(true))) { this.state = 'toTree'; st = 'toTree'; this.cooldown = rr(35, 80); this.tx = this.tree.x; this.tz = this.tree.z; this.fleeT = 3; }
+        if (who.cast && this.cooldown < 0 && rnd() < 0.35 && (this.tree = this.pickTree(true))) { this.state = 'toTree'; st = 'toTree'; this.cooldown = rr(12, 28); this.tx = this.tree.x; this.tz = this.tree.z; this.fleeT = 3; }
       }
     }
     if (st === 'idle') {
       this.pitchT = this.act === 'sit' ? -1.15 : 0; this.foldT = this.act === 'sit' ? 1 : 0;
       this.speed = damp(this.speed, 0, 6, dt);
       if (this.t < 0) {
-        if (this.cooldown < 0 && rnd() < 0.55 && (this.tree = this.pickTree())) {
-          this.state = 'toTree'; this.cooldown = rr(35, 80); this.tx = this.tree.x; this.tz = this.tree.z;
+        if (this.cooldown < 0 && rnd() < 0.7 && (this.tree = this.pickTree())) {
+          this.state = 'toTree'; this.cooldown = rr(12, 28); this.tx = this.tree.x; this.tz = this.tree.z;
         } else if (rnd() < 0.22 && (this.rock = this.pickRock())) { this.state = 'toRock'; this.tx = this.rock.x; this.tz = this.rock.z; }
         else if (rnd() < 0.7 && this.pickTarget()) { this.state = 'walk'; }
         else { this.act = pick(['look', 'sit', 'scratch', 'sit', 'eat']); this.t = rr(3, 8); }
@@ -311,8 +311,7 @@ class Monkey {
       if (!this.dropped && this.t < 4.5) {
         this.dropped = true;
         const c = this.tree.crown;
-        this.ctx.coconuts.drop(c.x + 0.5, c.y - 0.8, c.z, rr(-0.5, 0.5), rr(-0.5, 0.5));
-        if (rnd() < 0.6) this.ctx.coconuts.drop(c.x - 0.5, c.y - 0.8, c.z + 0.3, 0.5, 0);
+        if (rnd() < 0.1) this.ctx.coconuts.drop(c.x + 0.5, c.y - 0.8, c.z, rr(-0.5, 0.5), rr(-0.5, 0.5));
       }
       if (this.t < 0) this.state = 'descend';
     }

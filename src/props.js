@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import { tagObject } from './inspect.js';
 import { scene, updaters, U, env, events } from './core.js';
 import { MB, C, shade, mat4, lumpy, M, tube } from './gfx.js';
-import { addCollider, addSurface, getHeight, getSlope, falls, river, TEMPLE, SPRING, FAIRY, COVE, marchToShore, riverDist } from './world.js';
+import { addCollider, addSurface, addPerch, getHeight, getSlope, falls, river, TEMPLE, SPRING, FAIRY, COVE, marchToShore, riverDist } from './world.js';
 import { Particles } from './particles.js';
 import { installSplash } from './splash.js';
 import { zones } from './camera.js';
-import { rnd, rr, pick, clamp, lerp, smoothstep, burn, TAU } from './util.js';
+import { rnd, rr, pick, clamp, lerp, smoothstep, burn, mulberry32, TAU } from './util.js';
 import { buildWreck } from './wreck.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -164,78 +164,183 @@ export function buildGrotto() {
 }
 
 /* ================================================================== temple */
+// The Sunken Temple: the monkeys' headquarters. A stepped stone pyramid with carved friezes and glowing glyph plates, stone monkeys on the
+// corner ledges, vines down the faces, braziers, and ledges the monkeys sit and climb on. Its random detail comes from its own generator,
+// and the shared world stream is spent by the count the first temple used (burned at the end), so everything built after it stays put.
+const TEMPLE_SHARED_DRAWS = 17617;
 export function buildTemple() {
   const { x: X, z: Z, y: Y } = TEMPLE;
-  const mb = new MB();
+  const R = mulberry32(0x7e3a11);
+  const u = (a, b) => a + (b - a) * R();
+  const pickR = (arr) => arr[Math.floor(R() * arr.length)];
+  const jitter = (g, a) => {
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + (R() - 0.5) * a, p.getY(i) + (R() - 0.5) * a, p.getZ(i) + (R() - 0.5) * a);
+    return g;
+  };
+  const mb = new MB(), glow = new MB(), vines = new MB();
   const stone = [C('#8a8a78'), C('#7c7d6c'), C('#6f7364')];
+  const carved = C('#5d6052');
   const mossC = C('#4d7f35');
   const blk = (w, h, d, cx, cy, cz, ry = 0, moss = 0.5) => {
-    const g = jitterGeo(box(w, h, d, 2), 0.18);
-    const base = pick(stone);
+    const g = jitter(box(w, h, d, 2), 0.18);
+    const base = pickR(stone);
     mb.addGeo(g, mat4(X + cx, Y + cy, Z + cz, 1, 1, 1, 0, ry, 0), (v) => {
       const top = (v.y - (Y + cy)) > h * 0.35 ? 1 : 0;
-      return shade(base, rr(0.9, 1.08)).lerp(mossC, top * moss * rr(0.3, 1));
+      return shade(base, u(0.9, 1.08)).lerp(mossC, top * moss * u(0.3, 1));
     });
   };
-  // tiers
-  const tiers = 4;
+  const TH = 1.75, tiers = 4;
+  const side = (i) => 19 - i * 4.2;   // the width of tier i
+  const topY = tiers * TH;
+
+  // the tiers
+  for (let i = 0; i < tiers; i++) blk(side(i), TH, side(i), 0, TH * 0.5 + i * TH, 0, 0, 0.6);
+
+  // carved friezes: a row of teeth round each tier, left off the south face where the stairs come up
   for (let i = 0; i < tiers; i++) {
-    const s = 19 - i * 4.2, h = 1.75;
-    blk(s, h, s, 0, h * 0.5 + i * h, 0, 0, 0.6);
+    const h2 = side(i) / 2 + 0.09, n = Math.floor(side(i) / 1.05), top = Y + (i + 1) * TH;
+    for (let k = 0; k < n; k++) {
+      const t = -side(i) / 2 + (k + 0.5) * (side(i) / n);
+      const tall = k % 2 ? 0.55 : 1, c = shade(carved, u(0.85, 1.06)), cy = top - 0.62 + 0.2 * tall;
+      const faces = [{ x: t, z: h2, ry: 0, south: true }, { x: t, z: -h2, ry: 0 }, { x: h2, z: t, ry: Math.PI / 2 }, { x: -h2, z: t, ry: Math.PI / 2 }];
+      for (const f of faces) {
+        if (f.south && Math.abs(t) < 3.4) continue;
+        mb.addGeo(box(0.42, 0.42 * tall, 0.2, 1), mat4(X + f.x, cy, Z + f.z, 1, 1, 1, 0, f.ry, 0), c);
+      }
+    }
   }
-  const topY = tiers * 1.75;
-  // stairs (south side, +z)
+
+  // glyph plates: the only lit part of the temple, amber on the back faces of the first two tiers
+  const glyphMat = new THREE.MeshStandardMaterial({ vertexColors: true, emissive: 0xff9a2a, emissiveIntensity: 1.1, roughness: 0.5, flatShading: true });
+  const plate = (x, y, z, ry) => glow.addGeo(box(1.1, 1.1, 0.16, 1), mat4(X + x, Y + y, Z + z, 1, 1, 1, 0, ry, 0), C('#3a2412'));
+  for (const t of [-6.5, -3.5, -0.5, 2.5, 5.5]) plate(side(0) / 2 + 0.14, 0.95, t, Math.PI / 2);
+  for (const t of [-5, -1.5, 2.5]) plate(t, TH + 1.0, -(side(1) / 2 + 0.14), 0);
+  for (const t of [-4.5, 0, 4.5]) plate(side(1) / 2 + 0.14, TH + 1.0, t, Math.PI / 2);
+
+  // the stairs up the south face, with balustrade posts every fourth step
   for (let i = 0; i < tiers * 4; i++) {
     const h = (i + 1) * 0.44;
     blk(4.4, h, 0.6, 0, h * 0.5, 11.2 - i * 0.5, 0, 0.3);
+    if (i % 4 === 0) for (const sx of [-2.45, 2.45]) blk(0.5, 0.9, 0.5, sx, h + 0.45, 11.2 - i * 0.5, 0, 0.4);
   }
-  // shrine
+
+  // shrine on the top tier
   blk(6.2, 0.4, 6.2, 0, topY + 0.2, 0, 0, 0.5);
-  blk(0.8, 3.2, 0.8, -2.5, topY + 2.0, -2.5); blk(0.8, 3.2, 0.8, 2.5, topY + 2.0, -2.5);
-  blk(0.8, 3.2, 0.8, -2.5, topY + 2.0, 2.5); blk(0.8, 3.2, 0.8, 2.5, topY + 2.0, 2.5);
+  for (const [sx, sz] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) {
+    blk(0.8, 3.2, 0.8, sx, topY + 2.0, sz);
+    blk(1.1, 0.25, 1.1, sx, topY + 3.7, sz);
+  }
   blk(6.6, 0.7, 6.6, 0, topY + 3.8, 0, 0.0, 0.8);
   blk(4.8, 0.6, 4.8, 0, topY + 4.4, 0, 0.0, 0.9);
   blk(2.0, 0.6, 2.0, 0, topY + 4.9, 0, 0.0, 0.9);
   blk(5.2, 3.0, 0.6, 0, topY + 1.9, -2.7);
-  // plaza pillars
-  const pillars = [];
+
+  // plaza pillars: a ring round the temple, some standing, some fallen
+  const stoneOf = (base, k) => shade(base, k);
   for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * TAU, r = 14.5 + rr(-1, 1);
+    const a = (i / 12) * TAU, r = 14.5 + u(-1, 1);
     const px = Math.cos(a) * r, pz = Math.sin(a) * r;
     if (pz > 6 && Math.abs(px) < 4.5) continue; // keep the stairs clear
-    const broken = rnd() < 0.45;
-    const h = broken ? rr(1.3, 3) : rr(4.6, 5.6);
-    const g = jitterGeo(new THREE.CylinderGeometry(0.62, 0.72, h, 7, 2), 0.14);
-    const base = pick(stone), gy = getHeight(X + px, Z + pz);
-    mb.addGeo(g, mat4(X + px, gy + h * 0.5 - 0.2, Z + pz), (v) => shade(base, rr(0.9, 1.05)).lerp(mossC, smoothstep(0.1, 1.2, (gy - v.y) * -0.3 - 0.0 + (v.y - gy) * 0.04) * 0.35));
-    pillars.push({ px, pz, h });
+    const broken = R() < 0.45;
+    const h = broken ? u(1.3, 3) : u(4.6, 5.6);
+    const g = jitter(new THREE.CylinderGeometry(0.62, 0.72, h, 7, 2), 0.14);
+    const base = pickR(stone), gy = getHeight(X + px, Z + pz);
+    mb.addGeo(g, mat4(X + px, gy + h * 0.5 - 0.2, Z + pz), (v) => stoneOf(base, u(0.9, 1.05)).lerp(mossC, smoothstep(0.1, 1.2, (gy - v.y) * -0.3 + (v.y - gy) * 0.04) * 0.35));
     addCollider(X + px, Z + pz, 0.85);
     if (!broken) {
-      const g2 = jitterGeo(box(1.5, 0.5, 1.5, 1), 0.1);
-      mb.addGeo(g2, mat4(X + px, gy + h - 0.1, Z + pz), shade(base, 1.05));
+      mb.addGeo(jitter(box(1.5, 0.5, 1.5, 1), 0.1), mat4(X + px, gy + h - 0.1, Z + pz), shade(base, 1.05));
     } else {
-      const g3 = jitterGeo(new THREE.CylinderGeometry(0.6, 0.66, 2.4, 7, 1), 0.12);
-      mb.addGeo(g3, mat4(X + px + rr(-1.5, 1.5) + 1.8, gy + 0.55, Z + pz + rr(-1.5, 1.5) + 1.2, 1, 1, 1, 0, rnd() * 3, Math.PI / 2 + 0.15), shade(base, 0.95));
+      mb.addGeo(jitter(new THREE.CylinderGeometry(0.6, 0.66, 2.4, 7, 1), 0.12), mat4(X + px + u(-1.5, 1.5) + 1.8, gy + 0.55, Z + pz + u(-1.5, 1.5) + 1.2, 1, 1, 1, 0, R() * 3, Math.PI / 2 + 0.15), shade(base, 0.95));
     }
   }
+
   // standing stones on the approach
   for (let i = 0; i < 5; i++) {
-    const px = rr(-5, 5), pz = rr(16, 24), gy = getHeight(X + px, Z + pz);
-    const h = rr(1.8, 3);
+    const px = u(-5, 5), pz = u(16, 24), gy = getHeight(X + px, Z + pz);
+    const h = u(1.8, 3);
     addCollider(X + px, Z + pz, 0.6);
-    mb.addGeo(jitterGeo(box(0.9, h, 0.5, 1), 0.15), mat4(X + px, gy + h * 0.5 - 0.1, Z + pz, 1, 1, 1, rr(-0.1, 0.1), rnd() * 0.8, rr(-0.1, 0.1)), shade(pick(stone), 0.95));
+    mb.addGeo(jitter(box(0.9, h, 0.5, 1), 0.15), mat4(X + px, gy + h * 0.5 - 0.1, Z + pz, 1, 1, 1, u(-0.1, 0.1), R() * 0.8, u(-0.1, 0.1)), shade(pickR(stone), 0.95));
   }
+
+  // stone monkeys on the corner ledges of the first and second tiers, facing the temple: the troop's guardians
+  const monkeyStone = C('#7a7a68');
+  const monkeyStatue = (cx, cz, y0, k = 1.7) => {
+    const face = Math.atan2(-cx, -cz), c = Math.cos(face), s = Math.sin(face);
+    const at = (ox, oy, oz) => new THREE.Vector3(X + cx + (ox * c + oz * s) * k, Y + y0 + oy * k, Z + cz + (-ox * s + oz * c) * k);
+    const part = (geo, ox, oy, oz, sx, sy, sz, rx = 0) => { const p = at(ox, oy, oz); mb.addGeo(geo, mat4(p.x, p.y, p.z, sx * k, sy * k, sz * k, rx, face, 0), shade(monkeyStone, u(0.92, 1.06))); };
+    part(new THREE.SphereGeometry(0.3, 9, 7), 0, 0.36, 0, 0.9, 1.25, 0.95);                 // body, seated
+    part(new THREE.SphereGeometry(0.2, 9, 7), 0, 0.88, 0.06);                                  // head
+    part(new THREE.SphereGeometry(0.1, 7, 5), 0, 0.82, 0.22);                                  // muzzle
+    part(new THREE.CylinderGeometry(0.07, 0.06, 0.5, 6), 0.27, 0.46, 0.1, 1, 1, 1, -0.5);     // arms
+    part(new THREE.CylinderGeometry(0.07, 0.06, 0.5, 6), -0.27, 0.46, 0.1, 1, 1, 1, -0.5);
+    part(new THREE.CylinderGeometry(0.09, 0.08, 0.44, 6), 0.2, 0.14, 0.2, 1, 1, 1, 1.2);     // legs, folded
+    part(new THREE.CylinderGeometry(0.09, 0.08, 0.44, 6), -0.2, 0.14, 0.2, 1, 1, 1, 1.2);
+    tube(mb, [at(0, 0.12, -0.2), at(0, 0.04, -0.5), at(0, 0.3, -0.7)], [0.06 * k, 0.05 * k, 0.045 * k], 5, () => monkeyStone, 0);   // tail
+  };
+  for (const [cx, cz] of [[8.6, 8.6], [-8.6, 8.6], [8.6, -8.6], [-8.6, -8.6]]) monkeyStatue(cx, cz, TH);
+  for (const [cx, cz] of [[6.4, 6.4], [-6.4, 6.4], [6.4, -6.4], [-6.4, -6.4]]) monkeyStatue(cx, cz, 2 * TH, 1.2);
+
+  // ledges the monkeys sit on and climb to: they are kept clear of the stairs and the shrine
+  const ledges = [
+    { y: TH, pts: [[8.6, 0], [-8.6, 0], [0, -8.6], [8.6, -4], [-8.6, -4], [4.5, -8.6], [-4.5, -8.6]] },
+    { y: 2 * TH, pts: [[6.2, 0], [-6.2, 0], [0, -6.2], [6.2, -4.5], [-6.2, -4.5], [6.2, 4.5], [-6.2, 4.5]] },
+    { y: 3 * TH, pts: [[4.3, -3], [-4.3, -3], [0, -4.3], [3.6, 4.3], [-3.6, 4.3]] },
+  ];
+  for (const L of ledges) for (const [px, pz] of L.pts) addPerch(X + px, Z + pz, 0.6, Y + L.y, 'temple');
+
+  // braziers on the middle tier, and vines hanging down the faces
+  const brazierPos = [[6.6, -6.6], [-6.6, 6.6]];
+  for (const [bx, bz] of brazierPos) mb.addGeo(new THREE.CylinderGeometry(0.55, 0.35, 0.35, 8), mat4(X + bx, Y + 2 * TH + 0.17, Z + bz), shade(stone[0], 0.9));
+  const vineGreen = [C('#2f5d25'), C('#3f7a2e'), C('#24491d')];
+  for (let k = 0; k < 24; k++) {
+    const i = Math.floor(u(0, 3)), s2 = side(i) / 2 + 0.12, edge = u(-side(i) / 2, side(i) / 2) * 0.9, f4 = Math.floor(u(0, 4));
+    const ex = [s2, -s2, edge, edge][f4], ez = [edge, edge, s2, -s2][f4];
+    const yTop = Y + (i + 1) * TH - 0.25, gy = getHeight(X + ex, Z + ez) + 0.25, vc = pickR(vineGreen);
+    const cen = [];
+    for (let q = 0; q <= 7; q++) {
+      const f = q / 7, sw = Math.sin(f * 6 + k * 1.3) * 0.12;
+      cen.push(new THREE.Vector3(X + ex + (f4 < 2 ? 0.03 * Math.sign(ex) : sw), yTop + (gy - yTop) * f, Z + ez + (f4 < 2 ? sw : 0.03 * Math.sign(ez))));
+    }
+    tube(vines, cen, [0.1, 0.09, 0.08, 0.07, 0.06, 0.05, 0.045, 0.04], 5, () => vc, 0);
+    for (const q of [1, 2, 3, 4, 5, 6, 7]) {
+      const p = cen[q];
+      vines.addGeo(new THREE.IcosahedronGeometry(0.3, 0), mat4(p.x + 0.14, p.y, p.z, u(1, 1.6), u(0.5, 0.8), u(1, 1.6), u(0, 3), u(0, 3), u(0, 3)), () => shade(vc, u(0.9, 1.15)));
+    }
+  }
+
+  // the monkeys' hoard: bunches of bananas by the stairs
+  const fruit = new MB(), banana = C('#e6c12e');
+  for (const [hx, hz] of [[-4.5, 14.5], [4.5, 14.5], [-9, 13], [9.5, 11], [-12, 4], [13, -2]]) {
+    for (let b = 0; b < 5; b++) {
+      const ox = u(-0.6, 0.6), oz = u(-0.6, 0.6), ry = u(0, 3), tilt = u(0.3, 0.9);
+      const gy = getHeight(X + hx + ox, Z + hz + oz) + 0.12;
+      fruit.addGeo(new THREE.SphereGeometry(0.13, 6, 5), mat4(X + hx + ox, gy, Z + hz + oz, 0.55, 2.1, 0.55, tilt, ry, 0), shade(banana, u(0.85, 1.05)));
+    }
+  }
+  // monkey-head totems on the stair rails: the temple's sign, watching the approach
+  for (const sx of [-2.45, 2.45]) for (const i of [0, 8]) {
+    const h = (i + 1) * 0.44, tz = 11.2 - i * 0.5, hx = X + sx, hy = Y + h + 1.2, hz = Z + tz;
+    mb.addGeo(new THREE.SphereGeometry(0.34, 9, 7), mat4(hx, hy, hz, 1, 1.05, 0.95), shade(stone[0], 1.02));
+    mb.addGeo(new THREE.SphereGeometry(0.16, 7, 5), mat4(hx, hy - 0.05, hz + 0.3, 1.1, 0.8, 0.6), shade(carved, 1.05));
+    mb.addGeo(new THREE.ConeGeometry(0.2, 0.5, 6), mat4(hx, hy + 0.42, hz, 1, 1, 1), shade(stone[1], 0.95));
+    for (const ex of [-0.12, 0.12]) glow.addGeo(new THREE.SphereGeometry(0.06, 6, 5), mat4(hx + ex, hy + 0.04, hz + 0.3), C('#ffb040'));   // glowing eyes
+  }
+  tagObject(addMesh(fruit.build(), stoneMat), 'temple');
   tagObject(addMesh(mb.build(), stoneMat), 'temple');
+  tagObject(addMesh(glow.build(), glyphMat), 'temple');
+  const vineMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true, side: THREE.DoubleSide });
+  tagObject(addMesh(vines.build(), vineMat, true, false), 'temple');
   addSurface((x, z) => {
     const dx = x - X, dz = z - Z, ax = Math.abs(dx), az = Math.abs(dz);
     if (ax > 10 || az > 12) return null;
     let y = null;
-    for (let i = 0; i < tiers; i++) { const hs = (19 - i * 4.2) / 2; if (ax < hs && az < hs) y = Y + (i + 1) * 1.75; }
+    for (let i = 0; i < tiers; i++) { const hs = side(i) / 2; if (ax < hs && az < hs) y = Y + (i + 1) * TH; }
     if (ax < 2.2 && dz > 3.2 && dz < 11.5) {
       const i = Math.min(tiers * 4 - 1, Math.max(0, Math.round((11.2 - dz) / 0.5)));
       y = Math.max(y ?? -1e9, Y + (i + 1) * 0.44);
     }
-    if (ax < 3.1 && az < 3.1) y = Math.max(y ?? -1e9, Y + tiers * 1.75 + 0.4);
+    if (ax < 3.1 && az < 3.1) y = Math.max(y ?? -1e9, Y + topY + 0.4);
     return y;
   }, 'temple');
 
@@ -261,7 +366,7 @@ export function buildTemple() {
   il.position.set(X, Y + topY + 3.2, Z + 2.2);
   scene.add(il);
 
-  // tiki torches
+  // tiki torches on the ground, and braziers on the middle tier
   const torches = [];
   const poleM = M('#5b3d24');
   for (const [tx, tz] of [[-3.6, 12], [3.6, 12], [-9, 6], [9, 6], [-8, -9], [8, -9]]) {
@@ -273,18 +378,22 @@ export function buildTemple() {
     scene.add(pole, bowl);
     torches.push({ x: X + tx, y: gy + 2.65, z: Z + tz });
   }
+  for (const [bx, bz] of brazierPos) torches.push({ x: X + bx, y: Y + 2 * TH + 0.7, z: Z + bz });
   let fa = 0;
   updaters.push((dt, tm) => {
     fa += dt * 22;
     while (fa > 1) { fa--; for (const q of torches) fx.flame(q.x, q.y, q.z, 1.5); }
     il.intensity = 40 + 12 * Math.sin(tm * 3.1) * Math.sin(tm * 1.3);
     eyeM.emissiveIntensity = 2.5 + 1.2 * Math.sin(tm * 1.6);
+    glyphMat.emissiveIntensity = 0.9 + 0.35 * Math.sin(tm * 1.1);
   });
 
   addSecret({
     id: 'temple', name: 'The Sunken Temple', hint: 'Old stones watch the jungle at the foot of the volcano.',
     desc: 'A moss-covered stepped temple. The idol’s eyes still glow at dusk.', pos: V(X, Y + 6, Z), r: 25,
   });
+  // spend the shared draws the first temple made, so every later placement is where it was
+  burn(TEMPLE_SHARED_DRAWS);
 }
 
 /* ================================================================== shipwreck + canoe + camp */
