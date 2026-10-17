@@ -139,18 +139,19 @@ export function buildCave() {
     gl.position.copy(pool.position); gl.position.y -= 0.5; grp.add(gl);
   }
 
-  /* ---- the doorway: an arch of rough rocks round the opening in the cliff face */
+  /* ---- the doorway: a continuous rock lip that follows the arch cut into the cliff, so the rock meets the opening along one clean line */
   {
-    const mb = new MB(), dark = [C('#2c2733'), C('#3a3342'), C('#26323a')];
-    for (let k = 0; k < 22; k++) {
-      const a = Math.PI * (k / 21) * 1.0, rx = 3.5, ry = 3.3;
-      const x = Math.cos(a) * rx * (k % 2 ? 1.05 : 0.95), y = Math.sin(a) * ry + 0.2 - (k < 2 || k > 19 ? 0.2 : 0), z = -rr(0.6, 1.3);
-      const s = rr(0.55, 1.05);
-      mb.addGeo(lumpy(new THREE.IcosahedronGeometry(1, 1), 0.38, 40 + k), mat4(x, y, z, s * 1.1, s * rr(0.8, 1.2), s, rr(-0.3, 0.3), rr(0, 6), 0), (v) => shade(dark[k % 3], 0.8 + 0.3 * Math.max(0, Math.min(1, (v.y - y) / (2 * s) + 0.5))));
-    }
-    for (let k = 0; k < 7; k++) mb.addGeo(lumpy(new THREE.IcosahedronGeometry(1, 1), 0.35, 80 + k), mat4(rr(-3.6, 3.6), 0.2, -rr(0.8, 1.6), rr(0.7, 1.1), rr(0.45, 0.8), rr(0.6, 1.0), 0, rr(0, 6), 0), dark[k % 3]);
-    const arch = new THREE.Mesh(mb.build(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true }));
-    arch.castShadow = true; arch.receiveShadow = true; grp.add(arch);
+    const R = 2.2, edge = [];
+    for (let s = 0; s <= 10; s++) edge.push(new THREE.Vector3(...L(-R, 0.3, 0.1 + 1.9 * s / 10).toArray()));          // the left jamb, up from the threshold
+    for (let s = 1; s < 24; s++) { const a = Math.PI - Math.PI * s / 24; edge.push(new THREE.Vector3(...L(R * Math.cos(a), 0.3, 2.0 + R * Math.sin(a)).toArray())); }
+    for (let s = 0; s <= 10; s++) edge.push(new THREE.Vector3(...L(R, 0.3, 2.0 - 1.9 * s / 10).toArray()));            // the right jamb, down to the threshold
+    const curve = new THREE.CatmullRomCurve3(edge, false);
+    const lipMat = new THREE.MeshStandardMaterial({ color: 0x2e2836, roughness: 0.95, flatShading: true });
+    const lip = new THREE.Mesh(new THREE.TubeGeometry(curve, 140, 0.34, 6, false), lipMat);
+    lip.castShadow = true; lip.receiveShadow = true; grp.add(lip);
+    // a second, rougher course just inside it: the lip has thickness, and its edge reads as broken rock
+    const inner = new THREE.Mesh(new THREE.TubeGeometry(curve, 140, 0.26, 5, false), new THREE.MeshStandardMaterial({ color: 0x3a3342, roughness: 0.97, flatShading: true }));
+    inner.position.set(0, 0, 0.12); grp.add(inner);
   }
 
   /* ---- light: the hall glows cyan, the heart violet and teal, and the doorway catches a little of both */
@@ -160,6 +161,7 @@ export function buildCave() {
   const l2 = mk(0xc060ff, 110, 34, heart.x, heart.y, heart.z - 2);
   const l3 = mk(0x4fffcf, 50, 16, P.x, P.y, 1.5);
   const l4 = mk(0xffb040, 40, 20, 0, 6, 3);
+  mk(0x7fe9ff, 28, 11, 0, 1.2, 1.6);                                  // the mouth: a little cyan light just inside the arch
   cave.lights = [l1, l2, l3, l4];
 
   /* ---- motes drifting in the air, and drips from the stalactites */

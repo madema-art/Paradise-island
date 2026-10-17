@@ -370,7 +370,10 @@ export function inCave(x, y, z) {
 export function caveHole(x, y, z) {
   if (!CAVE.ready) return false;
   const q = caveLocal(x, z), dy = y - CAVE.oy;
-  return Math.abs(q.bx) < 2.15 && q.by > 0.4 && q.by < 6.4 && dy > 0.15 && dy < 4.2;
+  if (!(q.by > 0.4 && q.by < 6.4 && dy > 0.15)) return false;
+  // an arch: square below its springing line (dy 2.0), a half-circle above it, the same outline as the rock lining in cave.js
+  if (Math.abs(q.bx) >= 2.2) return false;
+  return dy < 2.0 || q.bx * q.bx + (dy - 2.0) * (dy - 2.0) < 4.84;
 }
 
 /** The footpath: one spiral from the foot of the cone up to the crater rim. It turns anticlockwise ASCENT.loops times, and its height climbs
@@ -439,10 +442,13 @@ function finalHeight(x, z) {
   // plunge pool
   const P = falls.pool;
   r = Math.hypot(x - P.x, z - P.z);
-  if (r < P.r + 5) {
-    // bowl with a retaining rim (raised on the downhill side so the pool never spills)
-    const m = 1 - smoothstep(P.r + 0.5, P.r + 5, r);
-    const shape = P.y + 0.5 - 3.4 * Math.max(0, 1 - (r / P.r) ** 2);
+  if (r < P.r + 12) {
+    // a bowl with a retaining bank round it: the bank stands at least 0.4 m above the water, so the pool cannot spill over the lower
+    // ground, and it runs back down into the natural slope over about 12 m. The water therefore meets the land along a natural contour.
+    const m = 1 - smoothstep(P.r + 0.5, P.r + 12, r);
+    const bowl = P.y + 0.4 - 3.0 * Math.max(0, 1 - (r / P.r) ** 2);
+    const bank = Math.max(P.y + 0.4, h);
+    const shape = lerp(bowl, bank, smoothstep(P.r * 0.8, P.r + 0.5, r));
     h = lerp(h, shape, m);
   }
   // hot spring

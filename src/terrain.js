@@ -79,6 +79,11 @@ function tint(x, z, h, slope, out) {
     const rd = riverDist(x, z);
     if (rd < 6) out.lerp(K.mud, smoothstep(6, 1.8, rd) * 0.55);
   }
+  // the bank round the plunge pool: wet mud that fades into the grass, not the dark rock of the slope
+  {
+    const pd = Math.hypot(x - falls.pool.x, z - falls.pool.z) - falls.pool.r;
+    if (pd < 4.5) out.lerp(K.soil, smoothstep(4.5, 0.5, pd) * 0.4);
+  }
   // lake rim
   const lr = lakeRho(x, z);
   if (lr < 1.18 && lr > 0.7) out.lerp(K.mud, smoothstep(1.18, 0.88, lr) * 0.4);

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { tagObject } from './inspect.js';
 import { scene, U, env, updaters } from './core.js';
 import { SIZE, river, falls, LAKE, lakeRho, SPRING, getHeight } from './world.js';
-import { lerp } from './util.js';
+import { lerp, smoothstep } from './util.js';
 import { ripUniforms, RIPPLE_GLSL } from './ripples.js';
 
 const NOISE = /* glsl */ `
@@ -275,7 +275,7 @@ export function buildRibbon(pts, widths, ys, { cols = 3, flow = 1.4, yFn = null,
       pos[k * 3] = x; pos[k * 3 + 1] = yFn ? yFn(x, z, i, u) : ys[i]; pos[k * 3 + 2] = z;
       dp[k] = pos[k * 3 + 1] - getHeight(x, z);
       const fi = fadeIn > 0 ? Math.min(1, dist / fadeIn) : 1, fo = fadeOut > 0 ? Math.min(1, (total - dist) / fadeOut) : 1;
-      fd[k] = fi * fi * (3 - 2 * fi) * fo * fo * (3 - 2 * fo);
+      fd[k] = fi * fi * (3 - 2 * fi) * fo * fo * (3 - 2 * fo) * smoothstep(-0.3, 0.12, dp[k]);      // thins to nothing where the bank rises out of the water
       wdt[k] = widths[i];
       uv[k * 2] = u; uv[k * 2 + 1] = dist * vScale;
       const fsp = typeof flow === 'function' ? flow(i) : flow;
@@ -301,25 +301,29 @@ export function buildRibbon(pts, widths, ys, { cols = 3, flow = 1.4, yFn = null,
 
 /** water body that follows the shoreline: only cells where the terrain dips below `level` get a surface */
 function pondMesh(cx, cz, R, level, mat, order = 2, key = null, inside = null) {
-  const step = 0.6, n = Math.ceil((2 * R) / step), st = n + 1;
-  const pos = new Float32Array(st * st * 3), dep = new Float32Array(st * st);
+  // a margin past the shoreline, so the fade has room: vertices past it (or outside the shape) carry no water
+  const step = 0.5, Rm = R + 6, n = Math.ceil((2 * Rm) / step), st = n + 1;
+  const pos = new Float32Array(st * st * 3), dep = new Float32Array(st * st), fade = new Float32Array(st * st);
   for (let j = 0; j < st; j++)
     for (let i = 0; i < st; i++) {
-      const x = cx - R + i * step, z = cz - R + j * step, k = j * st + i;
+      const x = cx - Rm + i * step, z = cz - Rm + j * step, k = j * st + i;
+      const r = Math.hypot(x - cx, z - cz), out = r > Rm || (inside && !inside(x, z));
       pos[k * 3] = x; pos[k * 3 + 1] = level; pos[k * 3 + 2] = z;
-      dep[k] = Math.hypot(x - cx, z - cz) > R || (inside && !inside(x, z)) ? -1 : level - getHeight(x, z);
+      const d = level - getHeight(x, z);
+      dep[k] = out ? -1 : d;
+      fade[k] = out ? 0 : smoothstep(-0.14, 0.03, d);                        // full water where the basin is well under the surface, none on the bank
     }
   const idx = [];
   for (let j = 0; j < n; j++)
     for (let i = 0; i < n; i++) {
       const a = j * st + i, b = a + 1, c = a + st, d = c + 1;
-      if (Math.max(dep[a], dep[b], dep[c], dep[d]) > 0.0 && Math.min(dep[a], dep[b], dep[c], dep[d]) > -0.9) idx.push(a, c, b, b, c, d);
+      if (Math.max(fade[a], fade[b], fade[c], fade[d]) > 0.0) idx.push(a, c, b, b, c, d);
     }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('aDepth', new THREE.BufferAttribute(dep, 1));
   g.setAttribute('aFlow', new THREE.BufferAttribute(new Float32Array(st * st * 2), 2));
-  g.setAttribute('aFade', new THREE.BufferAttribute(new Float32Array(st * st).fill(1), 1));
+  g.setAttribute('aFade', new THREE.BufferAttribute(fade, 1));
   g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(st * st * 2).fill(0.5), 2));
   g.setIndex(idx);
   const m = new THREE.Mesh(g, mat);
