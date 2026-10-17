@@ -166,9 +166,33 @@ export async function startServer(root, port, revision, log = console.log) {
   child.kill(); throw new Error('Server did not become ready. The browser was not opened.');
 }
 
-function openBrowser(url) {
+// Launch a normal browser window in F11-style fullscreen (not locked-down kiosk mode).
+export function fullscreenBrowserCommand(url, env = process.env, exists = fs.existsSync) {
+  const locations = [
+    [env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe'],
+    [env.ProgramW6432, 'Google', 'Chrome', 'Application', 'chrome.exe'],
+    [env.ProgramFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'],
+    [env['ProgramFiles(x86)'], 'Google', 'Chrome', 'Application', 'chrome.exe'],
+    [env['ProgramFiles(x86)'], 'Microsoft', 'Edge', 'Application', 'msedge.exe'],
+    [env.ProgramFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe'],
+    [env.ProgramW6432, 'Microsoft', 'Edge', 'Application', 'msedge.exe'],
+    [env.LOCALAPPDATA, 'Microsoft', 'Edge', 'Application', 'msedge.exe'],
+  ];
+  for (const [base, ...parts] of locations) {
+    if (!base) continue;
+    const executable = path.win32.join(base, ...parts);
+    if (exists(executable)) return { executable, args: ['--new-window', '--start-fullscreen', url] };
+  }
+  throw new Error('Fullscreen launch needs Google Chrome or Microsoft Edge in a standard install location. Neither was found.');
+}
+
+async function openBrowser(url) {
   if (process.platform !== 'win32') throw new Error(`Open ${url} manually (the .bat launcher targets Windows).`);
-  command(ownRoot, process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', `start "" "${url}"`]);
+  const { executable, args } = fullscreenBrowserCommand(url);
+  // Direct arguments preserve spaces in installation paths, without cmd quoting or simulated keys.
+  const browser = spawn(executable, args, { detached: true, stdio: 'ignore' });
+  await new Promise((resolve, reject) => { browser.once('spawn', resolve); browser.once('error', reject); });
+  browser.unref();
 }
 
 async function main() {
@@ -192,7 +216,7 @@ async function main() {
     console.log(`Starting Paradise Island... (${config.branch} ${result.revision.slice(0, 12)})`);
     server = await startServer(ownRoot, config.port, result.revision);
     unlock();
-    openBrowser(`http://localhost:${config.port}/`);
+    await openBrowser(`http://localhost:${config.port}/`);
     if (server) {
       console.log('Game is ready. Keep this window open for the notebook server; close it or press Ctrl+C to stop.');
       let stopping = false;
